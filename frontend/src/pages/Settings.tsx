@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,11 +8,11 @@ import {
     Mail, Hash, Sun, Moon
 } from 'lucide-react';
 import Loader from '@/components/ui/Loader';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useSemester } from '@/contexts/SemesterContext';
+import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
+import { useSemester } from '@/contexts/semester-context';
 import Select from '@/components/ui/Select';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { authService } from '@/services/auth.service';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
@@ -20,7 +20,8 @@ import SystemLogsSection from '@/components/settings/SystemLogsSection';
 import SettingsDataSection from '@/components/settings/SettingsDataSection';
 import SessionsSection from '@/components/settings/SessionsSection';
 
-import { useConfirm } from '@/contexts/ConfirmContext';
+import { useConfirm } from '@/contexts/confirm-context';
+import { getErrorMessage } from '@/utils/errors';
 
 type TabKey = 'profile' | 'activity' | 'data' | 'sessions';
 
@@ -62,27 +63,31 @@ const Settings: React.FC = () => {
         }
     }, [user]);
 
-    useEffect(() => { loadPreferences(); loadDashboardStats(); }, []);
     useUnsavedChanges(isEditingProfile);
 
-    async function loadDashboardStats() {
+    const loadDashboardStats = useCallback(async () => {
         try {
             const data = await attendanceService.getDashboardData(currentSemester);
             setDashboardStats({ attendance: data.overall_attendance || 0, totalSubjects: data.total_subjects || 0 });
         } catch { /* ignore */ }
-    }
+    }, [currentSemester]);
 
-    const loadPreferences = async () => {
+    const loadPreferences = useCallback(async () => {
         try {
             const prefs = await attendanceService.getPreferences();
             if (prefs && prefs.accent_color) setAccentColor(prefs.accent_color);
         } catch { /* ignore */ }
-    };
+    }, [setAccentColor]);
+
+    useEffect(() => {
+        void loadPreferences();
+        void loadDashboardStats();
+    }, [loadPreferences, loadDashboardStats]);
 
     const handleProfileSave = async () => {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { picture: _picture, ...profileFormData } = profileForm;
+            const { picture, ...profileFormData } = profileForm;
+            void picture;
             await attendanceService.updateProfile({ name, ...profileFormData });
 
             if (profileForm.attendance_threshold || profileForm.warning_threshold) {
@@ -132,9 +137,9 @@ const Settings: React.FC = () => {
             attendanceService.clearAllLocalCaches();
             showToast('success', 'Data Purged');
             setTimeout(() => window.location.reload(), 1500);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            showToast('error', err.response?.data?.message || 'Purge Failed');
+            showToast('error', getErrorMessage(err, 'Purge Failed'));
         }
     };
 
@@ -152,9 +157,9 @@ const Settings: React.FC = () => {
             await authService.deleteAccount(user.email);
             showToast('success', 'Account deleted');
             setTimeout(() => { window.location.href = '/login'; }, 800);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            showToast('error', err.response?.data?.error || 'Account deletion failed');
+            showToast('error', getErrorMessage(err, 'Account deletion failed'));
         }
     };
 

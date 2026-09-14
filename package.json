@@ -12,6 +12,12 @@
     "api": "npm run dev --prefix api-node",
     "web": "npm run dev --prefix frontend",
     "build": "npm run build --workspace api-node && npm run build --workspace frontend",
+    "lint": "npm run lint --workspace api-node && npm run lint --workspace frontend",
+    "lint:api": "npm run lint --workspace api-node",
+    "lint:frontend": "npm run lint --workspace frontend",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --test tests/quality.test.ts",
+    "quality": "npm run lint && npm run test:unit && npm run build",
     "typecheck": "npm run build",
     "smoke:api": "npm run smoke:api --workspace api-node"
   },

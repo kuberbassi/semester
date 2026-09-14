@@ -1,5 +1,9 @@
 let audioCtx: AudioContext | null = null;
 
+interface WebkitAudioWindow extends Window {
+    webkitAudioContext?: typeof AudioContext;
+}
+
 /**
  * Synthesizes a subtle, short click sound using the Web Audio API.
  * Acts as a tactile auditory fallback for browsers/platforms where physical vibration is disabled or unsupported.
@@ -7,7 +11,8 @@ let audioCtx: AudioContext | null = null;
 const playAudioClick = (duration: number = 0.03, frequency: number = 800) => {
     try {
         if (!audioCtx) {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
+            if (!AudioContextClass) return;
             audioCtx = new AudioContextClass();
         }
         

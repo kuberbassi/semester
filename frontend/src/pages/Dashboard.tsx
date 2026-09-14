@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useDashboard, useMarkAttendance, useDeleteSubject } from '@/hooks/useDashboard';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, Check, X,
@@ -10,83 +10,27 @@ import {
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
 import AttendanceModal from '@/components/modals/AttendanceModal';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import useLongPress from '@/hooks/useLongPress';
-import { useSemester } from '@/contexts/SemesterContext';
+import { useSemester } from '@/contexts/semester-context';
 import { Link } from 'react-router-dom';
 import { formatTeacherName } from '@/utils/formatters';
-import { useConfirm } from '@/contexts/ConfirmContext';
+import { useConfirm } from '@/contexts/confirm-context';
+import type { Subject, TimetableSlot } from '@/types';
+import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
 
-/* ── Helpers for Timetable slot subject mapping ── */
+type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
+
 const normalizeId = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());
 
-const findSubjectForSlot = (subjects: any[], slot: any) => {
-    const explicitType = String(slot?.type || '').trim().toLowerCase();
-    
-    if (['break', 'lunch', 'gap', 'free', 'custom'].includes(explicitType)) return undefined;
-
-    const slotSubjectId = normalizeId(slot?.subject_id || slot?.subjectId || slot?.subject?._id || slot?.subject?.id);
-    if (slotSubjectId) {
-        const matchedById = subjects.find((sub: any) => normalizeId(sub._id || sub.id) === slotSubjectId);
-        if (matchedById) return matchedById;
-    }
-
-    const subjectField = slot?.subject;
-    if (typeof subjectField === 'string' && subjectField.trim()) {
-        const needle = subjectField.trim().toLowerCase();
-        const matchedByName = subjects.find((sub: any) => String(sub?.name || '').trim().toLowerCase() === needle);
-        if (matchedByName) return matchedByName;
-    }
-
-    if (subjectField && typeof subjectField === 'object') {
-        const subObj = subjectField as Record<string, unknown>;
-        const objId = normalizeId(subObj._id || subObj.id);
-        if (objId) {
-            const matchedByObjId = subjects.find((sub: any) => normalizeId(sub._id || sub.id) === objId);
-            if (matchedByObjId) return matchedByObjId;
-        }
-        const objName = String(subObj.name || '').trim().toLowerCase();
-        if (objName) {
-            const matchedByObjName = subjects.find((sub: any) => String(sub?.name || '').trim().toLowerCase() === objName);
-            if (matchedByObjName) return matchedByObjName;
-        }
-    }
-
-    const slotLabel = String(
-        slot?.label
-        || slot?.subject_name
-        || slot?.subjectName
-        || slot?.name
-        || slot?.subject?.name
-        || slot?.subject?.code
-        || ''
-    ).trim().toLowerCase();
-    if (!slotLabel || slotLabel === 'break' || slotLabel === 'lunch' || slotLabel === 'gap') return undefined;
-
-    return subjects.find((sub: any) => {
-        const subName = String(sub?.name || '').trim().toLowerCase();
-        const subCode = String(sub?.code || '').trim().toLowerCase();
-        
-        if (subName === slotLabel || subCode === slotLabel) return true;
-        
-        const acronym = subName.split(/\s+/).map(w => w[0]).join('');
-        if (acronym === slotLabel) return true;
-        
-        if (subName.includes(slotLabel)) return true;
-        if (subCode && (subCode.includes(slotLabel) || slotLabel.includes(subCode))) return true;
-
-        return false;
-    });
-};
-
 const SubjectRow: React.FC<{
-    subject: any;
+    subject: Subject;
     targetThreshold: number;
     classesNeeded: (attended: number, total: number) => number;
     classesCanSkip: (attended: number, total: number) => number;
-    triggerBubbleMenu: (subjectId: string, e: any) => void;
-    setEditingSubject: (subject: any) => void;
+    triggerBubbleMenu: (subjectId: string, event: SubjectMenuEvent) => void;
+    setEditingSubject: (subject: Subject) => void;
     handleDeleteSubject: (subjectId: string, subjectName: string) => void;
 }> = ({
     subject,
@@ -101,7 +45,8 @@ const SubjectRow: React.FC<{
     const isCritical = pct < targetThreshold;
     const needed = classesNeeded(subject.attended || 0, subject.total || 0);
     const canSkip = classesCanSkip(subject.attended || 0, subject.total || 0);
-    const longPressHandlers = useLongPress((e) => triggerBubbleMenu(subject._id, e), {
+    const subjectId = normalizeId(subject._id || subject.id);
+    const longPressHandlers = useLongPress((event) => triggerBubbleMenu(subjectId, event), {
         threshold: 600,
         onCancel: () => {}
     });
@@ -129,7 +74,7 @@ const SubjectRow: React.FC<{
                 </div>
             </td>
             <td className="px-6 py-3.5 text-on-surface-variant/50 font-medium text-xs">
-                <p className="truncate max-w-[150px] leading-tight">{formatTeacherName(subject.professor)}</p>
+                <p className="truncate max-w-[150px] leading-tight">{formatTeacherName(subject.professor || '')}</p>
             </td>
             <td className="px-6 py-3.5 text-center font-semibold text-on-surface text-xs">{subject.attended || 0} / {subject.total || 0}</td>
             <td className="px-6 py-3.5 text-center">
@@ -161,7 +106,7 @@ const SubjectRow: React.FC<{
                         <Edit2 size={14} strokeWidth={1.8} />
                     </button>
                     <button
-                        onClick={() => handleDeleteSubject(subject._id, subject.name)}
+                        onClick={() => handleDeleteSubject(subjectId, subject.name)}
                         className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 transition-all cursor-pointer"
                         title={`Delete ${subject.name}`}
                         aria-label={`Delete ${subject.name}`}
@@ -202,7 +147,7 @@ const Dashboard: React.FC = () => {
     });
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingSubject, setEditingSubject] = useState<any | null>(null);
+    const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [markingSubjectId, setMarkingSubjectId] = useState<string | null>(null);
     const [bubbleMenu, setBubbleMenu] = useState<{
         subjectId: string;
@@ -210,7 +155,7 @@ const Dashboard: React.FC = () => {
         y: number;
     } | null>(null);
 
-    const [todayClasses, setTodayClasses] = useState<any[]>([]);
+    const [todayClasses, setTodayClasses] = useState<TimetableSlot[]>([]);
     const confirm = useConfirm();
 
     const [categoryFilter, setCategoryFilter] = useState<'Theory' | 'Practical' | 'All'>(() => {
@@ -227,27 +172,7 @@ const Dashboard: React.FC = () => {
                 const currentDay = dayNames[new Date().getDay()];
                 const daySlots = data?.schedule?.[currentDay] || [];
                 
-                const parseTimeForSort = (time12h: string) => {
-                    if (!time12h) return 0;
-                    try {
-                        const parts = time12h.split(' ');
-                        const time = parts[0];
-                        const modifier = parts[1] || '';
-                        let [hours, minutes] = time.split(':');
-                        let h = parseInt(hours, 10);
-                        if (modifier) {
-                            if (h === 12) h = 0;
-                            if (modifier.toLowerCase() === 'pm') h += 12;
-                        }
-                        return h * 60 + parseInt(minutes, 10);
-                    } catch { return 0; }
-                };
-
-                const sortedSlots = [...daySlots].sort((a: any, b: any) => {
-                    const getSlotStartTime = (slot: any) => String(slot?.start_time || slot?.startTime || '').trim();
-                    return parseTimeForSort(getSlotStartTime(a)) - parseTimeForSort(getSlotStartTime(b));
-                });
-                setTodayClasses(sortedSlots);
+                setTodayClasses(sortTimetableSlots(daySlots));
             } catch (err) {
                 console.error("Failed to load timetable for dashboard", err);
             }
@@ -308,19 +233,23 @@ const Dashboard: React.FC = () => {
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
 
-    const sortSubs = (subs: any[]) => {
+    const sortSubs = (subs: Subject[]) => {
         if (!subs) return [];
         return [...subs].sort((a, b) => {
-            const p = (s: any) => { const c = s.categories || []; return c.includes('Theory') ? 0 : c.includes('Lab') ? 1 : 2; };
-            return p(a) - p(b);
+            const priority = (subject: Subject) => {
+                const categories = subject.categories || [];
+                return categories.includes('Theory') ? 0 : categories.includes('Lab') ? 1 : 2;
+            };
+            return priority(a) - priority(b);
         });
     };
 
     // Bubble menu trigger
-    const triggerBubbleMenu = (subjectId: string, e: any) => {
-        e.preventDefault();
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY) || 0;
+    const triggerBubbleMenu = (subjectId: string, event: SubjectMenuEvent) => {
+        event.preventDefault();
+        const touch = 'touches' in event ? event.touches[0] : undefined;
+        const clientX = ('clientX' in event ? event.clientX : touch?.clientX) || 0;
+        const clientY = ('clientY' in event ? event.clientY : touch?.clientY) || 0;
         
         const menuWidth = 160;
         const menuHeight = 145;
@@ -591,7 +520,7 @@ const Dashboard: React.FC = () => {
                                     {(['Theory', 'Practical', 'All'] as const).map(cat => {
                                         const count = cat === 'All'
                                             ? subjects.length
-                                            : subjects.filter((s: any) => {
+                                            : subjects.filter((s) => {
                                                 const isPractical = s.categories?.includes('Practical') || 
                                                                     s.type?.toLowerCase() === 'practical' || 
                                                                     s.type?.toLowerCase() === 'lab' || 
@@ -622,7 +551,7 @@ const Dashboard: React.FC = () => {
                             {(() => {
                                 const filteredSubjects = categoryFilter === 'All'
                                     ? subjects
-                                    : subjects.filter((s: any) => {
+                                    : subjects.filter((s) => {
                                         const isPractical = s.categories?.includes('Practical') || 
                                                             s.type?.toLowerCase() === 'practical' || 
                                                             s.type?.toLowerCase() === 'lab' || 
@@ -736,7 +665,7 @@ const Dashboard: React.FC = () => {
                                                                 Edit
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDeleteSubject(subject._id, subject.name)}
+                                                                onClick={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
                                                                 className="h-7 px-3 border border-red-500/20 hover:bg-red-500/5 rounded-lg flex items-center justify-center text-[10px] font-semibold text-red-500 transition-all cursor-pointer whitespace-nowrap"
                                                             >
                                                                 Delete
@@ -787,8 +716,10 @@ const Dashboard: React.FC = () => {
                             </button>
                             <div className="h-px bg-outline my-1" />
                             {(() => {
-                                const targetSub = subjects.find(s => s._id === bubbleMenu.subjectId);
+                                const targetSub = subjects.find(s => (s._id || s.id) === bubbleMenu.subjectId);
                                 if (!targetSub) return null;
+                                const targetSubId = targetSub._id || targetSub.id;
+                                if (!targetSubId) return null;
                                 return (
                                     <>
                                         <button
@@ -799,7 +730,7 @@ const Dashboard: React.FC = () => {
                                             Edit Details
                                         </button>
                                         <button
-                                            onClick={() => { handleDeleteSubject(targetSub._id, targetSub.name); setBubbleMenu(null); }}
+                                            onClick={() => { handleDeleteSubject(targetSubId, targetSub.name); setBubbleMenu(null); }}
                                             className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/5 rounded-md transition-colors cursor-pointer"
                                         >
                                             <Trash2 size={12} />

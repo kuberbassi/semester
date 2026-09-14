@@ -36,12 +36,25 @@ Semester/
 │   │   │   └── ui/              # Reusable responsive buttons, inputs, & modals
 │   │   ├── contexts/            # Global Auth, Semester, and Theme providers
 │   │   ├── hooks/               # Custom lifecycle handlers
+│   │   ├── lib/                 # Testable attendance, date, and timetable domain rules
 │   │   ├── pages/               # Main pages (Dashboard, Settings, Timetable, Calendar, etc.)
 │   │   ├── services/            # Axios API client handlers
 │   │   ├── types/               # TypeScript interfaces
 │   │   └── utils/               # PDF rendering & calculation routines
 │   └── package.json
 ```
+
+Context values live in small context-only modules, while provider components own state and effects. This keeps React Fast Refresh reliable and lets consumers import contracts without pulling provider implementation into the module graph.
+
+Shared API responses are normalized in `frontend/src/services/attendance.service.ts` and described in `frontend/src/types/index.ts`. Legacy `id`/`_id`, timetable field-name, and nested-response compatibility is handled at that boundary or in focused domain helpers rather than scattered unchecked casts.
+
+Active product and package names use **Semester**. Some internal values deliberately retain the old `zenith_` prefix: authentication cookie names, localStorage/cache keys, the legacy migration-key prefix accepted by the API, the backup-encryption fallback, and an existing deployment host in the security policy. These are compatibility contracts, not visible branding. Rename them only through an explicit migration that preserves existing sessions, preferences, backups, and tokens.
+
+## Local quality gate
+
+Run `npm run quality` from the repository root. It performs backend and frontend lint, database-free domain unit tests, and both production builds. `.github/workflows/quality.yml` runs the same command for pushes and pull requests.
+
+Database-backed attendance scripts remain separate because they require explicit credentials and create temporary sentinel records. A successful default quality run therefore proves static checks, pure domain behavior, and compilation, but not an authenticated production attendance flow.
 
 ---
 

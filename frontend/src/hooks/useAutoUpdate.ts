@@ -4,6 +4,39 @@ export function useAutoUpdate() {
     const versionRef = useRef<string | null>(null);
 
     useEffect(() => {
+        const checkVersion = async () => {
+            try {
+                // Add timestamp to prevent caching of the version file itself
+                const res = await fetch(`/version.json?t=${new Date().getTime()}`, {
+                    cache: 'no-store'
+                });
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const latestVersion = data.version; // e.g., "build-1738291..."
+
+                if (versionRef.current && versionRef.current !== latestVersion) {
+                    // Version mismatch! Hard reload.
+                    console.log(`New version found: ${latestVersion}. Reloading...`);
+
+                    if ('serviceWorker' in navigator) {
+                        // Unregister old SWs to ensure fresh load
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        for (const registration of registrations) {
+                            await registration.unregister();
+                        }
+                    }
+
+                    // Force reload from server, ignoring cache
+                    window.location.reload();
+                } else {
+                    versionRef.current = latestVersion;
+                }
+            } catch (e) {
+                console.error("Failed to check version", e);
+            }
+        };
+
         // Check version immediately on mount
         checkVersion();
 
@@ -24,36 +57,4 @@ export function useAutoUpdate() {
         };
     }, []);
 
-    const checkVersion = async () => {
-        try {
-            // Add timestamp to prevent caching of the version file itself
-            const res = await fetch(`/version.json?t=${new Date().getTime()}`, {
-                cache: 'no-store'
-            });
-            if (!res.ok) return;
-
-            const data = await res.json();
-            const latestVersion = data.version; // e.g., "build-1738291..."
-
-            if (versionRef.current && versionRef.current !== latestVersion) {
-                // Version mismatch! Hard reload.
-                console.log(`New version found: ${latestVersion}. Reloading...`);
-
-                if ('serviceWorker' in navigator) {
-                    // Unregister old SWs to ensure fresh load
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (const registration of registrations) {
-                        await registration.unregister();
-                    }
-                }
-
-                // Force reload from server, ignoring cache
-                window.location.reload();
-            } else {
-                versionRef.current = latestVersion;
-            }
-        } catch (e) {
-            console.error("Failed to check version", e);
-        }
-    };
 }

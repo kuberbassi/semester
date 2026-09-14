@@ -104,7 +104,7 @@ router.get('/export_data', async (req: AuthRequest, res) => {
 
     const finalJson = JSON.stringify(securePayload)
     const email = (user?.email ?? 'user').replace(/@/g, '_at_').replace(/\./g, '_')
-    const filename = `zenith_export_${email}_${new Date().toISOString().slice(0, 10)}.json`
+    const filename = `semester_export_${email}_${new Date().toISOString().slice(0, 10)}.json`
 
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.setHeader('Content-Type', 'application/json')
@@ -355,7 +355,7 @@ router.post('/migration/initiate', async (req: AuthRequest, res) => {
       { expiresIn: '15m' }
     )
 
-    ok(res, { key: `zenith_migrate_${token}` })
+    ok(res, { key: `semester_migrate_${token}` })
   } catch (err) {
     console.error('[data/migration/initiate]', err)
     fail(res, 'Failed to generate migration key', 'MIGRATION_INIT_FAILED', 500)
@@ -372,7 +372,9 @@ router.post('/migration/complete', async (req: AuthRequest, res) => {
       return
     }
 
-    const token = key.startsWith('zenith_migrate_') ? key.replace('zenith_migrate_', '') : key
+    const token = key
+      .replace(/^semester_migrate_/, '')
+      .replace(/^zenith_migrate_/, '')
     const secret = process.env.JWT_SECRET || 'zenith-backup-encryption-key-fallback-secret-2026'
 
     let decoded: any
@@ -525,7 +527,7 @@ router.get('/drive/download/:fileId', async (req: AuthRequest, res) => {
     const result = await downloadDriveBackup(req.userId!, fileId)
     if (result.success) {
       const email = (req.user?.email ?? 'user').replace(/@/g, '_at_').replace(/\./g, '_')
-      const filename = `zenith_drive_backup_${email}_${fileId}.json`
+      const filename = `semester_drive_backup_${email}_${fileId}.json`
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
       res.setHeader('Content-Type', 'application/json')
       res.send(JSON.stringify(result.data))

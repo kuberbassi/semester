@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import {
     ExternalLink, Trash, Edit2, Award, Plus,
@@ -6,9 +6,9 @@ import {
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
-import { useConfirm } from '@/contexts/ConfirmContext';
+import { useConfirm } from '@/contexts/confirm-context';
 import { formatLocalDate } from '@/lib/date';
 
 interface Course {
@@ -128,9 +128,7 @@ const Courses: React.FC = () => {
         description: 'Track your enrolled courses, progress, and learning milestones all in one place.',
     });
 
-    useEffect(() => { loadCourses(); }, []);
-
-    const loadCourses = async () => {
+    const loadCourses = useCallback(async () => {
         try {
             setLoading(true);
             const data = await attendanceService.getManualCourses();
@@ -140,7 +138,9 @@ const Courses: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showToast]);
+
+    useEffect(() => { void loadCourses(); }, [loadCourses]);
 
     const handleAddCourse = () => {
         setEditingCourse(null);

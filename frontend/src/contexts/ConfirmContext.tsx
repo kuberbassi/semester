@@ -1,27 +1,9 @@
-import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, ShieldAlert, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
-interface ConfirmOptions {
-    title: string;
-    message: string;
-    requireDeleteText?: boolean;
-    confirmText?: string;
-    cancelText?: string;
-}
-
-type ConfirmContextType = (options: ConfirmOptions) => Promise<boolean>;
-
-const ConfirmContext = createContext<ConfirmContextType | null>(null);
-
-export const useConfirm = () => {
-    const context = useContext(ConfirmContext);
-    if (!context) {
-        throw new Error('useConfirm must be used within a ConfirmProvider');
-    }
-    return context;
-};
+import { ConfirmContext, type ConfirmOptions } from './confirm-context';
 
 export const ConfirmProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);

@@ -1,11 +1,38 @@
 import { QueryClient, MutationCache, QueryCache } from '@tanstack/react-query';
-import { dispatchGlobalToast } from '@/components/ui/Toast';
+import axios from 'axios';
+import { dispatchGlobalToast } from '@/components/ui/toast-context';
+
+interface ApiErrorBody {
+    error?: string;
+}
+
+function getErrorDetails(error: unknown) {
+    if (axios.isAxiosError<ApiErrorBody>(error)) {
+        return {
+            status: error.response?.status,
+            code: error.code,
+            name: error.name,
+            message: error.response?.data?.error || error.message,
+        };
+    }
+
+    if (error instanceof Error) {
+        return { status: undefined, code: undefined, name: error.name, message: error.message };
+    }
+
+    return { status: undefined, code: undefined, name: undefined, message: undefined };
+}
+
+function hasSilentMeta(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null || !('meta' in error)) return false;
+    const meta = error.meta;
+    return typeof meta === 'object' && meta !== null && 'silent' in meta && meta.silent === true;
+}
 
 // ── Global error handler ─────────────────────────────────────────────────────
 // Centralised — avoids duplicating error handling in every useQuery() call.
 function handleQueryError(error: unknown) {
-    const err = error as any;
-    const status = err?.response?.status;
+    const { status, code, name } = getErrorDetails(error);
 
     // Don't toast auth errors — the axios interceptor already redirects
     if (status === 401 || status === 403) return;
@@ -14,11 +41,11 @@ function handleQueryError(error: unknown) {
     if (status === 429) return;
 
     // Don't toast cancelled requests
-    if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
+    if (code === 'ERR_CANCELED' || name === 'CanceledError') return;
+    if (hasSilentMeta(error)) return;
 
     // Server errors on background refetches are silent — only show on first load
     // (React Query sets `meta.silent = true` for background queries automatically)
-    if (err?.meta?.silent) return;
 }
 
 // ── Query Client ─────────────────────────────────────────────────────────────
@@ -28,10 +55,9 @@ export const queryClient = new QueryClient({
     }),
     mutationCache: new MutationCache({
         onError: (error) => {
-            const err = error as any;
-            const status = err?.response?.status;
+            const { status, message: errorMessage } = getErrorDetails(error);
             if (status === 401 || status === 403 || status === 429) return;
-            const message = err?.response?.data?.error || err?.message || 'Something went wrong.';
+            const message = errorMessage || 'Something went wrong.';
             dispatchGlobalToast('error', message);
         },
     }),
@@ -50,7 +76,7 @@ export const queryClient = new QueryClient({
             // Only retry transient server errors (5xx). Never retry 4xx —
             // they are deterministic and retrying wastes user time.
             retry: (failureCount, error) => {
-                const status = (error as any)?.response?.status;
+                const status = axios.isAxiosError(error) ? error.response?.status : undefined;
                 if (status && status < 500) return false; // 4xx → no retry
                 return failureCount < 2; // 5xx → max 2 retries
             },

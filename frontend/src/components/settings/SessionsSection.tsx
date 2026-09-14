@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Shield, Monitor, Smartphone, RefreshCw, LogOut, CheckCircle } from 'lucide-react';
 import Loader from '@/components/ui/Loader';
 import { authService } from '@/services/auth.service';
-import { useConfirm } from '@/contexts/ConfirmContext';
+import { useConfirm } from '@/contexts/confirm-context';
 
 interface Session {
   id: string;

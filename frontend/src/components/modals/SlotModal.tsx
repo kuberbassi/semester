@@ -5,7 +5,7 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
 import { attendanceService } from '@/services/attendance.service';
-import type { TimetableSlot } from '@/types';
+import type { GridPeriod, Subject, TimetableSlot } from '@/types';
 
 interface SlotModalProps {
     isOpen: boolean;
@@ -13,8 +13,8 @@ interface SlotModalProps {
     onSuccess: () => void;
     slot: TimetableSlot | null;
     day: string | null;
-    period: any | null;
-    subjects: any[];
+    period: GridPeriod | null;
+    subjects: Subject[];
     semester: number;
 }
 
@@ -28,10 +28,9 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
 
     useEffect(() => {
         if (slot) {
-            const slotAny = slot as any;
             setFormData({
                 type: slot.type || 'class',
-                subject_id: String(slotAny.subject_id || slotAny.subjectId || slotAny.subject?._id || slotAny.subject?.id || ''),
+                subject_id: String(slot.subject_id || slot.subjectId || (typeof slot.subject === 'object' ? slot.subject?._id || slot.subject?.id : '') || ''),
                 label: slot.label || ''
             });
         } else {
@@ -43,16 +42,23 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
         if (loading) return;
         try {
             setLoading(true);
-            const normalizedType = String(formData.type || 'class').toLowerCase();
+            const requestedType = String(formData.type || 'class').toLowerCase();
+            const normalizedType: TimetableSlot['type'] = ['class', 'break', 'free', 'custom'].includes(requestedType)
+                ? requestedType as TimetableSlot['type']
+                : 'class';
             const isClassType = normalizedType === 'class';
-            const startTime = period?.startTime || period?.start_time || slot?.start_time || (slot as any)?.startTime;
-            const endTime = period?.endTime || period?.end_time || slot?.end_time || (slot as any)?.endTime;
-            const slotData = {
+            const startTime = period?.startTime || period?.start_time || slot?.start_time || slot?.startTime;
+            const endTime = period?.endTime || period?.end_time || slot?.end_time || slot?.endTime;
+            const slotDay = day || slot?.day;
+            if (!slotDay || !startTime || !endTime) {
+                throw new Error('A timetable day and period are required');
+            }
+            const slotData: TimetableSlot = {
                 ...formData,
                 type: normalizedType,
                 subject_id: isClassType && formData.subject_id ? String(formData.subject_id) : '',
                 label: isClassType ? (formData.label || '') : String(formData.label || slot?.label || ''),
-                day: day || slot?.day,
+                day: slotDay,
                 start_time: startTime,
                 end_time: endTime,
                 semester
@@ -80,7 +86,7 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
             setLoading(true);
             await attendanceService.deleteTimetableSlot(slotId, semester, {
                 day: String(slot?.day || day || ''),
-                start_time: String((slot as any)?.start_time || (slot as any)?.startTime || period?.startTime || period?.start_time || ''),
+                start_time: String(slot?.start_time || slot?.startTime || period?.startTime || period?.start_time || ''),
             });
             onSuccess();
             onClose();
@@ -110,7 +116,7 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                    <Select label="Type" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as any })} options={[
+                    <Select label="Type" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as TimetableSlot['type'] })} options={[
                         { value: 'class', label: 'Class' },
                         { value: 'break', label: 'Break' },
                         { value: 'free', label: 'Free' },

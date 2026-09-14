@@ -4,15 +4,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import AttendanceModal from '@/components/modals/AttendanceModal';
 import { formatLocalDate } from '@/lib/date';
 import { attendanceService } from '@/services/attendance.service';
-import { useSemester } from '@/contexts/SemesterContext';
-import { useToast } from '@/components/ui/Toast';
-
-interface AttendanceRecord {
-    date: string;
-    subject_id: string;
-    subject_name: string;
-    status: 'present' | 'absent' | 'medical' | 'approved_medical' | 'cancelled' | 'substituted' | 'late' | 'duty';
-}
+import { useSemester } from '@/contexts/semester-context';
+import { useToast } from '@/components/ui/toast-context';
+import type { AttendanceRecord } from '@/types';
 
 const CALENDAR_STATUS_STYLES: Record<string, { label: string; dot: string }> = {
     present: { label: 'Present', dot: 'bg-on-surface' },
@@ -38,9 +32,7 @@ const Calendar: React.FC = () => {
         description: 'View and mark your daily attendance on a calendar. Log present, absent, or cancelled classes.',
     });
 
-    useEffect(() => { loadData(); }, [currentDate, currentSemester]);
-
-    const loadData = async (showLoading = true) => {
+    const loadData = React.useCallback(async (showLoading = true) => {
         const token = ++fetchToken.current;
         try {
             if (showLoading) setLoading(true);
@@ -52,7 +44,7 @@ const Calendar: React.FC = () => {
 
             const dataMap: Record<string, AttendanceRecord[]> = {};
             if (Array.isArray(calendarData)) {
-                calendarData.forEach((log: any) => {
+                calendarData.forEach((log: AttendanceRecord) => {
                     const date = log.date;
                     if (!dataMap[date]) dataMap[date] = [];
                     dataMap[date].push(log);
@@ -65,7 +57,9 @@ const Calendar: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentDate, currentSemester, showToast]);
+
+    useEffect(() => { void loadData(); }, [loadData]);
 
     const getDaysInMonth = (date: Date) => {
         const year = date.getFullYear();
@@ -91,7 +85,7 @@ const Calendar: React.FC = () => {
         setIsMarkModalOpen(true);
     };
 
-    const handleLogsUpdate = React.useCallback((dateStr: string, logs: any[]) => {
+    const handleLogsUpdate = React.useCallback((dateStr: string, logs: AttendanceRecord[]) => {
         setAttendanceData(prev => ({ ...prev, [dateStr]: logs }));
     }, []);
 

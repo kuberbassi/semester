@@ -3,7 +3,9 @@ import { Download, Shield, ShieldAlert, Upload, Copy, Check, Cloud, RefreshCw, U
 import { useGoogleLogin } from '@react-oauth/google';
 import Select from '@/components/ui/Select';
 import { attendanceService } from '@/services/attendance.service';
-import { useConfirm } from '@/contexts/ConfirmContext';
+import { useConfirm } from '@/contexts/confirm-context';
+import { getErrorMessage } from '@/utils/errors';
+import type { DriveBackup, DriveStatus } from '@/types';
 
 type SettingsDataSectionProps = {
     onLogout: () => void | Promise<void>;
@@ -20,8 +22,8 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
     const [migrating, setMigrating] = useState(false);
 
     // Google Drive Sync states
-    const [driveStatus, setDriveStatus] = useState<any>(null);
-    const [driveBackups, setDriveBackups] = useState<any[]>([]);
+    const [driveStatus, setDriveStatus] = useState<DriveStatus | null>(null);
+    const [driveBackups, setDriveBackups] = useState<DriveBackup[]>([]);
     const [driveLoading, setDriveLoading] = useState(false);
 
     const fetchDriveStatus = async () => {
@@ -51,9 +53,9 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
                 await attendanceService.linkGoogleDrive(codeResponse.code);
                 showToast('success', 'Google Drive linked successfully!');
                 await fetchDriveStatus();
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error(err);
-                showToast('error', err?.response?.data?.error || err?.message || 'Failed to link Google Drive');
+                showToast('error', getErrorMessage(err, 'Failed to link Google Drive'));
             } finally {
                 setDriveLoading(false);
             }
@@ -69,8 +71,8 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             await attendanceService.performDriveBackup();
             showToast('success', 'Backup saved to Google Drive!');
             await fetchDriveStatus();
-        } catch (err: any) {
-            showToast('error', err.message || 'Drive backup failed');
+        } catch (err: unknown) {
+            showToast('error', getErrorMessage(err, 'Drive backup failed'));
         } finally {
             setDriveLoading(false);
         }
@@ -90,8 +92,8 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             attendanceService.clearAllLocalCaches();
             showToast('success', 'Backup restored successfully!');
             window.location.reload();
-        } catch (err: any) {
-            showToast('error', err.message || 'Drive restore failed');
+        } catch (err: unknown) {
+            showToast('error', getErrorMessage(err, 'Drive restore failed'));
         } finally {
             setDriveLoading(false);
         }
@@ -111,8 +113,8 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             anchor.remove();
             URL.revokeObjectURL(url);
             showToast('success', 'Cloud backup downloaded successfully!');
-        } catch (err: any) {
-            showToast('error', err.message || 'Drive download failed');
+        } catch (err: unknown) {
+            showToast('error', getErrorMessage(err, 'Drive download failed'));
         } finally {
             setDriveLoading(false);
         }
@@ -124,7 +126,7 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             await attendanceService.updateDriveSettings(freq);
             showToast('success', `Backup frequency set to ${freq}`);
             await fetchDriveStatus();
-        } catch (err: any) {
+        } catch {
             showToast('error', 'Failed to update frequency');
         } finally {
             setDriveLoading(false);
@@ -145,7 +147,7 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             showToast('success', 'Google Drive disconnected');
             setDriveStatus(null);
             setDriveBackups([]);
-        } catch (err: any) {
+        } catch {
             showToast('error', 'Failed to disconnect');
         } finally {
             setDriveLoading(false);
@@ -190,8 +192,8 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             const res = await attendanceService.initiateMigration();
             setMigrationKey(res.key);
             showToast('success', 'Migration key generated! Copy it and use it on your destination account.');
-        } catch (err: any) {
-            showToast('error', err.response?.data?.error || 'Failed to generate key');
+        } catch (err: unknown) {
+            showToast('error', getErrorMessage(err, 'Failed to generate key'));
         }
     };
 
@@ -222,8 +224,8 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
             attendanceService.clearAllLocalCaches();
             showToast('success', 'Migration completed successfully! Reloading...');
             setTimeout(() => window.location.reload(), 1500);
-        } catch (err: any) {
-            showToast('error', err.response?.data?.error || 'Migration failed');
+        } catch (err: unknown) {
+            showToast('error', getErrorMessage(err, 'Migration failed'));
         } finally {
             setMigrating(false);
         }
@@ -268,9 +270,9 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
                                     if (!file) return;
                                     try {
                                         await handleImportFile(file);
-                                    } catch (err: any) {
+                                    } catch (err: unknown) {
                                         console.error('Import Error:', err);
-                                        showToast('error', 'Import failed: ' + (err.message || 'Invalid JSON'));
+                                        showToast('error', `Import failed: ${getErrorMessage(err, 'Invalid JSON')}`);
                                     } finally {
                                         e.target.value = '';
                                     }

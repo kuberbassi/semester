@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import Loader from './Loader';
 
 interface LoadingSpinnerProps {
@@ -29,12 +30,13 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     const spinner = <Loader size={loaderSizes[size]} />;
 
     if (fullScreen) {
-        return (
+        return createPortal(
             <div className="fixed inset-0 flex items-center justify-center bg-background/30 backdrop-blur-md z-50 animate-fade-in">
                 <div className="bg-surface/75 border border-outline/20 backdrop-blur-xl p-6 rounded-2xl shadow-2xl flex flex-col items-center justify-center gap-3">
                     {spinner}
                 </div>
-            </div>
+            </div>,
+            document.body,
         );
     }
 

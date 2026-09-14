@@ -5,6 +5,10 @@ import { prisma } from '../config/prisma.js'
 import { collectUserData, clearUserData, restoreUserData, type UserData } from './userData.js'
 import { decryptSecret, encryptSecret, isEncryptedSecret } from './secrets.js'
 
+// New backups use Semester branding. The legacy prefix remains in list queries
+// so existing user backups do not disappear after the rename.
+const DRIVE_BACKUP_QUERY = "name contains 'semester_backup_' or name contains 'zenith_backup_'"
+
 async function getDriveAccessToken(userId: string): Promise<string | null> {
   const pref = await prisma.userPreference.findUnique({
     where: { user_id: userId },
@@ -47,7 +51,7 @@ export async function cleanOldDriveBackups(accessToken: string): Promise<void> {
       {
         params: {
           spaces: 'appDataFolder',
-          q: "name contains 'zenith_backup_'",
+          q: DRIVE_BACKUP_QUERY,
           orderBy: 'createdTime desc',
           pageSize: 20
         },
@@ -86,7 +90,7 @@ export async function performDriveBackup(userId: string): Promise<{ success: boo
 
     const backupContent = JSON.stringify(backupData)
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const filename = `zenith_backup_${timestamp}.json`
+    const filename = `semester_backup_${timestamp}.json`
 
     const metadata = {
       name: filename,
@@ -158,7 +162,7 @@ export async function listDriveBackups(userId: string): Promise<{ success: boole
       {
         params: {
           spaces: 'appDataFolder',
-          q: "name contains 'zenith_backup_'",
+          q: DRIVE_BACKUP_QUERY,
           orderBy: 'createdTime desc',
           fields: 'files(id, name, createdTime, size)',
           pageSize: 20

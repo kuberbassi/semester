@@ -76,6 +76,24 @@ You can run the entire workspace concurrently from the root directory:
 
 ## 🧪 Testing
 
+Run the fast, database-free quality checks from the repository root:
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
+Or run the same complete local gate used by continuous integration:
+
+```bash
+npm run quality
+```
+
+The unit tests cover attendance status rules, attendance and grade calculations, timetable compatibility and ordering, and local calendar-date formatting.
+
+The following backend integration scripts require a configured test database. They create isolated sentinel records and clean those records after the run:
+
 Run the attendance backend test suite to verify DB connectivity, all attendance marking statuses, counter logic, duplicate detection, substitution flow, and query filters — without touching any real data:
 
 ```bash
@@ -89,11 +107,7 @@ npm run test:bulk-attendance
 
 The tracker activity test performs a real submitted-to-unsubmitted database round trip. It verifies that one subject row is updated, each committed transition has a unique server-timestamped event, and a stale concurrent write creates neither a state change nor a duplicate activity row.
 
-For a non-mutating production build check from the repository root:
-
-```bash
-npm run build
-```
+The frontend and API lint checks can also be run separately with `npm run lint:frontend` and `npm run lint:api`. Database integration scripts are intentionally not part of the default CI gate because CI has no authenticated test database. The current cleanup status and known verification limits are recorded honestly in [logs.md](logs.md).
 
 ---
 
@@ -106,3 +120,9 @@ npm run build
 - The dashboard shows official attendance and a conservative **Medical as absent** percentage for leaves that have not yet been accepted.
 - Calendar colours distinguish Present, Absent, Medical Leave, Cancelled, and Substitution records.
 - Semester Assistant uses the selected semester, understands block-based pending attendance, and keeps official and medical-as-absent percentages clearly separated.
+
+---
+
+## Code quality
+
+Every push and pull request runs lint, the database-free unit suite, and both production builds through [the quality workflow](.github/workflows/quality.yml). See [CODE_QUALITY_PLAN.md](CODE_QUALITY_PLAN.md) for the practices behind the checks and [logs.md](logs.md) for the plain-language change record and current validation evidence.

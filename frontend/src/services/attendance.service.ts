@@ -6,11 +6,27 @@ import type {
     TimetableSchedule,
     Preferences,
     SystemLog,
-    AcademicRecord
+    AcademicRecord,
+    AttendanceRecord,
+    AttendanceMutationResult,
+    ScheduledClass,
+    GridPeriod,
+    TimetableSlot,
+    DayOfWeekAnalytics,
+    NoticeItem,
+    NotificationItem,
+    ManualCourse,
+    DriveBackup,
+    DriveStatus,
+    User,
+    SemesterResult
 } from '@/types';
+
+type JsonObject = Record<string, unknown>;
+type TimetablePayload = { schedule?: TimetableSchedule; periods?: GridPeriod[] };
 import { formatLocalDate } from '@/lib/date';
 
-const extractApiData = <T>(response: any, fallback: T): T => {
+const extractApiData = <T>(response: { data?: unknown }, fallback: T): T => {
     const body = response?.data;
     if (body && typeof body === 'object' && 'data' in body) {
         return (body.data ?? fallback) as T;
@@ -168,7 +184,7 @@ export const attendanceService = {
         substitutedById?: string,
         semester?: number,
         type?: string
-    ): Promise<any> => {
+    ): Promise<AttendanceMutationResult> => {
         const res = await api.post('/api/attendance/mark', {
             subject_id: subjectId,
             status,
@@ -203,7 +219,7 @@ export const attendanceService = {
         return response.data.data;
     },
 
-    getCalendarData: async (year: number, month: number, semester?: number) => {
+    getCalendarData: async (year: number, month: number, semester?: number): Promise<AttendanceRecord[]> => {
         const m = String(month).padStart(2, '0');
         const monthStr = `${year}-${m}`;
         const url = semester
@@ -215,8 +231,8 @@ export const attendanceService = {
         // Node backend returns { calendar: { "YYYY-MM-DD": { logs, total, attended } }, start_date, end_date }
         // Calendar.tsx expects a flat array of log objects — normalise here
         if (data && typeof data === 'object' && !Array.isArray(data) && data.calendar) {
-            const flatLogs: any[] = [];
-            for (const entry of Object.values(data.calendar as Record<string, any>)) {
+            const flatLogs: AttendanceRecord[] = [];
+            for (const entry of Object.values(data.calendar as Record<string, { logs?: AttendanceRecord[] }>)) {
                 if (Array.isArray(entry?.logs)) {
                     flatLogs.push(...entry.logs);
                 }
@@ -228,7 +244,7 @@ export const attendanceService = {
         return Array.isArray(data) ? data : [];
     },
 
-    editAttendance: async (logId: string, status: string, notes?: string, date?: string): Promise<any> => {
+    editAttendance: async (logId: string, status: string, notes?: string, date?: string): Promise<AttendanceMutationResult> => {
         const res = await api.put(`/api/attendance/logs/${logId}`, {
             status,
             notes,
@@ -238,7 +254,7 @@ export const attendanceService = {
         return res.data?.data;
     },
 
-    deleteAttendance: async (logId: string): Promise<any> => {
+    deleteAttendance: async (logId: string): Promise<AttendanceMutationResult> => {
         const res = await api.delete(`/api/attendance/logs/${logId}`);
         clearDerivedCaches();
         return res.data?.data;
@@ -250,7 +266,7 @@ export const attendanceService = {
         return response.data.data;
     },
 
-    getClassesForDate: async (date: string, semester?: number) => {
+    getClassesForDate: async (date: string, semester?: number): Promise<ScheduledClass[]> => {
         const url = semester ? `/api/attendance/classes-for-date?date=${date}&semester=${semester}` : `/api/attendance/classes-for-date?date=${date}`;
         const response = await api.get(url);
         const data = response.data.data;
@@ -258,7 +274,14 @@ export const attendanceService = {
         // Backend returns { classes: [{ slot, subject, log, marked }], extra_logs, ... }
         // AttendanceModal expects a flat array of objects with _id, subject_id, name, marked_status, log_id, time, type
         if (data && Array.isArray(data.classes)) {
-            return data.classes.map((c: any) => {
+            return data.classes.map((c: {
+                subject?: Partial<Subject>;
+                slot?: Partial<ScheduledClass> & { id?: string; start_time?: string; startTime?: string; end_time?: string; endTime?: string; label?: string };
+                log?: AttendanceRecord | null;
+                subject_name?: string;
+                attendance_type?: string;
+                marked?: boolean;
+            }) => {
                 const subj = c.subject || {};
                 const slot = c.slot || {};
                 const log = c.log || null;
@@ -293,7 +316,7 @@ export const attendanceService = {
         if (cached) return cached;
 
         const response = await api.get(`/api/academic/subjects?semester=${semester}`);
-        const payload = extractApiData<any>(response, []);
+        const payload = extractApiData<Subject[] | { subjects?: Subject[] }>(response, []);
         if (Array.isArray(payload)) {
             setAnyCached(cacheKey, payload, CACHE_TTL_MS, 5 * 60 * 1000);
             return payload as Subject[];
@@ -398,13 +421,13 @@ export const attendanceService = {
     },
 
     // Timetable
-    getTimetable: async (semester: number = 1): Promise<{ schedule: TimetableSchedule; periods?: any[] }> => {
+    getTimetable: async (semester: number = 1): Promise<{ schedule: TimetableSchedule; periods?: GridPeriod[] }> => {
         const cacheKey = `timetable:${semester}`;
-        const cached = getAnyCached<{ schedule: TimetableSchedule; periods?: any[] }>(cacheKey);
+        const cached = getAnyCached<{ schedule: TimetableSchedule; periods?: GridPeriod[] }>(cacheKey);
         if (cached) return cached;
 
         const response = await api.get(`/api/timetable?semester=${semester}`);
-        const payload = extractApiData<any>(response, {});
+        const payload = extractApiData<TimetablePayload>(response, {});
         const mapped = {
             schedule: payload?.schedule || {},
             periods: Array.isArray(payload?.periods) ? payload.periods : [],
@@ -418,17 +441,17 @@ export const attendanceService = {
         clearCacheByPrefix('timetable:');
     },
 
-    saveTimetableStructure: async (periods: any[], semester: number = 1): Promise<void> => {
+    saveTimetableStructure: async (periods: GridPeriod[], semester: number = 1): Promise<void> => {
         await api.post(`/api/timetable/structure?semester=${semester}`, periods);
         clearCacheByPrefix('timetable:');
     },
 
-    addTimetableSlot: async (slotData: any, semester: number = 1): Promise<void> => {
+    addTimetableSlot: async (slotData: TimetableSlot, semester: number = 1): Promise<void> => {
         await api.post(`/api/timetable/slot?semester=${semester}`, slotData);
         clearCacheByPrefix('timetable:');
     },
 
-    updateTimetableSlot: async (slotId: string, slotData: any, semester: number = 1): Promise<void> => {
+    updateTimetableSlot: async (slotId: string, slotData: Partial<TimetableSlot>, semester: number = 1): Promise<void> => {
         await api.put(`/api/timetable/slot/${slotId}?semester=${semester}`, slotData);
         clearCacheByPrefix('timetable:');
     },
@@ -449,7 +472,7 @@ export const attendanceService = {
     // Analytics
     getDayOfWeekAnalytics: async (semester: number = 1) => {
         const cacheKey = `analytics:day-of-week:${semester}`;
-        const cached = getAnyCached<any>(cacheKey);
+        const cached = getAnyCached<DayOfWeekAnalytics>(cacheKey);
         if (cached) return cached;
         const response = await api.get(`/api/dashboard/analytics/day-of-week?semester=${semester}`);
         const data = response.data.data;
@@ -463,6 +486,7 @@ export const attendanceService = {
     },
 
     approveLeave: async (_logId: string): Promise<void> => {
+        void _logId;
         // stub
     },
 
@@ -493,7 +517,7 @@ export const attendanceService = {
         return response.data;
     },
 
-    importData: async (data: any): Promise<void> => {
+    importData: async (data: unknown): Promise<void> => {
         await api.post('/api/data/import_data', data);
     },
 
@@ -526,7 +550,7 @@ export const attendanceService = {
         return response.data.data;
     },
 
-    updateProfile: async (data: any) => {
+    updateProfile: async (data: Partial<User>) => {
         const response = await api.put('/api/profile/', data);
         return response.data;
     },
@@ -564,6 +588,7 @@ export const attendanceService = {
     },
 
     updateAcademicRecord: async (_data: AcademicRecord): Promise<void> => {
+        void _data;
         // stub
     },
 
@@ -571,7 +596,7 @@ export const attendanceService = {
     getNotices: async (category?: string, forceRefresh = false) => {
         const cacheKey = `notices:${category || 'all'}`;
         if (!forceRefresh) {
-            const cached = getAnyCached<any[]>(cacheKey);
+            const cached = getAnyCached<NoticeItem[]>(cacheKey);
             if (cached) return cached;
         }
         const search = new URLSearchParams();
@@ -587,7 +612,7 @@ export const attendanceService = {
     // Notifications
     getNotifications: async (semester?: number) => {
         const cacheKey = `notifications:${semester || 'all'}`;
-        const cached = getAnyCached<any[]>(cacheKey);
+        const cached = getAnyCached<NotificationItem[]>(cacheKey);
         if (cached) return cached;
         const params = semester ? `?semester=${semester}` : '';
         const response = await api.get(`/api/dashboard/notifications${params}`);
@@ -599,11 +624,11 @@ export const attendanceService = {
     // Manual Course Manager
     getManualCourses: async () => {
         const cacheKey = 'manualCourses';
-        const cached = getAnyCached<any[]>(cacheKey);
+        const cached = getAnyCached<ManualCourse[]>(cacheKey);
         if (cached) return cached;
 
         const response = await api.get('/api/academic/courses/manual');
-        const payload = extractApiData<any>(response, []);
+        const payload = extractApiData<ManualCourse[] | { courses?: ManualCourse[] }>(response, []);
         if (Array.isArray(payload)) {
             setAnyCached(cacheKey, payload, CACHE_TTL_MS, 10 * 60 * 1000);
             return payload;
@@ -615,19 +640,19 @@ export const attendanceService = {
         return [];
     },
 
-    saveManualCourses: async (courses: any[]) => {
+    saveManualCourses: async (courses: ManualCourse[]) => {
         const response = await api.post('/api/academic/courses/manual', courses);
         clearDerivedCaches();
         return response.data;
     },
 
-    addManualCourse: async (course: any) => {
+    addManualCourse: async (course: ManualCourse) => {
         const response = await api.post('/api/academic/courses/manual', course);
         clearDerivedCaches();
         return response.data;
     },
 
-    updateManualCourse: async (id: string, course: any) => {
+    updateManualCourse: async (id: string, course: Partial<ManualCourse>) => {
         const response = await api.put(`/api/academic/courses/manual/${id}`, course);
         clearDerivedCaches();
         return response.data;
@@ -656,7 +681,7 @@ export const attendanceService = {
         return response.data.data ?? response.data;
     },
 
-    saveResults: async (payload: { semester: number; subjects: any[]; student_info?: any }) => {
+    saveResults: async (payload: { semester: number; subjects: SemesterResult['subjects']; student_info?: JsonObject }) => {
         const response = await api.post('/api/academic/results', payload);
         return response.data.data ?? response.data;
     },
@@ -683,7 +708,7 @@ export const attendanceService = {
         return response.data?.data ?? response.data;
     },
 
-    listDriveBackups: async (): Promise<{ backups: any[] }> => {
+    listDriveBackups: async (): Promise<{ backups: DriveBackup[] }> => {
         const response = await api.get('/api/data/drive/backups');
         return response.data?.data ?? response.data;
     },
@@ -700,7 +725,7 @@ export const attendanceService = {
         return response.data;
     },
 
-    getDriveStatus: async (): Promise<{ google_drive_linked: boolean; google_drive_backup_frequency: string; google_drive_last_backup: string | null; has_refresh_token: boolean }> => {
+    getDriveStatus: async (): Promise<DriveStatus> => {
         const response = await api.get('/api/data/drive/status');
         return response.data?.data ?? response.data;
     },

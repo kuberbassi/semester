@@ -6,8 +6,8 @@ import {
     GraduationCap, Sun, Moon,
     CalendarDays, Beaker, LogOut, ChevronRight, type LucideIcon
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 
 import { haptics } from '@/utils/haptics';
 

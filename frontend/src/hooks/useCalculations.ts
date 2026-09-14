@@ -1,9 +1,31 @@
 import { useState, useCallback } from 'react'
 import { AttendanceCalculator, GradeCalculator } from '@/lib/calculationEngine'
+import type { Subject } from '@/types'
+
+interface CalculatedSubject extends Subject {
+  percentage: number;
+  riskLevel: 'Safe' | 'Warning' | 'At Risk' | 'Critical';
+  color: string;
+  daysNeeded: { target75: number; target85: number };
+}
+
+interface AttendanceSummary {
+  overallPercentage: number;
+  totalAttended: number;
+  totalPossible: number;
+  riskLevel: 'Safe' | 'Warning' | 'At Risk' | 'Critical';
+  color: string;
+  status: string;
+}
+
+interface GradeCourse {
+  credits?: number;
+  grade?: string;
+}
 
 interface AttendanceData {
-  subjects: any[];
-  summary: any;
+  subjects: CalculatedSubject[];
+  summary: AttendanceSummary;
 }
 
 interface GradeData {
@@ -15,7 +37,7 @@ export const useAttendanceCalculations = () => {
   const [attendance, setAttendance] = useState<AttendanceData | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const calculateAttendance = useCallback(async (subjects: any[]) => {
+  const calculateAttendance = useCallback(async (subjects: Subject[]) => {
     setLoading(true)
     try {
       const results = subjects.map(subject => {
@@ -52,7 +74,7 @@ export const useGradeCalculations = () => {
   const [grades, setGrades] = useState<GradeData | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const calculateSGPA = useCallback(async (courses: any[]) => {
+  const calculateSGPA = useCallback(async (courses: GradeCourse[]) => {
     setLoading(true)
     try {
       const result = GradeCalculator.calculateSGPA(courses)
@@ -64,7 +86,7 @@ export const useGradeCalculations = () => {
     }
   }, [])
 
-  const calculateCGPA = useCallback(async (semesters: any[][]) => {
+  const calculateCGPA = useCallback(async (semesters: GradeCourse[][]) => {
     setLoading(true)
     try {
       const result = GradeCalculator.calculateCGPA(semesters)

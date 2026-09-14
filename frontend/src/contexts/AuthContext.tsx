@@ -1,18 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
+import axios from 'axios';
 import type { User } from '@/types';
 import { authService } from '@/services/auth.service';
+import { AuthContext, type AuthContextValue } from './auth-context';
 
-interface AuthContextType {
-    user: User | null;
-    isAuthenticated: boolean;
-    loading: boolean;
-    login: () => void;
-    loginWithGoogle: (code: string) => Promise<void>;
-    logout: () => Promise<void>;
-    setUser: (user: User | null) => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const FETCH_COOLDOWN = 5 * 60 * 1000;
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
@@ -36,9 +28,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         setUser(verifiedUser);
                         authService.storeUser(verifiedUser);
                     }
-                } catch (error: any) {
-                    const status = error.response?.status;
-                    const code = error.response?.data?.code;
+                } catch (error: unknown) {
+                    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+                    const code = axios.isAxiosError<{ code?: string }>(error) ? error.response?.data?.code : undefined;
                     const isSessionInvalid = status === 401 || status === 403 || code === 'TOKEN_EXPIRED' || code === 'TOKEN_INVALID' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED';
                     
                     if (isSessionInvalid) {
@@ -62,7 +54,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // CRITICAL: Refetch user data when returning to the tab (Cross-Device Sync)
     // If user updates PFP on mobile, focusing the web tab will now update the header instantly.
     const lastFetchRef = React.useRef<number>(0);
-    const FETCH_COOLDOWN = 5 * 60 * 1000; // 5 minutes — reduces 429s on Google profile picture
     const isLoggedIn = !!user; // use primitive so effect doesn't re-attach on every user object change
 
     useEffect(() => {
@@ -77,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         setUser(freshUser);
                         authService.storeUser(freshUser);
                     }
-                } catch (e) {
+                } catch {
                     // Ignore errors on background check
                 }
             }
@@ -124,7 +115,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
-    const value: AuthContextType = {
+    const value: AuthContextValue = {
         user,
         isAuthenticated: !!user,
         loading,
@@ -135,12 +126,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
 };

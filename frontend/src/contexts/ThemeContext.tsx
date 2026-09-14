@@ -1,16 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-
-type Theme = 'light' | 'dark';
-
-interface ThemeContextType {
-    theme: Theme;
-    toggleTheme: () => void;
-    setTheme: (theme: Theme) => void;
-    accentColor: string;
-    setAccentColor: (color: string) => void;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+import React, { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { ThemeContext, type Theme, type ThemeContextValue } from './theme-context';
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [theme, setThemeState] = useState<Theme>(() => {
@@ -28,28 +17,29 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (theme === 'dark') {
             root.classList.remove('light');
             root.classList.add('dark');
-            setAccentColorState('#ecece9');
         } else {
             root.classList.remove('dark');
             root.classList.add('light');
-            setAccentColorState('#1d1c1a');
         }
         localStorage.setItem('zenith_theme', theme);
     }, [theme]);
 
-    const toggleTheme = () => {
-        setThemeState(prev => prev === 'light' ? 'dark' : 'light');
-    };
+    const toggleTheme = useCallback(() => {
+        const nextTheme = theme === 'light' ? 'dark' : 'light';
+        setThemeState(nextTheme);
+        setAccentColorState(nextTheme === 'dark' ? '#ecece9' : '#1d1c1a');
+    }, [theme]);
 
-    const setTheme = (t: Theme) => {
+    const setTheme = useCallback((t: Theme) => {
         setThemeState(t);
-    };
+        setAccentColorState(t === 'dark' ? '#ecece9' : '#1d1c1a');
+    }, []);
 
-    const setAccentColor = (color: string) => {
+    const setAccentColor = useCallback((color: string) => {
         setAccentColorState(color);
-    };
+    }, []);
 
-    const value: ThemeContextType = {
+    const value: ThemeContextValue = {
         theme,
         toggleTheme,
         setTheme,
@@ -58,12 +48,4 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-};
-
-export const useTheme = () => {
-    const context = useContext(ThemeContext);
-    if (context === undefined) {
-        throw new Error('useTheme must be used within a ThemeProvider');
-    }
-    return context;
 };

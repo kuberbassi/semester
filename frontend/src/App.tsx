@@ -5,7 +5,8 @@ import { queryClient } from './queryClient';
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/auth-context';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SemesterProvider } from './contexts/SemesterContext';
 import { ToastProvider } from './components/ui/Toast';

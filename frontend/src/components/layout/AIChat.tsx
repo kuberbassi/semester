@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, X, ChevronDown, Trash2 } from 'lucide-react';
 import api from '@/services/api';
-import { useSemester } from '@/contexts/SemesterContext';
+import { useSemester } from '@/contexts/semester-context';
+import { getErrorMessage } from '@/utils/errors';
 
 // Custom Stark Minimalist Sparkle Star Prism Icon
 export const SemesterAIIcon: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
@@ -131,8 +132,8 @@ const AIChat: React.FC = () => {
                 content: aiContent,
                 timestamp: new Date()
             }]);
-        } catch (err: any) {
-            const errorMsg = err?.response?.data?.error || 'Something went wrong. Please try again.';
+        } catch (err: unknown) {
+            const errorMsg = getErrorMessage(err, 'Something went wrong. Please try again.');
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',

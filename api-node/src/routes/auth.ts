@@ -176,16 +176,6 @@ async function issueAuthSession(req: any, res: any, userId: string, replaceOldHa
       },
       select: { id: true },
     })
-  } else if (user_agent && ip) {
-    duplicateSessions = await sessionDb.findMany({
-      where: {
-        user_id: userId,
-        user_agent,
-        ip,
-        refresh_token_hash: { not: replaceOldHash ?? '' }
-      },
-      select: { id: true },
-    })
   }
   await Promise.all(duplicateSessions.map((session) =>
     sessionDb.delete({ where: { id: session.id } }).catch(() => null)
@@ -329,14 +319,11 @@ router.post('/refresh', async (req, res) => {
         
         return ok(res, { user: userResponse(user) })
       } else {
-        // Rotated too long ago: security breach / token reuse! Revoke all sessions for security!
-        const userSessions = await sessionDb.findMany({
-          where: { user_id: session.user_id },
-          select: { id: true },
-        }).catch(() => [])
-        await Promise.all(userSessions.map((item: { id: string }) =>
-          sessionDb.delete({ where: { id: item.id } }).catch(() => null)
-        ))
+        // This browser has presented an obsolete rotated token. Revoke only
+        // that token: other device sessions are independent and must remain
+        // signed in. A stale response or restored browser tab should never
+        // become an account-wide logout.
+        await sessionDb.delete({ where: { id: session.id } }).catch(() => null)
         clearAuthCookies(res)
         return fail(res, 'Refresh token reuse detected', 'REFRESH_INVALID', 401)
       }

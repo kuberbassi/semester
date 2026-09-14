@@ -1,7 +1,7 @@
 // src/utils/debounce.ts
-export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+export function debounce<TArgs extends unknown[]>(func: (...args: TArgs) => void, wait: number): (...args: TArgs) => void {
     let timeout: ReturnType<typeof setTimeout>;
-    return (...args: Parameters<T>) => {
+    return (...args: TArgs) => {
         clearTimeout(timeout);
         timeout = setTimeout(() => func(...args), wait);
     };

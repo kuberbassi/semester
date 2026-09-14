@@ -1,11 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { useCallback, useState, useEffect, type ReactNode } from 'react';
 
 import { CheckCircle2, XCircle, AlertCircle, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { haptics } from '@/utils/haptics';
-
-type ToastType = 'success' | 'error' | 'warning' | 'info';
+import { ToastContext, type ToastType } from './toast-context';
 
 interface Toast {
     id: string;
@@ -14,28 +13,15 @@ interface Toast {
     duration?: number;
 }
 
-interface ToastContextType {
-    showToast: (type: ToastType, message: string, duration?: number) => void;
-    success: (message: string) => void;
-    error: (message: string) => void;
-    warning: (message: string) => void;
-    info: (message: string) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
-/**
- * Dispatch a toast from anywhere (outside React). Used by api.ts interceptors.
- */
-export function dispatchGlobalToast(type: ToastType, message: string) {
-    window.dispatchEvent(new CustomEvent('global-toast', { detail: { type, message } }));
-}
-
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [toasts, setToasts] = useState<Toast[]>([]);
 
-    const showToast = (type: ToastType, message: string, duration = 3000) => {
-        const id = Math.random().toString(36).substring(7);
+    const removeToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, []);
+
+    const showToast = useCallback((type: ToastType, message: string, duration = 3000) => {
+        const id = crypto.randomUUID();
         const newToast: Toast = { id, type, message, duration };
 
         setToasts((prev) => [...prev, newToast]);
@@ -56,11 +42,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 removeToast(id);
             }, duration);
         }
-    };
-
-    const removeToast = (id: string) => {
-        setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    };
+    }, [removeToast]);
 
     const success = (message: string) => showToast('success', message);
     const error = (message: string) => showToast('error', message);
@@ -75,7 +57,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         };
         window.addEventListener('global-toast', handler);
         return () => window.removeEventListener('global-toast', handler);
-    });
+    }, [showToast]);
 
     const getIcon = (type: ToastType) => {
         switch (type) {
@@ -132,12 +114,4 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             </div>
         </ToastContext.Provider>
     );
-};
-
-export const useToast = () => {
-    const context = useContext(ToastContext);
-    if (!context) {
-        throw new Error('useToast must be used within ToastProvider');
-    }
-    return context;
 };

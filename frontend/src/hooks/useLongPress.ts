@@ -1,21 +1,23 @@
 import { useRef, useCallback } from 'react';
 
+type LongPressEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
+
 interface UseLongPressOptions {
   threshold?: number;
-  onStart?: (e: any) => void;
-  onCancel?: (e: any) => void;
+  onStart?: (event: LongPressEvent) => void;
+  onCancel?: (event: LongPressEvent) => void;
 }
 
 export const useLongPress = (
-  callback: (e: any) => void,
+  callback: (event: LongPressEvent) => void,
   options: UseLongPressOptions = {}
 ) => {
   const { threshold = 500, onStart, onCancel } = options;
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTriggered = useRef(false);
 
   const start = useCallback(
-    (event: any) => {
+    (event: LongPressEvent) => {
       // Prevent context menu on mobile
       if (event.type === 'touchstart') {
         // We can let touch events flow but prevent default on long hold
@@ -29,7 +31,7 @@ export const useLongPress = (
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
           try {
             navigator.vibrate([20, 40, 20]); // distinct OnePlus-like haptic feedback pattern
-          } catch (e) {
+          } catch {
             // ignore
           }
         }
@@ -40,7 +42,7 @@ export const useLongPress = (
   );
 
   const stop = useCallback(
-    (event: any) => {
+    (event: LongPressEvent) => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }

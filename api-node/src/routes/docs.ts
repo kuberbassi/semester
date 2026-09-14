@@ -5,9 +5,9 @@ const router = Router()
 const openApiSpec = {
   openapi: '3.1.0',
   info: {
-    title: 'Zenith API',
+    title: 'Semester API',
     version: '1.0.0',
-    description: 'Versioned API for Zenith web and mobile clients.',
+    description: 'Versioned API for Semester web and mobile clients.',
   },
   servers: [
     { url: '/api/v1', description: 'Canonical versioned API' },
@@ -101,7 +101,7 @@ router.get('/openapi.json', (_req, res) => {
 })
 
 router.get('/', (_req, res) => {
-  res.type('text/plain').send('Zenith API docs: GET /api/docs/openapi.json')
+  res.type('text/plain').send('Semester API docs: GET /api/docs/openapi.json')
 })
 
 export default router

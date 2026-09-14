@@ -1,8 +1,8 @@
 {
-  "name": "zenith-api",
+  "name": "semester-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Zenith Node/Express API Server",
+  "description": "Semester Node/Express API Server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

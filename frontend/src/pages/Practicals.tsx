@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Plus, Minus, Edit2, Target } from 'lucide-react';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
-import { useSemester } from '@/contexts/SemesterContext';
+import { useSemester } from '@/contexts/semester-context';
 import type { Subject } from '@/types';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
 
@@ -21,7 +21,7 @@ const NOTION_COLORS = [
     { bgLight: '#fdecf2', textLight: '#ad1a72', borderLight: '#fad0e2', bgDark: '#40182c', textDark: '#f26fb6', borderDark: '#512239' }, // pink
 ];
 
-export function getNotionTagStyles(text: string) {
+function getNotionTagStyles(text: string) {
     if (!text) return { className: '', style: {} };
     let hash = 0;
     const cleanText = text.trim();
@@ -57,9 +57,7 @@ const Practicals: React.FC = () => {
         description: 'Track practical records and assignment milestones across all your subjects.',
     });
 
-    useEffect(() => { loadData(); }, [currentSemester]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
             const data = await attendanceService.getFullSubjectsData(currentSemester);
@@ -70,16 +68,22 @@ const Practicals: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentSemester, showToast]);
 
-    const handleUpdate = async (id: string | any, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
+    useEffect(() => { void loadData(); }, [loadData]);
+
+    const handleUpdate = async (id: string | undefined, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
+        if (!id) {
+            showToast('error', 'Subject identifier is missing');
+            return;
+        }
         const subjectId = String(id);
         const processingKey = `${subjectId}:practicals`;
         if (processingTrackers.has(processingKey)) return;
         setProcessingTrackers(prev => new Set(prev).add(processingKey));
         const previous = [...subjects];
         setSubjects((prev: Subject[]) => prev.map(sub => {
-            const subId = String(sub._id || (sub as any).id);
+            const subId = String(sub._id || sub.id || '');
             if (subId === subjectId) {
                 const current = sub.practicals || { total: 10, completed: 0, hardcopy: false };
                 return {
@@ -96,7 +100,7 @@ const Practicals: React.FC = () => {
         try {
             const updated = await attendanceService.updatePracticals(subjectId, updates);
             if (updated) {
-                setSubjects(prev => prev.map(subject => String(subject._id || (subject as any).id) === subjectId ? updated : subject));
+                setSubjects(prev => prev.map(subject => String(subject._id || subject.id || '') === subjectId ? updated : subject));
             }
             showToast('success', 'Records Updated');
         } catch {
@@ -112,14 +116,18 @@ const Practicals: React.FC = () => {
         }
     };
 
-    const handleAssignmentUpdate = async (id: string | any, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
+    const handleAssignmentUpdate = async (id: string | undefined, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
+        if (!id) {
+            showToast('error', 'Subject identifier is missing');
+            return;
+        }
         const subjectId = String(id);
         const processingKey = `${subjectId}:assignments`;
         if (processingTrackers.has(processingKey)) return;
         setProcessingTrackers(prev => new Set(prev).add(processingKey));
         const previous = [...subjects];
         setSubjects((prev: Subject[]) => prev.map(sub => {
-            const subId = String(sub._id || (sub as any).id);
+            const subId = String(sub._id || sub.id || '');
             if (subId === subjectId) {
                 const current = sub.assignments || { total: 4, completed: 0 };
                 return {
@@ -127,7 +135,7 @@ const Practicals: React.FC = () => {
                         ...current, ...updates,
                         total: updates.total ?? current.total,
                         completed: updates.completed ?? current.completed,
-                        hardcopy: updates.hardcopy ?? (current as any).hardcopy
+                        hardcopy: updates.hardcopy ?? current.hardcopy
                     }
                 };
             }
@@ -136,7 +144,7 @@ const Practicals: React.FC = () => {
         try {
             const updated = await attendanceService.updateAssignments(subjectId, updates);
             if (updated) {
-                setSubjects(prev => prev.map(subject => String(subject._id || (subject as any).id) === subjectId ? updated : subject));
+                setSubjects(prev => prev.map(subject => String(subject._id || subject.id || '') === subjectId ? updated : subject));
             }
             showToast('success', 'Assignments Updated');
         } catch {
@@ -216,7 +224,7 @@ const Practicals: React.FC = () => {
                             const progress = total > 0 ? (done / total) * 100 : 0;
 
                             return (
-                                <motion.div key={subject._id as any} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.04 }}>
+                                <motion.div key={subject._id || subject.id || subject.name} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ delay: index * 0.04 }}>
                                     <div className="h-full rounded-xl border border-outline/50 bg-surface p-5 relative overflow-hidden hover:border-on-surface/20 transition-all flex flex-col justify-between min-h-[180px] shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
                                         <div>
                                             <div className="flex justify-between items-start mb-3 pt-1">
@@ -244,14 +252,14 @@ const Practicals: React.FC = () => {
                                                             <span className="text-xs font-bold text-on-surface font-mono">{p.completed}/{p.total}</span>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button disabled={practicalsBusy || p.completed <= 0} onClick={() => handleUpdate(subject._id, { completed: p.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={practicalsBusy || p.completed <= 0} onClick={() => handleUpdate(subject._id || subject.id, { completed: p.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
                                                                 <Minus size={11} />
                                                             </button>
-                                                            <button disabled={practicalsBusy || p.completed >= p.total} onClick={() => handleUpdate(subject._id, { completed: p.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={practicalsBusy || p.completed >= p.total} onClick={() => handleUpdate(subject._id || subject.id, { completed: p.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
                                                                 <Plus size={11} />
                                                             </button>
                                                         </div>
-                                                        <button disabled={practicalsBusy} onClick={() => handleUpdate(subject._id, { hardcopy: !p.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60 ${p.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
+                                                        <button disabled={practicalsBusy} onClick={() => handleUpdate(subject._id || subject.id, { hardcopy: !p.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60 ${p.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
                                                             {p.hardcopy ? <><CheckCircle size={11} /> Submitted</> : <><Target size={11} /> Mark Submitted</>}
                                                         </button>
                                                     </div>
@@ -266,14 +274,14 @@ const Practicals: React.FC = () => {
                                                             <span className="text-xs font-bold text-on-surface font-mono">{a.completed}/{a.total}</span>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button disabled={assignmentsBusy || a.completed <= 0} onClick={() => handleAssignmentUpdate(subject._id, { completed: a.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={assignmentsBusy || a.completed <= 0} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { completed: a.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
                                                                 <Minus size={11} />
                                                             </button>
-                                                            <button disabled={assignmentsBusy || a.completed >= a.total} onClick={() => handleAssignmentUpdate(subject._id, { completed: a.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={assignmentsBusy || a.completed >= a.total} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { completed: a.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
                                                                 <Plus size={11} />
                                                             </button>
                                                         </div>
-                                                        <button disabled={assignmentsBusy} onClick={() => handleAssignmentUpdate(subject._id, { hardcopy: !a.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60 ${a.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
+                                                        <button disabled={assignmentsBusy} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { hardcopy: !a.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60 ${a.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
                                                             {a.hardcopy ? <><CheckCircle size={11} /> Submitted</> : <><Target size={11} /> Mark Submitted</>}
                                                         </button>
                                                     </div>

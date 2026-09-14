@@ -2,13 +2,36 @@ import React, { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { useToast } from '@/components/ui/Toast';
-import { useSemester } from '@/contexts/SemesterContext';
+import { useToast } from '@/components/ui/toast-context';
+import { useSemester } from '@/contexts/semester-context';
 import { attendanceService } from '@/services/attendance.service';
 import api from '@/services/api';
 import { formatLocalDate } from '@/lib/date';
 import { Check, X, MoreHorizontal, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
-import { useConfirm } from '@/contexts/ConfirmContext';
+import { useConfirm } from '@/contexts/confirm-context';
+import axios from 'axios';
+import type { AttendanceRecord, ScheduledClass, Subject } from '@/types';
+
+type SimpleAttendanceStatus = 'present' | 'absent';
+type DetailAttendanceStatus = AttendanceRecord['status'];
+
+interface AttendanceClass extends ScheduledClass {
+    id?: string;
+    subjectId?: string;
+    subject_name?: string;
+    isMerged?: boolean;
+    originalClasses?: ScheduledClass[];
+    startTime?: string;
+}
+
+interface GroupedAttendanceClass extends AttendanceClass {
+    isMerged: boolean;
+    originalClasses: ScheduledClass[];
+    startTime: string;
+}
+
+const getApiErrorMessage = (error: unknown, fallback: string) =>
+    axios.isAxiosError<{ error?: string }>(error) ? error.response?.data?.error || fallback : fallback;
 
 
 interface AttendanceModalProps {
@@ -17,7 +40,7 @@ interface AttendanceModalProps {
     // If provided, default to this date, otherwise today
     defaultDate?: Date;
     onSuccess?: () => void;
-    onLogsUpdate?: (dateStr: string, logs: any[]) => void;
+    onLogsUpdate?: (dateStr: string, logs: AttendanceRecord[]) => void;
 }
 
 const ATTENDANCE_STATUS_META: Record<string, { label: string; className: string }> = {
@@ -31,6 +54,17 @@ const ATTENDANCE_STATUS_META: Record<string, { label: string; className: string 
     substituted: { label: 'Substituted', className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
 };
 
+const DETAIL_STATUS_OPTIONS: Array<{ id: DetailAttendanceStatus; label: string }> = [
+    { id: 'present', label: 'Present' },
+    { id: 'absent', label: 'Absent' },
+    { id: 'approved_medical', label: 'Medical Leave' },
+    { id: 'cancelled', label: 'Cancelled' },
+    { id: 'substituted', label: 'Substituted' },
+];
+
+const isDetailAttendanceStatus = (status: string): status is DetailAttendanceStatus =>
+    status in ATTENDANCE_STATUS_META || status === 'excused';
+
 const attendanceStatusMeta = (status: unknown) => ATTENDANCE_STATUS_META[String(status)] || {
     label: String(status || 'Pending').replaceAll('_', ' '),
     className: 'bg-surface-container text-on-surface-variant border-outline',
@@ -42,9 +76,9 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     const { currentSemester } = useSemester();
     const [selectedDate, setSelectedDate] = useState<Date>(defaultDate || new Date());
     const [loading, setLoading] = useState(false);
-    const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
-    const [allSubjects, setAllSubjects] = useState<any[]>([]);
-    const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
+    const [scheduledClasses, setScheduledClasses] = useState<ScheduledClass[]>([]);
+    const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+    const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
     const [logsLoading, setLogsLoading] = useState(false);
     const [logsError, setLogsError] = useState<string | null>(null);
     const [loadedLogsDate, setLoadedLogsDate] = useState<string | null>(null);
@@ -64,23 +98,9 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
 
     // Detailed marking state
     const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
-    const [detailStatus, setDetailStatus] = useState<string>('present');
+    const [detailStatus, setDetailStatus] = useState<DetailAttendanceStatus>('present');
     const [detailNotes, setDetailNotes] = useState('');
     const [detailSubstitutedBy, setDetailSubstitutedBy] = useState<string>('');
-
-    useEffect(() => {
-        if (isOpen) {
-            const initialDate = defaultDate || new Date();
-            setSelectedDate(initialDate);
-            setAttendanceLogs([]);
-            setLoadedLogsDate(null);
-            setLogsError(null);
-            setExpandedSubjectId(null);
-            setIsMarkAllOpen(false);
-            loadClassesForDate(initialDate);
-            fetchAttendanceLogs(initialDate, true);
-        }
-    }, [isOpen, defaultDate]);
 
     useEffect(() => {
         if (!isMarkAllOpen) return;
@@ -101,7 +121,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     }, [attendanceLogs, selectedDate, loadedLogsDate, logsLoading, logsError, onLogsUpdate]);
 
-    const loadClassesForDate = async (date: Date, silent = false) => {
+    const loadClassesForDate = React.useCallback(async (date: Date, silent = false) => {
         const requestId = ++classesRequestRef.current;
         if (!silent) setLoading(true);
         try {
@@ -124,7 +144,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         } finally {
             if (!silent && requestId === classesRequestRef.current) setLoading(false);
         }
-    };
+    }, [currentSemester, showToast]);
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDate = new Date(`${e.target.value}T00:00:00`);
@@ -140,7 +160,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
-    const fetchAttendanceLogs = async (date: Date, clearFirst = false): Promise<any[] | null> => {
+    const fetchAttendanceLogs = React.useCallback(async (date: Date, clearFirst = false): Promise<AttendanceRecord[] | null> => {
         const requestId = ++logsRequestRef.current;
         const dateStr = formatLocalDate(date);
         setLogsLoading(true);
@@ -155,7 +175,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             // Backend returns success_response({"logs": [...], ...}) 
             // So response.data.data is the payload we want
             const data = response.data.data;
-            const logs = data.logs || [];
+            const logs = (Array.isArray(data.logs) ? data.logs : []) as AttendanceRecord[];
             if (requestId !== logsRequestRef.current) return null;
             setAttendanceLogs(logs);
             setLoadedLogsDate(dateStr);
@@ -168,7 +188,21 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         } finally {
             if (requestId === logsRequestRef.current) setLogsLoading(false);
         }
-    };
+    }, [currentSemester]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const initialDate = defaultDate || new Date();
+        setSelectedDate(initialDate);
+        setAttendanceLogs([]);
+        setLoadedLogsDate(null);
+        setLogsError(null);
+        setExpandedSubjectId(null);
+        setIsMarkAllOpen(false);
+        void loadClassesForDate(initialDate);
+        void fetchAttendanceLogs(initialDate, true);
+    }, [isOpen, defaultDate, loadClassesForDate, fetchAttendanceLogs]);
 
     const reconcileSelectedDate = async () => {
         const [logs, classes] = await Promise.all([
@@ -182,16 +216,16 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         if (!isOpen || !logsError) return;
 
         const reloadAfterReconnect = () => {
-            fetchAttendanceLogs(selectedDate, true);
-            loadClassesForDate(selectedDate, true);
+            void fetchAttendanceLogs(selectedDate, true);
+            void loadClassesForDate(selectedDate, true);
         };
         window.addEventListener('online', reloadAfterReconnect);
         return () => window.removeEventListener('online', reloadAfterReconnect);
-    }, [isOpen, logsError, selectedDate]);
+    }, [isOpen, logsError, selectedDate, fetchAttendanceLogs, loadClassesForDate]);
 
 
 
-    const applyOptimisticMark = (subject: any, status: 'present' | 'absent', dateStr: string) => {
+    const applyOptimisticMark = (subject: ScheduledClass, status: SimpleAttendanceStatus, dateStr: string) => {
         const prevScheduled = [...scheduledClasses];
         const prevLogs = [...attendanceLogs];
         const subjectId = String(subject?._id || subject?.id || subject?.subject_id || '');
@@ -213,7 +247,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
 
         setAttendanceLogs((prev) => {
             // Check by both log_id and subject_id to prevent duplicates on the same date
-            const existingIndex = prev.findIndex((l: any) => 
+            const existingIndex = prev.findIndex((l) =>
                 (subject?.log_id && String(l?._id || l?.id) === String(subject?.log_id)) ||
                 (String(l?.subject_id) === subjectId && l?.date === dateStr && String(l?.type || '') === attendanceType)
             );
@@ -247,13 +281,13 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 loadClassesForDate(selectedDate, true),
             ]);
             if (onSuccess) onSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             const reconciled = await reconcileSelectedDate();
             showToast(
                 'error',
                 reconciled
                     ? 'The delete response was not confirmed. Verified records were reloaded.'
-                    : (error.response?.data?.error || 'Delete could not be verified. Reconnect and retry loading.')
+                    : getApiErrorMessage(error, 'Delete could not be verified. Reconnect and retry loading.')
             );
         } finally {
             if (subjectId) {
@@ -266,7 +300,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
-    const markSimple = async (subject: any, status: 'present' | 'absent') => {
+    const markSimple = async (subject: ScheduledClass, status: SimpleAttendanceStatus) => {
         const subjectId = String(subject?._id || subject?.id || subject?.subject_id || '');
         if (processingIds.has(subjectId)) return;
         setProcessingIds(prev => new Set(prev).add(subjectId));
@@ -290,7 +324,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 setAttendanceLogs(prev => prev.map(l => (String(l.subject_id) === subjectId && l.date === dateStr && String(l.type) === String(subject.attendance_type)) ? { ...l, _id: realId, status } : l));
             }
             debouncedOnSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             setScheduledClasses(snapshot.prevScheduled);
             setAttendanceLogs(snapshot.prevLogs);
             const reconciled = await reconcileSelectedDate();
@@ -298,7 +332,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 'error',
                 reconciled
                     ? 'The mark response was not confirmed. Verified records were reloaded.'
-                    : (error.response?.data?.error || 'Mark could not be verified. Reconnect and retry loading.')
+                    : getApiErrorMessage(error, 'Mark could not be verified. Reconnect and retry loading.')
             );
         } finally {
             setProcessingIds(prev => {
@@ -359,9 +393,9 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 }
             }
             debouncedOnSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             await Promise.all([fetchAttendanceLogs(selectedDate), loadClassesForDate(selectedDate, true)]);
-            showToast('error', error.response?.data?.error || 'Failed to mark all classes');
+            showToast('error', getApiErrorMessage(error, 'Failed to mark all classes'));
         } finally {
             setIsMarkingAll(false);
         }
@@ -401,25 +435,25 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             }
             showToast('success', `Cleared all ${logIds.length} marked record${logIds.length === 1 ? '' : 's'}`);
             debouncedOnSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             const [refreshedLogs] = await Promise.all([
                 fetchAttendanceLogs(selectedDate),
                 loadClassesForDate(selectedDate, true),
             ]);
-            const remainingIds = new Set((refreshedLogs || []).map((log: any) => String(log?._id || log?.id || '')));
+            const remainingIds = new Set((refreshedLogs || []).map((log) => String(log?._id || log?.id || '')));
             const wasApplied = !!refreshedLogs && logIds.every(logId => !remainingIds.has(logId));
             if (wasApplied) {
                 showToast('success', `Cleared all ${logIds.length} marked record${logIds.length === 1 ? '' : 's'}`);
                 debouncedOnSuccess();
             } else {
-                showToast('error', error.response?.data?.error || 'No records were cleared. Check your connection and retry.');
+                showToast('error', getApiErrorMessage(error, 'No records were cleared. Check your connection and retry.'));
             }
         } finally {
             setIsMarkingAll(false);
         }
     };
 
-    const handleDelete = async (subject: any) => {
+    const handleDelete = async (subject: ScheduledClass) => {
         const subjectId = String(subject?._id || subject?.id || subject?.subject_id || '');
         if (processingIds.has(subjectId)) return;
         if (!subject.log_id) {
@@ -437,14 +471,14 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             if (rowId !== subjectId || rowAttendanceType !== attendanceType) return row;
             return { ...row, marked: false, marked_status: 'pending', log_id: null };
         }));
-        setAttendanceLogs((prev) => prev.filter((log: any) => String(log?._id || log?.id) !== logId));
+        setAttendanceLogs((prev) => prev.filter((log) => String(log?._id || log?.id) !== logId));
         try {
             if (!logId.startsWith('optimistic-')) {
                 await attendanceService.deleteAttendance(logId);
             }
             showToast('success', 'Attendance cleared');
             debouncedOnSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             setScheduledClasses(prevScheduled);
             setAttendanceLogs(prevLogs);
             const reconciled = await reconcileSelectedDate();
@@ -452,7 +486,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 'error',
                 reconciled
                     ? 'The clear response was not confirmed. Verified records were reloaded.'
-                    : (error.response?.data?.error || 'Clear could not be verified. Reconnect and retry loading.')
+                    : getApiErrorMessage(error, 'Clear could not be verified. Reconnect and retry loading.')
             );
         } finally {
             setProcessingIds(prev => {
@@ -463,7 +497,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
-    const submitDetailedMark = async (subject: any) => {
+    const submitDetailedMark = async (subject: ScheduledClass) => {
         const subjectId = String(subject?._id || subject?.id || subject?.subject_id || '');
         if (processingIds.has(subjectId)) return;
         
@@ -509,7 +543,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 const realId = String(res.log._id);
                 setScheduledClasses(prev => prev.map(r => String(r._id) === subjectId && String(r.attendance_type) === String(subject.attendance_type) ? { ...r, log_id: realId, marked: true, marked_status: detailStatus } : r));
                 setAttendanceLogs(prev => {
-                    const existingIndex = prev.findIndex((l: any) => 
+                    const existingIndex = prev.findIndex((l) =>
                         (subject.log_id && String(l?._id || l?.id) === String(subject.log_id)) ||
                         (String(l.subject_id) === subjectId && l.date === dateStr && String(l.type) === String(subject.attendance_type))
                     );
@@ -532,13 +566,13 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             setExpandedSubjectId(null);
             resetDetailForm();
             debouncedOnSuccess();
-        } catch (error: any) {
+        } catch (error: unknown) {
             const reconciled = await reconcileSelectedDate();
             showToast(
                 'error',
                 reconciled
                     ? 'The update response was not confirmed. Verified records were reloaded.'
-                    : (error.response?.data?.error || 'Update could not be verified. Reconnect and retry loading.')
+                    : getApiErrorMessage(error, 'Update could not be verified. Reconnect and retry loading.')
             );
         } finally {
             setProcessingIds(prev => {
@@ -558,17 +592,17 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     const openDetails = (subjectId: string, currentStatus?: string, currentNotes?: string) => {
         setExpandedSubjectId(subjectId);
         // Pre-fill if needed, mostly default
-        setDetailStatus(currentStatus === 'pending' ? 'present' : currentStatus || 'present');
+        setDetailStatus(currentStatus && isDetailAttendanceStatus(currentStatus) ? currentStatus : 'present');
         setDetailNotes(currentNotes || '');
         setDetailSubstitutedBy('');
     };
 
     const scheduledOrder = new Map<string, number>();
-    groupConsecutiveClasses(scheduledClasses).forEach((row: any, idx: number) => {
+    groupConsecutiveClasses(scheduledClasses).forEach((row, idx) => {
         const sid = String(row?.subject_id || row?.subjectId || row?._id || row?.id || '');
         if (sid && !scheduledOrder.has(sid)) scheduledOrder.set(sid, idx);
     });
-    const sortedAttendanceLogs = [...attendanceLogs].sort((a: any, b: any) => {
+    const sortedAttendanceLogs = [...attendanceLogs].sort((a, b) => {
         const aSid = String(a?.subject_id || a?.subjectId || '');
         const bSid = String(b?.subject_id || b?.subjectId || '');
         const aOrder = scheduledOrder.has(aSid) ? (scheduledOrder.get(aSid) as number) : Number.MAX_SAFE_INTEGER;
@@ -694,15 +728,15 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 subject={subject}
                                                 status={subject.marked_status}
                                                 expanded={expandedSubjectId === rowId}
-                                                onSimpleMark={(subj: any, status: string) => {
+                                                onSimpleMark={(subj, status) => {
                                                     if (subject.isMerged) {
                                                         const primary = subject.originalClasses[0];
-                                                        markSimple(primary, status as any);
+                                                        markSimple(primary, status);
                                                     } else {
-                                                        markSimple(subj, status as any);
+                                                        markSimple(subj, status);
                                                     }
                                                 }}
-                                                onDelete={(subj: any) => {
+                                                onDelete={(subj) => {
                                                     const primary = subj.isMerged ? subj.originalClasses[0] : subj;
                                                     if (primary.log_id) {
                                                         handleDelete(primary);
@@ -768,9 +802,9 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                 </div>
                             ) : recordsReady && sortedAttendanceLogs.length > 0 ? (
                                 <div className="space-y-1.5">
-                                    {sortedAttendanceLogs.map((log: any, idx: number) => {
+                                    {sortedAttendanceLogs.map((log, idx) => {
                                         const logSubjectId = String(log.subject_id || '');
-                                        const logSubject = allSubjects.find((s: any) => String(s._id || s.id) === logSubjectId);
+                                        const logSubject = allSubjects.find((s) => String(s._id || s.id) === logSubjectId);
                                         const statusMeta = attendanceStatusMeta(log.status);
                                         const logId = String(log._id || log.id || idx);
 
@@ -827,10 +861,28 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     );
 };
 
+interface SubjectRowProps {
+    subject: GroupedAttendanceClass;
+    status: string;
+    expanded: boolean;
+    onSimpleMark: (subject: ScheduledClass, status: SimpleAttendanceStatus) => void;
+    onDelete: (subject: GroupedAttendanceClass) => void;
+    onOpenDetails: (id: string, status: string, notes?: string) => void;
+    onCloseDetails: () => void;
+    detailStatus: DetailAttendanceStatus;
+    setDetailStatus: React.Dispatch<React.SetStateAction<DetailAttendanceStatus>>;
+    detailNotes: string;
+    setDetailNotes: React.Dispatch<React.SetStateAction<string>>;
+    detailSubstitutedBy: string;
+    setDetailSubstitutedBy: React.Dispatch<React.SetStateAction<string>>;
+    allSubjects: Subject[];
+    onSubmitDetail: () => void;
+}
+
 const SubjectRow = ({
     subject, status, expanded, onSimpleMark, onDelete, onOpenDetails, onCloseDetails,
     detailStatus, setDetailStatus, detailNotes, setDetailNotes, detailSubstitutedBy, setDetailSubstitutedBy, allSubjects, onSubmitDetail
-}: any) => {
+}: SubjectRowProps) => {
 
     const isMarked = status && status !== 'pending';
     const statusMeta = attendanceStatusMeta(status);
@@ -848,13 +900,7 @@ const SubjectRow = ({
                 <div className="space-y-3">
                     {/* Status Grid */}
                     <div className="grid grid-cols-2 gap-2">
-                        {[
-                            { id: 'present', label: 'Present' },
-                            { id: 'absent', label: 'Absent' },
-                            { id: 'approved_medical', label: 'Medical Leave' },
-                            { id: 'cancelled', label: 'Cancelled' },
-                            { id: 'substituted', label: 'Substituted' },
-                        ].map(opt => (
+                        {DETAIL_STATUS_OPTIONS.map(opt => (
                             <button
                                 key={opt.id}
                                 onClick={() => setDetailStatus(opt.id)}
@@ -870,12 +916,12 @@ const SubjectRow = ({
 
                     {/* Substitution Dropdown */}
                     {detailStatus === 'substituted' && (() => {
-                        const filteredSubjects = allSubjects.filter((s: any) => {
+                        const filteredSubjects = allSubjects.filter((s) => {
                             const sId = String(s._id || s.id);
                             const currentId = String(subject._id || subject.id);
                             return sId !== currentId;
                         });
-                        const selectedSub = filteredSubjects.find((s: any) => {
+                        const selectedSub = filteredSubjects.find((s) => {
                             const sId = String(s._id || s.id);
                             return sId === detailSubstitutedBy;
                         });
@@ -914,7 +960,7 @@ const SubjectRow = ({
                                 Clear Mark
                             </Button>
                         )}
-                        <Button className="flex-1" onClick={() => onSubmitDetail(subject._id || subject.id)}>
+                        <Button className="flex-1" onClick={onSubmitDetail}>
                             Confirm Mark
                         </Button>
                     </div>
@@ -970,7 +1016,7 @@ const SubjectRow = ({
                 <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => onOpenDetails(subject._id || subject.id, status, subject.notes)}
+                    onClick={() => onOpenDetails(subject._id, status, subject.notes)}
                     className="h-7 w-7 p-0 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
                 >
                     <MoreHorizontal size={14} />
@@ -984,7 +1030,7 @@ const parseTime = (timeStr: string) => {
     if (!timeStr) return 0;
     const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
     if (!match) return 0;
-    let [_, h, m, ampm] = match;
+    const [, h, m, ampm] = match;
     let hours = parseInt(h, 10);
     const minutes = parseInt(m, 10);
     if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
@@ -992,7 +1038,7 @@ const parseTime = (timeStr: string) => {
     return hours * 60 + minutes;
 };
 
-const groupConsecutiveClasses = (classes: any[]) => {
+const groupConsecutiveClasses = (classes: ScheduledClass[]): GroupedAttendanceClass[] => {
     if (!classes || classes.length === 0) return [];
 
     // Sort classes by starting time before grouping
@@ -1000,8 +1046,8 @@ const groupConsecutiveClasses = (classes: any[]) => {
         return parseTime(a.time) - parseTime(b.time);
     });
 
-    const grouped: any[] = [];
-    let currentGroup: any = null;
+    const grouped: GroupedAttendanceClass[] = [];
+    let currentGroup: GroupedAttendanceClass | null = null;
 
     sortedClasses.forEach((slot) => {
         const slotId = String(slot._id || slot.id || '');
@@ -1054,7 +1100,7 @@ const groupConsecutiveClasses = (classes: any[]) => {
 };
 
 const SubstitutionDropdown = ({ subjects, value, selectedName, onChange }: {
-    subjects: any[];
+    subjects: Subject[];
     value: string;
     selectedName?: string;
     onChange: (val: string) => void;
@@ -1089,7 +1135,7 @@ const SubstitutionDropdown = ({ subjects, value, selectedName, onChange }: {
                     >
                         Select Subject...
                     </button>
-                    {subjects.map((s: any) => {
+                    {subjects.map((s) => {
                         const sId = String(s._id || s.id);
                         const isSelected = sId === value;
                         return (

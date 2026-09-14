@@ -35,11 +35,11 @@ export function usePageMeta({ title, description, indexable = false }: PageMeta)
         robotsEl.content = indexable ? 'index, follow' : 'noindex, nofollow';
 
         // OG title
-        let ogTitle = document.querySelector<HTMLMetaElement>('meta[property="og:title"]');
+        const ogTitle = document.querySelector<HTMLMetaElement>('meta[property="og:title"]');
         if (ogTitle) ogTitle.content = title;
 
         // OG description
-        let ogDesc = document.querySelector<HTMLMetaElement>('meta[property="og:description"]');
+        const ogDesc = document.querySelector<HTMLMetaElement>('meta[property="og:description"]');
         if (ogDesc) ogDesc.content = description;
 
         return () => {

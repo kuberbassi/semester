@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/auth-context';
+import { useTheme } from '@/contexts/theme-context';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
 import { Sun, Moon, ArrowLeft } from 'lucide-react';
+import { getErrorMessage } from '@/utils/errors';
 
 const Login: React.FC = () => {
     const { loginWithGoogle } = useAuth();
@@ -93,9 +94,9 @@ const Login: React.FC = () => {
                                     try {
                                         if (!credentialResponse.credential) throw new Error('No credential received');
                                         await loginWithGoogle(credentialResponse.credential);
-                                    } catch (err: any) {
+                                    } catch (err: unknown) {
                                         console.error('❌ Backend login failed:', err);
-                                        const errMsg = err.response?.data?.error || err.message || 'Login failed. Please try again.';
+                                        const errMsg = getErrorMessage(err, 'Login failed. Please try again.');
                                         setError(errMsg);
                                     }
                                 }}

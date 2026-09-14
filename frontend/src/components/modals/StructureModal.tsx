@@ -4,6 +4,7 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import { attendanceService } from '@/services/attendance.service';
+import type { GridPeriod } from '@/types';
 
 const to24Hour = (time12h: string) => {
     if (!time12h) return '';
@@ -11,7 +12,8 @@ const to24Hour = (time12h: string) => {
         const parts = time12h.split(' ');
         if (parts.length !== 2) return time12h;
         const [time, modifier] = parts;
-        let [hours, minutes] = time.split(':');
+        const [rawHours, minutes] = time.split(':');
+        let hours = rawHours;
         if (hours === '12') hours = '00';
         if (modifier.toLowerCase() === 'pm') hours = (parseInt(hours, 10) + 12).toString();
         return `${hours.padStart(2, '0')}:${minutes}`;
@@ -23,7 +25,7 @@ const to12Hour = (time24h: string) => {
     try {
         const parts = time24h.split(':');
         if (parts.length !== 2) return time24h;
-        let [hours, minutes] = parts;
+        const [hours, minutes] = parts;
         let h = parseInt(hours, 10);
         const ampm = h >= 12 ? 'PM' : 'AM';
         h = h % 12;
@@ -36,12 +38,12 @@ interface StructureModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    currentPeriods: any[];
+    currentPeriods: GridPeriod[];
     semester: number;
 }
 
 const StructureModal: React.FC<StructureModalProps> = ({ isOpen, onClose, onSuccess, currentPeriods, semester }) => {
-    const [periods, setPeriods] = useState<any[]>([]);
+    const [periods, setPeriods] = useState<GridPeriod[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -62,7 +64,7 @@ const StructureModal: React.FC<StructureModalProps> = ({ isOpen, onClose, onSucc
         setPeriods(periods.filter(p => p.id !== id));
     };
 
-    const handleUpdatePeriod = (id: string, field: string, value: string) => {
+    const handleUpdatePeriod = (id: string, field: 'name' | 'startTime' | 'endTime', value: string) => {
         setPeriods(periods.map(p => p.id === id ? { ...p, [field]: value } : p));
     };
 

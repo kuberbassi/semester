@@ -1,8 +1,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService } from '@/services/attendance.service';
-import { useSemester } from '@/contexts/SemesterContext';
-import type { DashboardData } from '@/types';
+import { useSemester } from '@/contexts/semester-context';
+import type { DashboardData, User } from '@/types';
 import axios from 'axios';
 import { formatLocalDate } from '@/lib/date';
 
@@ -19,7 +19,7 @@ export const useDashboard = () => {
         gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: true,
         placeholderData: () => {
-            return (attendanceService.getDashboardLocalCache(currentSemester) || undefined) as any;
+            return attendanceService.getDashboardLocalCache(currentSemester) || undefined;
         }
     });
 
@@ -55,7 +55,7 @@ export const useMarkAttendance = () => {
                             const newAttended = status === 'present' ? (sub.attended || 0) + 1 : (sub.attended || 0);
                             const newTotal = (sub.total || 0) + 1;
                             const newPercentage = newTotal > 0 ? (newAttended / newTotal) * 100 : 0;
-                            const target = sub.target || (queryClient.getQueryData<any>(['user'])?.attendance_threshold || 75);
+                            const target = sub.target || (queryClient.getQueryData<User>(['user'])?.attendance_threshold || 75);
                             const newStatusMsg = newPercentage < target ? "Low Attendance" : "On Track";
 
                             return {
@@ -81,7 +81,7 @@ export const useMarkAttendance = () => {
                         ? (Math.max(0, totalAtt - medicalLeaveCount) / totalClasses * 100)
                         : 0;
 
-                    const targetThreshold = queryClient.getQueryData<any>(['user'])?.attendance_threshold || 75;
+                    const targetThreshold = queryClient.getQueryData<User>(['user'])?.attendance_threshold || 75;
                     const newSafeBunks = totalClasses > 0 ? Math.max(0, Math.floor((totalAtt * 100 - targetThreshold * totalClasses) / targetThreshold)) : 0;
 
                     return {
@@ -138,7 +138,7 @@ export const useDeleteSubject = () => {
             if (previousData) {
                 queryClient.setQueryData<DashboardData>(['dashboard', currentSemester], (old) => {
                     if (!old) return old;
-                    const subjects = old.subjects.filter(s => s._id !== subjectId && (s as any).id !== subjectId);
+                    const subjects = old.subjects.filter(s => s._id !== subjectId && s.id !== subjectId);
                     return { ...old, subjects, total_subjects: subjects.length };
                 });
             }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import {
     LayoutGrid, List, Plus, Edit3
@@ -6,31 +6,33 @@ import {
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { attendanceService } from '@/services/attendance.service';
 import api from '@/services/api';
-import { useSemester } from '@/contexts/SemesterContext';
-import { useToast } from '@/components/ui/Toast';
+import { useSemester } from '@/contexts/semester-context';
+import { useToast } from '@/components/ui/toast-context';
 import SlotModal from '@/components/modals/SlotModal';
 import StructureModal from '@/components/modals/StructureModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { GridPeriod, Subject, TimetableSchedule, TimetableSlot } from '@/types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const normalizeId = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());
 
-const findSubjectForSlot = (subjects: any[], slot: any) => {
+const findSubjectForSlot = (subjects: Subject[], slot: TimetableSlot): Subject | undefined => {
     const explicitType = String(slot?.type || '').trim().toLowerCase();
+    const subjectObject = typeof slot.subject === 'object' && slot.subject !== null ? slot.subject : undefined;
     
     if (['break', 'lunch', 'gap', 'free', 'custom'].includes(explicitType)) return undefined;
 
-    const slotSubjectId = normalizeId(slot?.subject_id || slot?.subjectId || slot?.subject?._id || slot?.subject?.id);
+    const slotSubjectId = normalizeId(slot.subject_id || slot.subjectId || subjectObject?._id || subjectObject?.id);
     if (slotSubjectId) {
-        const matchedById = subjects.find((sub: any) => normalizeId(sub._id || sub.id) === slotSubjectId);
+        const matchedById = subjects.find((sub) => normalizeId(sub._id || sub.id) === slotSubjectId);
         if (matchedById) return matchedById;
     }
 
     const subjectField = slot?.subject;
     if (typeof subjectField === 'string' && subjectField.trim()) {
         const needle = subjectField.trim().toLowerCase();
-        const matchedByName = subjects.find((sub: any) => String(sub?.name || '').trim().toLowerCase() === needle);
+        const matchedByName = subjects.find((sub) => String(sub?.name || '').trim().toLowerCase() === needle);
         if (matchedByName) return matchedByName;
     }
 
@@ -38,12 +40,12 @@ const findSubjectForSlot = (subjects: any[], slot: any) => {
         const subObj = subjectField as Record<string, unknown>;
         const objId = normalizeId(subObj._id || subObj.id);
         if (objId) {
-            const matchedByObjId = subjects.find((sub: any) => normalizeId(sub._id || sub.id) === objId);
+            const matchedByObjId = subjects.find((sub) => normalizeId(sub._id || sub.id) === objId);
             if (matchedByObjId) return matchedByObjId;
         }
         const objName = String(subObj.name || '').trim().toLowerCase();
         if (objName) {
-            const matchedByObjName = subjects.find((sub: any) => String(sub?.name || '').trim().toLowerCase() === objName);
+            const matchedByObjName = subjects.find((sub) => String(sub?.name || '').trim().toLowerCase() === objName);
             if (matchedByObjName) return matchedByObjName;
         }
     }
@@ -53,13 +55,13 @@ const findSubjectForSlot = (subjects: any[], slot: any) => {
         || slot?.subject_name
         || slot?.subjectName
         || slot?.name
-        || slot?.subject?.name
-        || slot?.subject?.code
+        || subjectObject?.name
+        || subjectObject?.code
         || ''
     ).trim().toLowerCase();
     if (!slotLabel || slotLabel === 'break' || slotLabel === 'lunch' || slotLabel === 'gap') return undefined;
 
-    return subjects.find((sub: any) => {
+    return subjects.find((sub) => {
         const subName = String(sub?.name || '').trim().toLowerCase();
         const subCode = String(sub?.code || '').trim().toLowerCase();
         
@@ -81,7 +83,7 @@ const parseTimeForSort = (time12h: string) => {
         const parts = time12h.split(' ');
         const time = parts[0];
         const modifier = parts[1] || '';
-        let [hours, minutes] = time.split(':');
+        const [hours, minutes] = time.split(':');
         let h = parseInt(hours, 10);
         if (modifier) {
             if (h === 12) h = 0;
@@ -96,9 +98,9 @@ const normalizeTimeMatch = (t: string) => {
     try {
         const parts = t.trim().split(' ');
         if (parts.length === 1 && t.includes(':')) {
-            let [hours, minutes] = t.split(':');
+            const [hours, minutes] = t.split(':');
             let h = parseInt(hours, 10);
-            let ampm = h >= 12 ? 'PM' : 'AM';
+            const ampm = h >= 12 ? 'PM' : 'AM';
             h = h % 12 || 12;
             return `${h.toString().padStart(2, '0')}:${minutes} ${ampm}`;
         }
@@ -106,10 +108,10 @@ const normalizeTimeMatch = (t: string) => {
     } catch { return t.trim(); }
 };
 
-const getPeriodStartTime = (period: any) => String(period?.startTime || period?.start_time || '').trim();
-const getPeriodName = (period: any) => String(period?.name || period?.label || '').trim();
-const getSlotStartTime = (slot: any) => String(slot?.start_time || slot?.startTime || '').trim();
-const getSlotEndTime = (slot: any) => String(slot?.end_time || slot?.endTime || '').trim();
+const getPeriodStartTime = (period: GridPeriod) => String(period.startTime || period.start_time || '').trim();
+const getPeriodName = (period: GridPeriod) => String(period.name || period.label || '').trim();
+const getSlotStartTime = (slot: TimetableSlot) => String(slot.start_time || slot.startTime || '').trim();
+const getSlotEndTime = (slot: TimetableSlot) => String(slot.end_time || slot.endTime || '').trim();
 
 const getSlotStatus = (day: string, startTime: string, endTime: string) => {
     try {
@@ -138,9 +140,9 @@ const getSlotStatus = (day: string, startTime: string, endTime: string) => {
 const TimeTable: React.FC = () => {
     const { currentSemester } = useSemester();
     const { showToast } = useToast();
-    const [timetable, setTimetable] = useState<any>({});
-    const [subjects, setSubjects] = useState<any[]>([]);
-    const [periods, setPeriods] = useState<any[]>([]);
+    const [timetable, setTimetable] = useState<TimetableSchedule>({});
+    const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [periods, setPeriods] = useState<GridPeriod[]>([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'grid' | 'list'>(() => (localStorage.getItem('Semester_timetable_view') as 'grid' | 'list') || 'grid');
     const [isMobile, setIsMobile] = useState(false);
@@ -163,15 +165,11 @@ const TimeTable: React.FC = () => {
 
     const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
     const [isStructureModalOpen, setIsStructureModalOpen] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState<any>(null);
+    const [selectedSlot, setSelectedSlot] = useState<TimetableSlot | null>(null);
     const [selectedDay, setSelectedDay] = useState<string | null>(null);
-    const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
+    const [selectedPeriod, setSelectedPeriod] = useState<GridPeriod | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, [currentSemester]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             const [data, subjectsData] = await Promise.all([
@@ -187,19 +185,23 @@ const TimeTable: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentSemester, showToast]);
 
-    const handleAddSlot = (day: string, period: any) => {
+    useEffect(() => {
+        void fetchData();
+    }, [fetchData]);
+
+    const handleAddSlot = (day: string, period: GridPeriod) => {
         setSelectedSlot(null);
         setSelectedDay(day);
         setSelectedPeriod(period);
         setIsSlotModalOpen(true);
     };
 
-    const handleEditSlot = (slot: any) => {
+    const handleEditSlot = (slot: TimetableSlot) => {
         setSelectedSlot(slot);
         setSelectedDay(slot.day);
-        setSelectedPeriod(periods.find((p: any) => normalizeTimeMatch(getPeriodStartTime(p)) === normalizeTimeMatch(getSlotStartTime(slot))));
+        setSelectedPeriod(periods.find((p) => normalizeTimeMatch(getPeriodStartTime(p)) === normalizeTimeMatch(getSlotStartTime(slot))) || null);
         setIsSlotModalOpen(true);
     };
 
@@ -254,7 +256,7 @@ const TimeTable: React.FC = () => {
                                     <div key={day} className="h-12 flex items-center justify-center text-xs font-bold text-on-surface-variant/70 border-b border-r border-outline bg-surface-container last:border-r-0">{day.slice(0, 3)}</div>
                                 ))}
 
-                                {periods.map((period: any) => (
+                                {periods.map((period) => (
                                     <React.Fragment key={period.id}>
                                         <div className="flex flex-col justify-center items-center px-2 py-3 border-b border-r border-outline bg-surface-container-low text-center">
                                             <span className="text-on-surface font-bold text-[10px] leading-tight">{getPeriodName(period)}</span>
@@ -262,7 +264,7 @@ const TimeTable: React.FC = () => {
                                         </div>
                                         {DAYS.map(day => {
                                             const daySlots = timetable[day] || [];
-                                            const slot = daySlots.find((s: any) => normalizeTimeMatch(getSlotStartTime(s)) === normalizeTimeMatch(getPeriodStartTime(period)));
+                                            const slot = daySlots.find((s) => normalizeTimeMatch(getSlotStartTime(s)) === normalizeTimeMatch(getPeriodStartTime(period)));
                                             const subject = slot ? findSubjectForSlot(subjects, slot) : undefined;
                                             const isBreak = slot?.type?.toLowerCase() === 'break';
 
@@ -297,7 +299,7 @@ const TimeTable: React.FC = () => {
                                 <div className="h-px flex-1 bg-outline-variant" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {([...(timetable[day] || [])]).sort((a: any, b: any) => parseTimeForSort(getSlotStartTime(a)) - parseTimeForSort(getSlotStartTime(b))).map((slot: any, idx: number) => {
+                                {([...(timetable[day] || [])]).sort((a, b) => parseTimeForSort(getSlotStartTime(a)) - parseTimeForSort(getSlotStartTime(b))).map((slot, idx) => {
                                     const subject = findSubjectForSlot(subjects, slot);
                                     const status = getSlotStatus(day, getSlotStartTime(slot), getSlotEndTime(slot));
                                     let dotElement = null;

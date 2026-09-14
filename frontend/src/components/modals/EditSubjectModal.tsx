@@ -1,16 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
-import { useToast } from '@/components/ui/Toast';
+import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { BookOpen, User, MapPin, Hash, FileText, Maximize2, Save, X } from 'lucide-react';
+import type { Subject } from '@/types';
 
+interface SubjectFormData {
+    name: string;
+    code: string;
+    professor: string;
+    classroom: string;
+    syllabus: string;
+    semester: number;
+    credits: number;
+    attended: number;
+    total: number;
+    categories: string[];
+    practical_total: number;
+    assignment_total: number;
+}
 
 interface EditSubjectModalProps {
     isOpen: boolean;
     onClose: () => void;
-    subject: any; // Accommodate SubjectOverview (id) and Subject (_id)
+    subject: Subject;
     onSuccess: () => void;
 }
 
@@ -20,7 +35,7 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
     const [isSyllabusExpanded, setIsSyllabusExpanded] = useState(false);
 
     // Form State
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<SubjectFormData>({
         name: '',
         code: '',
         professor: '',
@@ -30,42 +45,19 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
         credits: 3,
         attended: 0,
         total: 0,
+        categories: ['Theory'],
         practical_total: 10,
         assignment_total: 4
     });
 
-    useEffect(() => {
-        if (subject && isOpen) {
-            setIsSyllabusExpanded(false);
-            setFormData({
-                name: subject.name || '',
-                code: subject.code || '',
-                professor: subject.professor || '',
-                classroom: subject.classroom || '',
-                syllabus: subject.syllabus || '',
-                semester: subject.semester || 1,
-                credits: subject.credits !== undefined ? Number(subject.credits) : 3,
-                attended: subject.attended || 0,
-                total: subject.total || 0,
-                practical_total: 10,
-                assignment_total: 4
-            });
-
-            // Fetch latest details
-            const id = subject.id || subject._id;
-
-            if (id) fetchDetails(id);
-        }
-    }, [subject, isOpen]);
-
-    const fetchDetails = async (id: string) => {
+    const fetchDetails = useCallback(async (id: string) => {
         try {
             const details = await attendanceService.getSubjectDetails(id);
             if (details) {
                 setFormData(prev => ({
                     ...prev,
                     code: details.code || prev.code,
-                    categories: details.categories || (prev as any).categories || ['Theory'],
+                    categories: details.categories || prev.categories,
                     professor: details.professor || prev.professor,
                     classroom: details.classroom || prev.classroom,
                     syllabus: details.syllabus || prev.syllabus,
@@ -82,7 +74,30 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
             showToast('error', 'Subject not found or has been deleted');
             onClose();
         }
-    };
+    }, [showToast, onClose]);
+
+    useEffect(() => {
+        if (!subject || !isOpen) return;
+
+        setIsSyllabusExpanded(false);
+        setFormData({
+            name: subject.name || '',
+            code: subject.code || '',
+            professor: subject.professor || '',
+            classroom: subject.classroom || '',
+            syllabus: subject.syllabus || '',
+            semester: subject.semester || 1,
+            credits: subject.credits !== undefined ? Number(subject.credits) : 3,
+            attended: subject.attended || 0,
+            total: subject.total || 0,
+            categories: subject.categories || ['Theory'],
+            practical_total: 10,
+            assignment_total: 4
+        });
+
+        const id = subject.id || subject._id;
+        if (id) void fetchDetails(id);
+    }, [subject, isOpen, fetchDetails]);
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -99,6 +114,7 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
 
         try {
             const id = subject.id || subject._id;
+            if (!id) throw new Error('Subject has no identifier');
 
             await attendanceService.updateSubjectFullDetails(id, formData);
 
@@ -150,7 +166,7 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                                     key={cat}
                                     type="button"
                                     onClick={() => {
-                                        const current = (formData as any).categories || [];
+                                        const current = formData.categories;
                                         let nextCats;
                                         if (current.includes(cat)) {
                                             nextCats = current.filter((c: string) => c !== cat);
@@ -175,7 +191,7 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                                         }));
                                     }}
                                     className={`px-3 py-1.5 rounded-md text-[10px] font-bold border transition-all
-                                        ${((formData as any).categories || []).includes(cat)
+                                        ${formData.categories.includes(cat)
                                             ? 'bg-primary/10 border-primary text-primary'
                                             : 'bg-surface border-transparent text-on-surface-variant/50 hover:bg-surface-container hover:text-on-surface'
                                         }
@@ -311,26 +327,26 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                         <div className="col-span-1 sm:col-span-2 p-4 rounded-lg bg-surface-container/30 border border-outline">
                             <label className="text-xs font-bold text-on-surface-variant/80 uppercase mb-2 block">🎯 Target Totals</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {((formData as any).categories?.includes('Practical')) && (
+                                {formData.categories.includes('Practical') && (
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Practical Total</label>
                                         <input
                                             type="number"
                                             name="practical_total"
-                                            value={(formData as any).practical_total || 10}
+                                            value={formData.practical_total || 10}
                                             onChange={handleChange}
                                             min="1"
                                             className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
                                         />
                                     </div>
                                 )}
-                                {((formData as any).categories?.includes('Assignment')) && (
+                                {formData.categories.includes('Assignment') && (
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Assignment Total</label>
                                         <input
                                             type="number"
                                             name="assignment_total"
-                                            value={(formData as any).assignment_total || 4}
+                                            value={formData.assignment_total || 4}
                                             onChange={handleChange}
                                             min="1"
                                             className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"

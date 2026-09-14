@@ -1,5 +1,5 @@
 /**
- * Zenith Calculation Engine
+ * Semester Calculation Engine
  * Centralized logic for attendance and grade calculations
  */
 
@@ -33,7 +33,7 @@ export class AttendanceCalculator {
         return Math.ceil((targetDecimal * total - attended) / (1 - targetDecimal));
     }
 
-    static getAttendanceSummary(subjects: any[]) {
+    static getAttendanceSummary(subjects: Array<{ attended?: number; total?: number }>) {
         const totalAttended = subjects.reduce((acc, s) => acc + (s.attended || 0), 0);
         const totalPossible = subjects.reduce((acc, s) => acc + (s.total || 0), 0);
         const overallPercentage = this.calculatePercentage(totalAttended, totalPossible);
@@ -51,13 +51,13 @@ export class AttendanceCalculator {
 }
 
 export class GradeCalculator {
-    static calculateSGPA(courses: any[]): number {
+    static calculateSGPA(courses: Array<{ credits?: number; grade?: string }>): number {
         let totalCredits = 0;
         let weightedPoints = 0;
 
         courses.forEach(course => {
             const credits = course.credits || 0;
-            const gradePoint = this.gradeToPoint(course.grade);
+            const gradePoint = this.gradeToPoint(course.grade || '');
             totalCredits += credits;
             weightedPoints += credits * gradePoint;
         });
@@ -65,7 +65,7 @@ export class GradeCalculator {
         return totalCredits > 0 ? weightedPoints / totalCredits : 0;
     }
 
-    static calculateCGPA(semesters: any[][]): number {
+    static calculateCGPA(semesters: Array<Array<{ credits?: number; grade?: string }>>): number {
         let totalSGPA = 0;
         let count = 0;
 

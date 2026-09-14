@@ -1,5 +1,5 @@
 import React, { type ReactNode, useRef } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion, useMotionTemplate, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
 interface GlassCardProps {
     children: ReactNode;
@@ -28,6 +28,14 @@ const GlassCard: React.FC<GlassCardProps> = ({
     const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["7deg", "-7deg"]);
     const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-7deg", "7deg"]);
     const brightness = useTransform(mouseYSpring, [-0.5, 0.5], [1.1, 0.9]);
+    const brightnessFilter = useMotionTemplate`brightness(${brightness})`;
+    const glareBackground = useTransform(
+        x,
+        (latestX) => `linear-gradient(${180 + (latestX * 90)}deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 100%)`
+    );
+    const highlightBackground = useTransform(
+        () => `radial-gradient(circle at ${(x.get() + 0.5) * 100}% ${(y.get() + 0.5) * 100}%, rgba(255,255,255,0.3) 0%, transparent 60%)`
+    );
 
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!hover || !ref.current) return;
@@ -60,7 +68,7 @@ const GlassCard: React.FC<GlassCardProps> = ({
             style={{
                 rotateX: hover ? rotateX : 0,
                 rotateY: hover ? rotateY : 0,
-                filter: hover ? `brightness(${brightness})` : 'none',
+                filter: hover ? brightnessFilter : 'none',
                 transformStyle: "preserve-3d",
                 ...style,
             }}
@@ -82,11 +90,7 @@ const GlassCard: React.FC<GlassCardProps> = ({
             {hover && (
                 <motion.div
                     className="absolute inset-0 pointer-events-none z-0 mix-blend-color-dodge opacity-60"
-                    style={{
-                        background: useTransform(
-                            () => `linear-gradient(${180 + (x.get() * 90)}deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 100%)`
-                        )
-                    }}
+                    style={{ background: glareBackground }}
                 />
             )}
 
@@ -94,11 +98,7 @@ const GlassCard: React.FC<GlassCardProps> = ({
             {hover && (
                 <motion.div
                     className="absolute inset-0 pointer-events-none z-0 mix-blend-overlay opacity-50"
-                    style={{
-                        background: useTransform(
-                            () => `radial-gradient(circle at ${(x.get() + 0.5) * 100}% ${(y.get() + 0.5) * 100}%, rgba(255,255,255,0.3) 0%, transparent 60%)`
-                        )
-                    }}
+                    style={{ background: highlightBackground }}
                 />
             )}
 

@@ -1,17 +1,24 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { dispatchGlobalToast } from '@/components/ui/Toast';
+import { dispatchGlobalToast } from '@/components/ui/toast-context';
 
 declare module 'axios' {
     interface AxiosRequestConfig {
         _skipRetry?: boolean;
+        _retry?: number;
+        _authRefreshed?: boolean;
     }
+}
+
+interface ApiErrorBody {
+    code?: string;
+    error?: string;
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 let refreshPromise: Promise<unknown> | null = null;
 
-const shouldHandleAsAuthExpiry = (requestUrl: string, error: AxiosError): boolean => {
-    const responseCode = String((error.response?.data as any)?.code || '');
+const shouldHandleAsAuthExpiry = (requestUrl: string, error: AxiosError<ApiErrorBody>): boolean => {
+    const responseCode = String(error.response?.data?.code || '');
 
     if (requestUrl.includes('/api/ipu/')) return false;
     if (['SESSION_EXPIRED', 'CAPTCHA_FAILED', 'LOGIN_FAILED', 'LOGIN_BLOCKED', 'ACCOUNT_LOCKED'].includes(responseCode)) {
@@ -75,15 +82,15 @@ api.interceptors.request.use(
 // Response interceptor with retry logic
 api.interceptors.response.use(
     (response) => response,
-    async (error: AxiosError) => {
-        const config = error.config as InternalAxiosRequestConfig & { _retry?: number };
+    async (error: AxiosError<ApiErrorBody>) => {
+        const config = error.config as InternalAxiosRequestConfig;
         const requestUrl = String(config?.url ?? '');
 
         if (error.response?.status === 401) {
             const isRefreshRequest = requestUrl.includes('/api/auth/refresh');
             const isLoginRequest = requestUrl.includes('/api/auth/google');
             const isSessionProbe = requestUrl.includes('/api/auth/me');
-            const hasRetriedAuth = Boolean((config as any)?._authRefreshed);
+            const hasRetriedAuth = Boolean(config?._authRefreshed);
             const shouldRefreshAuth = shouldHandleAsAuthExpiry(requestUrl, error);
 
             if (shouldRefreshAuth && !isRefreshRequest && !isLoginRequest && !hasRetriedAuth) {
@@ -92,11 +99,11 @@ api.interceptors.response.use(
                         refreshPromise = api.post('/api/auth/refresh');
                     }
                     await refreshPromise;
-                    (config as any)._authRefreshed = true;
+                    config._authRefreshed = true;
                     return api.request(config);
-                } catch (refreshError: any) {
-                    const status = refreshError.response?.status;
-                    const code = refreshError.response?.data?.code;
+                } catch (refreshError: unknown) {
+                    const status = axios.isAxiosError<ApiErrorBody>(refreshError) ? refreshError.response?.status : undefined;
+                    const code = axios.isAxiosError<ApiErrorBody>(refreshError) ? refreshError.response?.data?.code : undefined;
                     const isSessionInvalid = status === 401 || status === 403 || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED';
                     
                     if (isSessionInvalid) {
@@ -111,7 +118,7 @@ api.interceptors.response.use(
 
             if (shouldRefreshAuth) {
                 const status = error.response?.status;
-                const code = (error.response?.data as any)?.code;
+                const code = error.response?.data?.code;
                 const isSessionInvalid = status === 401 || status === 403 || code === 'TOKEN_EXPIRED' || code === 'TOKEN_INVALID' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED';
                 
                 if (isSessionInvalid) {
@@ -123,7 +130,7 @@ api.interceptors.response.use(
 
         // Handle 429 — show toast immediately, never retry
         if (error.response?.status === 429) {
-            const msg = (error.response.data as any)?.error
+            const msg = error.response.data?.error
                 || 'You are making requests too quickly. Please wait a minute and try again.';
             dispatchGlobalToast('warning', msg);
             return Promise.reject(error);
