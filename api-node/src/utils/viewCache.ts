@@ -11,6 +11,11 @@ const cache = new LRUCache<string, any>({
   max: 1000,
   ttl: 5 * 60 * 1000,
 })
+const userGenerations = new Map<string, number>()
+
+export function getUserViewCacheGeneration(userId: string): number {
+  return userGenerations.get(userId) ?? 0
+}
 
 export function buildViewCacheId(name: string, scope: Record<string, unknown>) {
   return `${name}:${JSON.stringify(scope)}`
@@ -23,12 +28,16 @@ export async function readViewCache<T>(userId: string, cacheId: string): Promise
   return entry as T
 }
 
-export async function writeViewCache<T>(userId: string, cacheId: string, data: T, ttlMs: number): Promise<void> {
+export async function writeViewCache<T>(userId: string, cacheId: string, data: T, ttlMs: number, expectedGeneration?: number): Promise<void> {
+  // A mutation may clear the cache while this GET is still querying the DB.
+  // Never allow that older response to repopulate post-mutation cache state.
+  if (expectedGeneration !== undefined && getUserViewCacheGeneration(userId) !== expectedGeneration) return
   const key = `${userId}:${cacheId}`
   cache.set(key, data, { ttl: ttlMs })
 }
 
 export async function clearUserViewCache(userId: string): Promise<void> {
+  userGenerations.set(userId, getUserViewCacheGeneration(userId) + 1)
   const prefix = `${userId}:`
   for (const key of cache.keys()) {
     if (key.startsWith(prefix)) {

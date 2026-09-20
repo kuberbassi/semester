@@ -13,9 +13,10 @@ export const useDashboard = () => {
 
     const query = useQuery({
         queryKey: ['dashboard', currentSemester],
-        // Always bypass service-level memory cache so React Query drives freshness
+        // React Query controls browser freshness. Keep the normal API URL so
+        // the server's short private view cache can also absorb repeat loads.
         queryFn: () => attendanceService.getDashboardData(currentSemester, true),
-        staleTime: 30 * 1000,
+        staleTime: 60 * 1000,
         gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: true,
         placeholderData: () => {

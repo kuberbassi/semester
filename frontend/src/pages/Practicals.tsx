@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Plus, Minus, Edit2, Target } from 'lucide-react';
@@ -20,6 +20,9 @@ const NOTION_COLORS = [
     { bgLight: '#fbe4e4', textLight: '#c41d1d', borderLight: '#f6c7c7', bgDark: '#451a1a', textDark: '#ff7373', borderDark: '#572323' }, // red
     { bgLight: '#fdecf2', textLight: '#ad1a72', borderLight: '#fad0e2', bgDark: '#40182c', textDark: '#f26fb6', borderDark: '#512239' }, // pink
 ];
+
+type TrackerKind = 'practicals' | 'assignments';
+type TrackerUpdate = { total?: number; completed?: number; hardcopy?: boolean };
 
 function getNotionTagStyles(text: string) {
     if (!text) return { className: '', style: {} };
@@ -51,6 +54,10 @@ const Practicals: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
     const [processingTrackers, setProcessingTrackers] = useState<Set<string>>(new Set());
+    const subjectsRef = useRef<Subject[]>([]);
+    const saveTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+    const saveChainsRef = useRef(new Map<string, Promise<void>>());
+    const saveVersionsRef = useRef(new Map<string, number>());
 
     usePageMeta({
         title: 'Practicals & Assignments | Semester',
@@ -61,6 +68,7 @@ const Practicals: React.FC = () => {
         try {
             setLoading(true);
             const data = await attendanceService.getFullSubjectsData(currentSemester);
+            subjectsRef.current = data;
             setSubjects(data);
         } catch (error) {
             console.error(error);
@@ -72,93 +80,83 @@ const Practicals: React.FC = () => {
 
     useEffect(() => { void loadData(); }, [loadData]);
 
-    const handleUpdate = async (id: string | undefined, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
+    const queueTrackerUpdate = (kind: TrackerKind, id: string | undefined, updates: TrackerUpdate) => {
         if (!id) {
             showToast('error', 'Subject identifier is missing');
             return;
         }
         const subjectId = String(id);
-        const processingKey = `${subjectId}:practicals`;
-        if (processingTrackers.has(processingKey)) return;
-        setProcessingTrackers(prev => new Set(prev).add(processingKey));
-        const previous = [...subjects];
-        setSubjects((prev: Subject[]) => prev.map(sub => {
+        const processingKey = `${subjectId}:${kind}`;
+        let nextTracker: TrackerUpdate | null = null;
+        const nextSubjects = subjectsRef.current.map(sub => {
             const subId = String(sub._id || sub.id || '');
             if (subId === subjectId) {
-                const current = sub.practicals || { total: 10, completed: 0, hardcopy: false };
+                const current = sub[kind] || (kind === 'practicals'
+                    ? { total: 10, completed: 0, hardcopy: false }
+                    : { total: 4, completed: 0, hardcopy: false });
+                nextTracker = {
+                    ...current,
+                    ...updates,
+                    total: updates.total ?? current.total,
+                    completed: updates.completed ?? current.completed,
+                    hardcopy: updates.hardcopy ?? current.hardcopy,
+                };
                 return {
-                    ...sub, practicals: {
-                        ...current, ...updates,
-                        total: updates.total ?? current.total,
-                        completed: updates.completed ?? current.completed,
-                        hardcopy: updates.hardcopy ?? current.hardcopy
-                    }
+                    ...sub,
+                    [kind]: nextTracker,
                 };
             }
             return sub;
-        }));
-        try {
-            const updated = await attendanceService.updatePracticals(subjectId, updates);
-            if (updated) {
-                setSubjects(prev => prev.map(subject => String(subject._id || subject.id || '') === subjectId ? updated : subject));
-            }
-            showToast('success', 'Records Updated');
-        } catch {
-            setSubjects(previous);
-            await loadData();
-            showToast('error', 'Update response was not confirmed. Latest records were reloaded.');
-        } finally {
+        });
+
+        if (!nextTracker) return;
+        subjectsRef.current = nextSubjects;
+        setSubjects(nextSubjects);
+
+        const nextVersion = (saveVersionsRef.current.get(processingKey) || 0) + 1;
+        saveVersionsRef.current.set(processingKey, nextVersion);
+        const existingTimer = saveTimersRef.current.get(processingKey);
+        if (existingTimer) clearTimeout(existingTimer);
+
+        const timer = setTimeout(() => {
+            saveTimersRef.current.delete(processingKey);
+            const payload = nextTracker!;
+            const previousSave = saveChainsRef.current.get(processingKey) || Promise.resolve();
             setProcessingTrackers(prev => {
                 const next = new Set(prev);
-                next.delete(processingKey);
+                next.add(processingKey);
                 return next;
             });
-        }
+
+            const save = previousSave.catch(() => undefined).then(async () => {
+                try {
+                    if (kind === 'practicals') {
+                        await attendanceService.updatePracticals(subjectId, payload);
+                    } else {
+                        await attendanceService.updateAssignments(subjectId, payload);
+                    }
+                } catch {
+                    if (saveVersionsRef.current.get(processingKey) === nextVersion) {
+                        showToast('error', 'Could not sync the latest counter. Reloading verified data.');
+                        await loadData();
+                    }
+                } finally {
+                    if (saveVersionsRef.current.get(processingKey) === nextVersion) {
+                        setProcessingTrackers(prev => {
+                            const next = new Set(prev);
+                            next.delete(processingKey);
+                            return next;
+                        });
+                    }
+                }
+            });
+            saveChainsRef.current.set(processingKey, save);
+        }, 220);
+        saveTimersRef.current.set(processingKey, timer);
     };
 
-    const handleAssignmentUpdate = async (id: string | undefined, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
-        if (!id) {
-            showToast('error', 'Subject identifier is missing');
-            return;
-        }
-        const subjectId = String(id);
-        const processingKey = `${subjectId}:assignments`;
-        if (processingTrackers.has(processingKey)) return;
-        setProcessingTrackers(prev => new Set(prev).add(processingKey));
-        const previous = [...subjects];
-        setSubjects((prev: Subject[]) => prev.map(sub => {
-            const subId = String(sub._id || sub.id || '');
-            if (subId === subjectId) {
-                const current = sub.assignments || { total: 4, completed: 0 };
-                return {
-                    ...sub, assignments: {
-                        ...current, ...updates,
-                        total: updates.total ?? current.total,
-                        completed: updates.completed ?? current.completed,
-                        hardcopy: updates.hardcopy ?? current.hardcopy
-                    }
-                };
-            }
-            return sub;
-        }));
-        try {
-            const updated = await attendanceService.updateAssignments(subjectId, updates);
-            if (updated) {
-                setSubjects(prev => prev.map(subject => String(subject._id || subject.id || '') === subjectId ? updated : subject));
-            }
-            showToast('success', 'Assignments Updated');
-        } catch {
-            setSubjects(previous);
-            await loadData();
-            showToast('error', 'Update response was not confirmed. Latest records were reloaded.');
-        } finally {
-            setProcessingTrackers(prev => {
-                const next = new Set(prev);
-                next.delete(processingKey);
-                return next;
-            });
-        }
-    };
+    const handleUpdate = (id: string | undefined, updates: TrackerUpdate) => queueTrackerUpdate('practicals', id, updates);
+    const handleAssignmentUpdate = (id: string | undefined, updates: TrackerUpdate) => queueTrackerUpdate('assignments', id, updates);
 
     const filteredSubjects = subjects.filter(sub => {
         const cats = sub.categories || (sub.category ? [sub.category] : ['Theory']);
@@ -248,18 +246,20 @@ const Practicals: React.FC = () => {
                                                 {hasPracticals && (
                                                     <div className="space-y-2">
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">Practicals Progress</span>
+                                                            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">
+                                                                Practicals Progress{practicalsBusy ? ' · Syncing' : ''}
+                                                            </span>
                                                             <span className="text-xs font-bold text-on-surface font-mono">{p.completed}/{p.total}</span>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button disabled={practicalsBusy || p.completed <= 0} onClick={() => handleUpdate(subject._id || subject.id, { completed: p.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={p.completed <= 0} onClick={() => handleUpdate(subject._id || subject.id, { completed: p.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer active:scale-95">
                                                                 <Minus size={11} />
                                                             </button>
-                                                            <button disabled={practicalsBusy || p.completed >= p.total} onClick={() => handleUpdate(subject._id || subject.id, { completed: p.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={p.completed >= p.total} onClick={() => handleUpdate(subject._id || subject.id, { completed: p.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer active:scale-95">
                                                                 <Plus size={11} />
                                                             </button>
                                                         </div>
-                                                        <button disabled={practicalsBusy} onClick={() => handleUpdate(subject._id || subject.id, { hardcopy: !p.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60 ${p.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
+                                                        <button onClick={() => handleUpdate(subject._id || subject.id, { hardcopy: !p.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] ${p.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
                                                             {p.hardcopy ? <><CheckCircle size={11} /> Submitted</> : <><Target size={11} /> Mark Submitted</>}
                                                         </button>
                                                     </div>
@@ -270,18 +270,20 @@ const Practicals: React.FC = () => {
                                                 {hasAssignments && (
                                                     <div className="space-y-2">
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">Assignments Progress</span>
+                                                            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">
+                                                                Assignments Progress{assignmentsBusy ? ' · Syncing' : ''}
+                                                            </span>
                                                             <span className="text-xs font-bold text-on-surface font-mono">{a.completed}/{a.total}</span>
                                                         </div>
                                                         <div className="flex gap-2">
-                                                            <button disabled={assignmentsBusy || a.completed <= 0} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { completed: a.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={a.completed <= 0} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { completed: a.completed - 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer active:scale-95">
                                                                 <Minus size={11} />
                                                             </button>
-                                                            <button disabled={assignmentsBusy || a.completed >= a.total} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { completed: a.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer">
+                                                            <button disabled={a.completed >= a.total} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { completed: a.completed + 1 })} className="flex-1 h-7 rounded-md bg-surface-container/50 border border-outline text-on-surface hover:bg-surface-container disabled:opacity-30 transition-all flex items-center justify-center cursor-pointer active:scale-95">
                                                                 <Plus size={11} />
                                                             </button>
                                                         </div>
-                                                        <button disabled={assignmentsBusy} onClick={() => handleAssignmentUpdate(subject._id || subject.id, { hardcopy: !a.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-wait disabled:opacity-60 ${a.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
+                                                        <button onClick={() => handleAssignmentUpdate(subject._id || subject.id, { hardcopy: !a.hardcopy })} className={`w-full py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] ${a.hardcopy ? 'bg-emerald-100 border border-emerald-300 text-emerald-700 dark:bg-emerald-500/20 dark:border-emerald-500/30 dark:text-emerald-400 font-bold' : 'bg-surface-container/30 border border-outline text-on-surface-variant/60 hover:border-outline-variant hover:text-on-surface hover:bg-surface-container'}`}>
                                                             {a.hardcopy ? <><CheckCircle size={11} /> Submitted</> : <><Target size={11} /> Mark Submitted</>}
                                                         </button>
                                                     </div>

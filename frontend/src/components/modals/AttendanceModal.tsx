@@ -372,30 +372,56 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             }));
             if (requestedClasses.some(subject => !subject.subject_id)) throw new Error('Scheduled class has no subject ID');
 
-            await attendanceService.markAllAttendance(requestedClasses, status, dateStr, currentSemester);
+            const result = await attendanceService.markAllAttendance(requestedClasses, status, dateStr, currentSemester);
+            if (result.marked_count !== requestedClasses.length) {
+                throw new Error('Bulk response count did not match the requested classes');
+            }
 
+            // The mutation response is authoritative. Apply it directly instead
+            // of immediately replacing the successful state with a possibly
+            // stale GET response from an older in-flight request.
+            const returnedLogs = Array.isArray(result.logs) ? result.logs : [];
+            const logsByIdentity = new Map(returnedLogs.map(log => [
+                `${String(log.subject_id)}::${String(log.type || 'Lecture')}`,
+                log,
+            ]));
+            setScheduledClasses(prev => prev.map(subject => {
+                const subjectId = String(subject?._id || subject?.id || subject?.subject_id || '');
+                const attendanceType = String(subject.attendance_type || subject.type || 'Lecture');
+                const log = logsByIdentity.get(`${subjectId}::${attendanceType}`);
+                return log ? {
+                    ...subject,
+                    marked: true,
+                    marked_status: status,
+                    log_id: String(log._id || log.id),
+                } : subject;
+            }));
+            if (returnedLogs.length > 0) {
+                setAttendanceLogs(returnedLogs);
+                setLoadedLogsDate(dateStr);
+                setLogsError(null);
+            }
+
+            const label = status === 'approved_medical' ? 'medical leave' : status;
+            showToast('success', `All scheduled classes marked ${label}`);
+            debouncedOnSuccess();
+        } catch (error: unknown) {
             const [refreshedLogs, refreshedClasses] = await Promise.all([
                 fetchAttendanceLogs(selectedDate),
                 loadClassesForDate(selectedDate, true),
             ]);
-            if (!refreshedLogs || !refreshedClasses) {
-                showToast('error', 'Bulk marking was sent, but the latest records could not be verified. Retry loading before making more changes.');
-            } else {
-                const refreshedBlocks = groupConsecutiveClasses(refreshedClasses).map(subject =>
-                    subject.isMerged ? subject.originalClasses[0] : subject
-                );
-                const mismatched = refreshedBlocks.filter(subject => subject.marked_status !== status).length;
+            const refreshedBlocks = refreshedClasses
+                ? groupConsecutiveClasses(refreshedClasses).map(subject => subject.isMerged ? subject.originalClasses[0] : subject)
+                : [];
+            const wasApplied = Boolean(refreshedLogs && refreshedBlocks.length > 0
+                && refreshedBlocks.every(subject => subject.marked_status === status));
+            if (wasApplied) {
                 const label = status === 'approved_medical' ? 'medical leave' : status;
-                if (mismatched === 0) {
-                    showToast('success', `All scheduled classes marked ${label}`);
-                } else {
-                    showToast('error', `${mismatched} of ${refreshedBlocks.length} classes are not marked ${label}. Verified records were reloaded.`);
-                }
+                showToast('success', `All scheduled classes marked ${label}`);
+                debouncedOnSuccess();
+            } else {
+                showToast('error', getApiErrorMessage(error, 'Failed to mark all classes'));
             }
-            debouncedOnSuccess();
-        } catch (error: unknown) {
-            await Promise.all([fetchAttendanceLogs(selectedDate), loadClassesForDate(selectedDate, true)]);
-            showToast('error', getApiErrorMessage(error, 'Failed to mark all classes'));
         } finally {
             setIsMarkingAll(false);
         }

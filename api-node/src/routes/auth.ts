@@ -361,14 +361,14 @@ router.get('/me', requireAuth, async (req: AuthRequest, res) => {
     setAccessCookie(res, authHeader.slice(7))
   }
   
-  // Lazy trigger background backup if Drive is enabled & scheduled
-  if (process.env.VERCEL) {
-    await triggerAutoBackupIfNeeded(req.userId!).catch(() => null)
-  } else {
-    void triggerAutoBackupIfNeeded(req.userId!).catch(() => null)
-  }
-
   ok(res, userResponse(req.user!))
+
+  // Backups are maintenance work, not part of authentication. Start the check
+  // only after the identity response has been sent so Drive can never delay
+  // the first protected render.
+  setTimeout(() => {
+    void triggerAutoBackupIfNeeded(req.userId!).catch(() => null)
+  }, 0)
 })
 
 router.post('/google/link-drive', requireAuth, async (req: AuthRequest, res) => {

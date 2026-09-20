@@ -10,6 +10,13 @@ import { getSlotType, scoreScheduleBySubjects } from '../api-node/src/utils/time
 import { AttendanceCalculator, GradeCalculator } from '../frontend/src/lib/calculationEngine.ts';
 import { formatLocalDate } from '../frontend/src/lib/date.ts';
 import { findSubjectForSlot, parseTimeToMinutes, sortTimetableSlots } from '../frontend/src/lib/timetable.ts';
+import {
+    buildViewCacheId,
+    clearUserViewCache,
+    getUserViewCacheGeneration,
+    readViewCache,
+    writeViewCache,
+} from '../api-node/src/utils/viewCache.ts';
 
 test('attendance statuses normalize legacy input safely', () => {
     assert.equal(normalizeAttendanceStatus(' Approved Medical '), 'approved_medical');
@@ -98,4 +105,20 @@ test('grade calculations remain credit weighted', () => {
 
 test('local dates are formatted without UTC conversion', () => {
     assert.equal(formatLocalDate(new Date(2026, 0, 5, 23, 59)), '2026-01-05');
+});
+
+test('stale in-flight reads cannot repopulate cache after an attendance mutation', async () => {
+    const userId = 'cache-race-user';
+    const cacheId = buildViewCacheId('attendance_logs', { date: '2026-09-20' });
+    await clearUserViewCache(userId);
+    const beforeMutation = getUserViewCacheGeneration(userId);
+
+    await clearUserViewCache(userId);
+    await writeViewCache(userId, cacheId, { logs: [] }, 60_000, beforeMutation);
+    assert.equal(await readViewCache(userId, cacheId), null);
+
+    const afterMutation = getUserViewCacheGeneration(userId);
+    await writeViewCache(userId, cacheId, { logs: [{ id: 'marked' }] }, 60_000, afterMutation);
+    assert.deepEqual(await readViewCache(userId, cacheId), { logs: [{ id: 'marked' }] });
+    await clearUserViewCache(userId);
 });

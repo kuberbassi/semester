@@ -6,7 +6,7 @@ import { ok, created, fail } from '../utils/response.js'
 import { getClientIp } from '../utils/ip.js'
 import { ATTENDED_ATTENDANCE_STATUSES, COUNTED_ATTENDANCE_STATUSES, isAttendedAttendanceStatus, isCountedAttendanceStatus } from '../utils/attendanceStatus.js'
 import { getSlotType, scoreScheduleBySubjects } from '../utils/timetableSlots.js'
-import { buildViewCacheId, clearUserViewCache, readViewCache, writeViewCache } from '../utils/viewCache.js'
+import { buildViewCacheId, clearUserViewCache, getUserViewCacheGeneration, readViewCache, writeViewCache } from '../utils/viewCache.js'
 import { unmarkAttendanceLogsAtomic } from '../utils/unmarkAttendance.js'
 import { markAllAttendanceAtomic } from '../utils/bulkAttendance.js'
 
@@ -234,7 +234,15 @@ router.post('/mark-all', async (req: AuthRequest, res) => {
       userAgent: (req.headers['user-agent'] as string) || null,
     })
     await clearUserViewCache(userId).catch(() => {})
-    created(res, result)
+    const logs = await prisma.attendanceLog.findMany({
+      where: {
+        user_id: userId,
+        date: body.date,
+        OR: [{ semester: body.semester }, { semester: null, subject: { semester: body.semester } }],
+      },
+      orderBy: { timestamp: 'asc' },
+    })
+    created(res, { ...result, logs: logs.map(log => ({ ...log, _id: log.id })) })
   } catch (err) {
     if (err instanceof z.ZodError) { fail(res, err.errors[0]?.message || 'Validation failed', 'VALIDATION_ERROR', 400); return }
     if (err && typeof err === 'object' && 'code' in err && err.code === 'BULK_DATE_NOT_EMPTY') {
@@ -285,6 +293,7 @@ router.get('/logs', async (req: AuthRequest, res) => {
     const query = LogsQuerySchema.parse(req.query)
     const { limit, page, subject_id, date, start_date, end_date, semester, status } = query
     const userId = req.userId!
+    const cacheGeneration = getUserViewCacheGeneration(userId)
     const cacheId = buildViewCacheId('attendance_logs', { limit, page, subject_id, date, start_date, end_date, semester, status })
     const cached = await readViewCache<any>(userId, cacheId)
     if (cached) { ok(res, cached, 200, 0); return }
@@ -328,7 +337,7 @@ router.get('/logs', async (req: AuthRequest, res) => {
 
     const payload = { logs: enriched, total, page, limit, pages: Math.ceil(total / limit) }
     ok(res, payload, 200, 0)
-    void writeViewCache(userId, cacheId, payload, 60_000).catch(() => {})
+    void writeViewCache(userId, cacheId, payload, 60_000, cacheGeneration).catch(() => {})
   } catch (err) {
     if (err instanceof z.ZodError) { fail(res, err.errors[0]?.message || 'Validation failed', 'VALIDATION_ERROR', 400); return }
     console.error('[attendance/logs]', err)
@@ -347,6 +356,7 @@ router.get('/classes-for-date', async (req: AuthRequest, res) => {
   try {
     const query = ClassesQuerySchema.parse(req.query)
     const userId = req.userId!
+    const cacheGeneration = getUserViewCacheGeneration(userId)
     const date = query.date ?? today(req)
     const semester = query.semester ?? (req.user?.current_semester ?? 1)
     const cacheId = buildViewCacheId('classes_for_date', { date, semester })
@@ -477,7 +487,7 @@ router.get('/classes-for-date', async (req: AuthRequest, res) => {
       total_marked: logsForDate.length,
     }
     ok(res, payload, 200, 0)
-    void writeViewCache(userId, cacheId, payload, 60_000).catch(() => {})
+    void writeViewCache(userId, cacheId, payload, 60_000, cacheGeneration).catch(() => {})
   } catch (err) {
     console.error('[attendance/classes-for-date]', err)
     fail(res, 'Failed to fetch classes for date', 'FETCH_FAILED', 500)
@@ -610,6 +620,7 @@ router.get('/calendar_data', async (req: AuthRequest, res) => {
     const query = CalendarQuerySchema.parse(req.query)
     const { month, start, end, semester } = query
     const userId = req.userId!
+    const cacheGeneration = getUserViewCacheGeneration(userId)
 
     let startDate: string, endDate: string
     if (start && end) {
@@ -663,7 +674,7 @@ router.get('/calendar_data', async (req: AuthRequest, res) => {
 
     const payload = { calendar, start_date: startDate, end_date: endDate, total_logs: logs.length }
     ok(res, payload, 200, 0)
-    void writeViewCache(userId, cacheId, payload, 120_000).catch(() => {})
+    void writeViewCache(userId, cacheId, payload, 120_000, cacheGeneration).catch(() => {})
   } catch (err) {
     if (err instanceof z.ZodError) { fail(res, err.errors[0]?.message || 'Validation failed', 'VALIDATION_ERROR', 400); return }
     console.error('[attendance/calendar_data]', err)

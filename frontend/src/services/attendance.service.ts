@@ -141,7 +141,10 @@ export const attendanceService = {
             const cached = getAnyCached<DashboardData>(cacheKey);
             if (cached) return cached;
         }
-        const response = await api.get(`/api/dashboard/data?semester=${semester}${refresh ? '&refresh=1' : ''}`);
+        // `refresh` bypasses only the browser cache. Server-side invalidation is
+        // handled by write routes, so normal reloads can still use its brief
+        // per-user view cache instead of forcing fresh database queries.
+        const response = await api.get(`/api/dashboard/data?semester=${semester}`);
         const data = response.data.data;
         setAnyCached(cacheKey, data, 15_000, 24 * 60 * 60 * 1000); // 15s memory cache, 24h localStorage persistence
         return data;
@@ -203,7 +206,7 @@ export const attendanceService = {
         status: 'present' | 'absent' | 'approved_medical' | 'cancelled',
         date: string,
         semester: number
-    ): Promise<{ marked_count: number; activity_id: string }> => {
+    ): Promise<{ marked_count: number; activity_id: string; logs: AttendanceRecord[] }> => {
         const response = await api.post('/api/attendance/mark-all', { classes, status, date, semester });
         clearDerivedCaches();
         return response.data.data;

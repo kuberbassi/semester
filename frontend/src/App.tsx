@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './queryClient';
@@ -9,10 +9,12 @@ import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/auth-context';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SemesterProvider } from './contexts/SemesterContext';
+import { useSemester } from './contexts/semester-context';
 import { ToastProvider } from './components/ui/Toast';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import { attendanceService } from './services/attendance.service';
 import './index.css';
 
 // Hooks
@@ -27,9 +29,11 @@ import PageTransition from './components/ui/PageTransition';
 // This prevents dashboard-only editors, charts and PDF tools from delaying the
 // public page's first render.
 import Landing from './pages/Landing';
-const AppLayout = lazy(() => import('./components/layout/AppLayout'));
+const loadAppLayout = () => import('./components/layout/AppLayout');
+const loadDashboard = () => import('./pages/Dashboard');
+const AppLayout = lazy(loadAppLayout);
 const Login = lazy(() => import('./pages/Login'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Dashboard = lazy(loadDashboard);
 const Settings = lazy(() => import('./pages/Settings'));
 const Calendar = lazy(() => import('./pages/Calendar'));
 const TimeTable = lazy(() => import('./pages/TimeTable'));
@@ -183,8 +187,28 @@ const KeyboardShortcutsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 // ── App Content ───────────────────────────────────────────────────────────────
 
 const AppContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const { currentSemester } = useSemester();
   useAutoUpdate();
   useHaptics();
+
+  useEffect(() => {
+    // A cached identity is set provisionally while /auth/me is in flight.
+    // Start downloading the signed-in shell and most likely destination now,
+    // so session verification, code loading and the server cold start overlap.
+    if (isAuthenticated) {
+      void loadAppLayout();
+      if (window.location.pathname === '/dashboard') {
+        void loadDashboard();
+        void queryClient.prefetchQuery({
+          queryKey: ['dashboard', currentSemester],
+          queryFn: () => attendanceService.getDashboardData(currentSemester, true),
+          staleTime: 60 * 1000,
+        });
+        void attendanceService.getTimetable(currentSemester).catch(() => undefined);
+      }
+    }
+  }, [currentSemester, isAuthenticated]);
 
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">

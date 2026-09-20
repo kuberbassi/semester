@@ -138,7 +138,10 @@ api.interceptors.response.use(
 
         if (!config?._skipRetry && shouldRetry(error)) {
             config._retry = (config._retry || 0) + 1;
-            const maxRetries = 3;
+            // React Query owns retries for query-backed screens. Keep one
+            // transport retry for direct service calls without multiplying a
+            // failure into long 1s + 2s + 4s waits at both layers.
+            const maxRetries = 1;
             if (config._retry <= maxRetries) {
                 // Exponential backoff: 1s, 2s, 4s...
                 const delay = Math.pow(2, config._retry - 1) * 1000 + Math.random() * 500;
