@@ -4,7 +4,7 @@ import { prisma } from '../config/prisma.js'
 import { ENV } from '../config/env.js'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { ok, fail } from '../utils/response.js'
-import { AttendanceCalculator, calculateAttendanceExcludingMedical, calculateAttendanceWithMedicalAsAbsent } from '../lib/calculations.js'
+import { AttendanceCalculator } from '../lib/calculations.js'
 import { callLLM, ChatMessage } from '../utils/llm.js'
 import { normalizeLegacyPrismaInstant } from '../utils/timestamps.js'
 
@@ -43,17 +43,25 @@ async function buildFullContext(req: AuthRequest, selectedSemester?: number): Pr
         ],
     }
 
-    const [subjects, recentLogs, todayAttendanceLogs, medicalLeaveCount, allTimetables, courses, prefs, backups, systemLogs] = await Promise.all([
+    const medicalAttendanceFilter = {
+        ...attendanceSemesterFilter,
+        status: { in: ['medical' as const, 'approved_medical' as const] },
+    }
+    const [subjects, recentLogs, todayAttendanceLogs, medicalLeaveCount, medicalLeaveGroups, allTimetables, courses, prefs, backups, systemLogs] = await Promise.all([
         prisma.subject.findMany({ where: { user_id: userId, semester: activeSem } }),
         prisma.attendanceLog.findMany({ where: { user_id: userId, ...attendanceSemesterFilter }, orderBy: [{ date: 'desc' }, { timestamp: 'desc' }], take: 30 }),
         prisma.attendanceLog.findMany({ where: { user_id: userId, date: today, ...attendanceSemesterFilter }, orderBy: { timestamp: 'asc' } }),
-        prisma.attendanceLog.count({ where: { user_id: userId, ...attendanceSemesterFilter, status: { in: ['medical', 'approved_medical'] } } }),
+        prisma.attendanceLog.count({ where: { user_id: userId, ...medicalAttendanceFilter } }),
+        prisma.attendanceLog.groupBy({ where: { user_id: userId, ...medicalAttendanceFilter }, by: ['subject_id'], _count: { _all: true } }),
         prisma.timetable.findMany({ where: { user_id: userId } }),
         prisma.manualCourse.findMany({ where: { user_id: userId } }),
         prisma.userPreference.findUnique({ where: { user_id: userId } }),
         prisma.userBackup.findMany({ where: { user_id: userId }, orderBy: { created_at: 'desc' } }),
         prisma.systemLog.findMany({ where: { user_id: userId }, orderBy: { timestamp: 'desc' }, take: 20 })
     ])
+    const medicalLeaveCountBySubject = new Map(
+        medicalLeaveGroups.map(group => [group.subject_id, group._count._all]),
+    )
 
     const resolvedTimetable = allTimetables.find(t => t.semester === activeSem)
 
@@ -109,8 +117,11 @@ async function buildFullContext(req: AuthRequest, selectedSemester?: number): Pr
         let assignmentSubjectCount = 0
 
         for (const sub of subjects) {
-            const attended = sub.attended ?? 0
-            const total = sub.total ?? 0
+            const rawAttended = sub.attended ?? 0
+            const rawTotal = sub.total ?? 0
+            const medicalLeaveCountForSubject = medicalLeaveCountBySubject.get(sub.id) ?? 0
+            const attended = Math.max(0, rawAttended - medicalLeaveCountForSubject)
+            const total = Math.max(0, rawTotal - medicalLeaveCountForSubject)
             const pct = AttendanceCalculator.calculatePercentage(attended, total)
             const target = sub.target ?? user?.attendance_threshold ?? 75
             
@@ -141,22 +152,26 @@ async function buildFullContext(req: AuthRequest, selectedSemester?: number): Pr
             lines.push(`  - ${sub.name} (Code: ${sub.code || 'N/A'}, Semester: ${sub.semester} - Selected): Current: ${pct}% (${attended}/${total}) | Target: ${target}% | Bunk Status: ${bg.status_message}${trackerInfo}`)
         }
         
-        const summary = AttendanceCalculator.getAttendanceSummary(subjects, user?.attendance_threshold ?? 75, user?.warning_threshold ?? 76)
-        const adjustedOverallAttendance = calculateAttendanceExcludingMedical(
-            summary.total_attended,
-            summary.total_classes,
-            medicalLeaveCount,
+        const summary = AttendanceCalculator.getAttendanceSummary(
+            subjects.map(sub => {
+                const medicalCount = medicalLeaveCountBySubject.get(sub.id) ?? 0
+                return {
+                    attended: Math.max(0, (sub.attended ?? 0) - medicalCount),
+                    total: Math.max(0, (sub.total ?? 0) - medicalCount),
+                }
+            }),
+            user?.attendance_threshold ?? 75,
+            user?.warning_threshold ?? 76,
         )
-        const attendanceWithMedicalAsAbsent = calculateAttendanceWithMedicalAsAbsent(
+        const attendanceWithMedicalAsAbsent = AttendanceCalculator.calculatePercentage(
             summary.total_attended,
-            summary.total_classes,
-            medicalLeaveCount,
+            summary.total_classes + medicalLeaveCount,
         )
         
         lines.push('')
         lines.push('## Analytics KPIs')
-        lines.push(`Official Overall Attendance (medical leaves excluded): ${Math.max(0, summary.total_attended - medicalLeaveCount)}/${Math.max(0, summary.total_classes - medicalLeaveCount)} = ${adjustedOverallAttendance}% (${medicalLeaveCount} medical leave${medicalLeaveCount === 1 ? '' : 's'} excluded)`)
-        lines.push(`Attendance With Medical Leaves Counted As Absent: ${Math.max(0, summary.total_attended - medicalLeaveCount)}/${summary.total_classes} = ${attendanceWithMedicalAsAbsent}%`)
+        lines.push(`Official Overall Attendance (medical leaves excluded): ${summary.total_attended}/${summary.total_classes} = ${summary.overall_percentage}% (${medicalLeaveCount} medical leave${medicalLeaveCount === 1 ? '' : 's'} excluded)`)
+        lines.push(`Attendance With Medical Leaves Counted As Absent: ${summary.total_attended}/${summary.total_classes + medicalLeaveCount} = ${attendanceWithMedicalAsAbsent}%`)
         lines.push(`Overall Attendance Status: ${summary.risk_level}`)
         lines.push(`Safe Bunks Remaining (Overall): ${summary.safe_bunks_remaining}`)
         lines.push(`Total Practical Items Tracked: ${completedPracticals}/${totalPracticals} Completed`)

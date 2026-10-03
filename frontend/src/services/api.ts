@@ -15,6 +15,14 @@ interface ApiErrorBody {
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const AUTH_FAILURE_CODES = new Set([
+    'TOKEN_EXPIRED',
+    'TOKEN_INVALID',
+    'REFRESH_MISSING',
+    'REFRESH_INVALID',
+    'REFRESH_EXPIRED',
+    'UNAUTHORIZED',
+]);
 let refreshPromise: Promise<unknown> | null = null;
 
 const shouldHandleAsAuthExpiry = (requestUrl: string, error: AxiosError<ApiErrorBody>): boolean => {
@@ -25,7 +33,12 @@ const shouldHandleAsAuthExpiry = (requestUrl: string, error: AxiosError<ApiError
         return false;
     }
 
-    return true;
+    if (error.response?.status !== 401) return false;
+
+    // Only refresh/clear the local session for responses that identify an
+    // authentication failure. Other endpoints may use 401 for their own rules.
+    return AUTH_FAILURE_CODES.has(responseCode)
+        || /^Unauthorized(?::|$)/i.test(String(error.response?.data?.error || ''));
 };
 
 const readCookie = (name: string): string | null => {
@@ -104,7 +117,9 @@ api.interceptors.response.use(
                 } catch (refreshError: unknown) {
                     const status = axios.isAxiosError<ApiErrorBody>(refreshError) ? refreshError.response?.status : undefined;
                     const code = axios.isAxiosError<ApiErrorBody>(refreshError) ? refreshError.response?.data?.code : undefined;
-                    const isSessionInvalid = status === 401 || status === 403 || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED';
+                    const isSessionInvalid = status === 401 && (
+                        code === 'REFRESH_MISSING' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED'
+                    );
                     
                     if (isSessionInvalid) {
                         localStorage.removeItem('user');
@@ -118,8 +133,7 @@ api.interceptors.response.use(
 
             if (shouldRefreshAuth) {
                 const status = error.response?.status;
-                const code = error.response?.data?.code;
-                const isSessionInvalid = status === 401 || status === 403 || code === 'TOKEN_EXPIRED' || code === 'TOKEN_INVALID' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED';
+                const isSessionInvalid = status === 401 && shouldRefreshAuth;
                 
                 if (isSessionInvalid) {
                     localStorage.removeItem('user');

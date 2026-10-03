@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../config/prisma.js'
+import { AttendanceCalculator, calculateAttendanceExcludingMedical } from '../lib/calculations.js'
 import { ok, created, fail } from '../utils/response.js'
 import { getClientIp } from '../utils/ip.js'
 import { ATTENDED_ATTENDANCE_STATUSES, COUNTED_ATTENDANCE_STATUSES, isAttendedAttendanceStatus, isCountedAttendanceStatus } from '../utils/attendanceStatus.js'
@@ -661,12 +662,14 @@ router.get('/calendar_data', async (req: AuthRequest, res) => {
       byDate[log.date].push(log)
     }
     for (const [d, dlogs] of Object.entries(byDate)) {
-      const total = dlogs.filter((l: any) => COUNTED_ATTENDANCE_STATUSES.includes(l.status as any)).length
-      const attended = dlogs.filter((l: any) => ATTENDED_ATTENDANCE_STATUSES.includes(l.status as any)).length
+      const medicalLeaveCount = dlogs.filter((l: any) => l.status === 'medical' || l.status === 'approved_medical').length
+      const total = Math.max(0, dlogs.filter((l: any) => COUNTED_ATTENDANCE_STATUSES.includes(l.status as any)).length - medicalLeaveCount)
+      const attended = Math.max(0, dlogs.filter((l: any) => ATTENDED_ATTENDANCE_STATUSES.includes(l.status as any)).length - medicalLeaveCount)
       calendar[d] = {
         logs: dlogs,
         total,
         attended,
+        medical_leave_count: medicalLeaveCount,
         percentage: total > 0 ? Math.round((attended / total) * 1000) / 10 : null,
         statuses: [...new Set(dlogs.map((l: any) => l.status))],
       }
@@ -694,7 +697,17 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
     const userId = req.userId!
     const semester = query.semester
 
-    const [subjects, recentLogs] = await Promise.all([
+    const medicalAttendanceFilter = {
+      user_id: userId,
+      status: { in: ['medical' as const, 'approved_medical' as const] },
+      ...(semester !== undefined ? {
+        OR: [
+          { semester },
+          { semester: null, subject: { is: { semester } } },
+        ],
+      } : {}),
+    }
+    const [subjects, recentLogs, medicalLeaveGroups] = await Promise.all([
       prisma.subject.findMany({
         where: { user_id: userId, ...(semester !== undefined ? { semester } : {}) },
         orderBy: { name: 'asc' },
@@ -704,15 +717,34 @@ router.get('/dashboard', async (req: AuthRequest, res) => {
         orderBy: [{ date: 'desc' }, { timestamp: 'desc' }],
         take: 30,
       }),
+      prisma.attendanceLog.groupBy({
+        by: ['subject_id'],
+        where: medicalAttendanceFilter,
+        _count: { _all: true },
+      }),
     ])
+    const medicalLeaveCountBySubject = new Map(
+      medicalLeaveGroups.map(group => [group.subject_id, group._count._all]),
+    )
 
-    const totalAttended = subjects.reduce((s: number, x: any) => s + x.attended, 0)
-    const totalClasses = subjects.reduce((s: number, x: any) => s + x.total, 0)
-    const overallAttendance = totalClasses > 0 ? Math.round((totalAttended / totalClasses) * 1000) / 10 : 0
+    const medicalLeaveCount = [...medicalLeaveCountBySubject.values()].reduce((sum, count) => sum + count, 0)
+    const totalAttended = subjects.reduce((sum: number, subject: any) => sum + (subject.attended ?? 0), 0)
+    const totalClasses = subjects.reduce((sum: number, subject: any) => sum + (subject.total ?? 0), 0)
+    const overallAttendance = calculateAttendanceExcludingMedical(totalAttended, totalClasses, medicalLeaveCount)
 
     ok(res, {
       overall_attendance: overallAttendance,
-      subjects: subjects.map((s: any) => ({ ...s, _id: s.id })),
+      subjects: subjects.map((subject: any) => {
+        const subjectMedicalCount = medicalLeaveCountBySubject.get(subject.id) ?? 0
+        const attended = Math.max(0, subject.attended - subjectMedicalCount)
+        const total = Math.max(0, subject.total - subjectMedicalCount)
+        return {
+          ...subject,
+          _id: subject.id,
+          medical_leave_count: subjectMedicalCount,
+          attendance_percentage: AttendanceCalculator.calculatePercentage(attended, total),
+        }
+      }),
       recent_logs: recentLogs.map((l: any) => ({ ...l, _id: l.id })),
       total_subjects: subjects.length,
       current_semester: req.user?.current_semester ?? 1,

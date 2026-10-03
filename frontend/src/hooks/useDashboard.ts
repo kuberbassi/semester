@@ -55,7 +55,10 @@ export const useMarkAttendance = () => {
                         if (sub._id === subjectId) {
                             const newAttended = status === 'present' ? (sub.attended || 0) + 1 : (sub.attended || 0);
                             const newTotal = (sub.total || 0) + 1;
-                            const newPercentage = newTotal > 0 ? (newAttended / newTotal) * 100 : 0;
+                            const medicalLeaveCount = sub.medical_leave_count ?? 0;
+                            const adjustedAttended = Math.max(0, newAttended - medicalLeaveCount);
+                            const adjustedTotal = Math.max(0, newTotal - medicalLeaveCount);
+                            const newPercentage = adjustedTotal > 0 ? (adjustedAttended / adjustedTotal) * 100 : 0;
                             const target = sub.target || (queryClient.getQueryData<User>(['user'])?.attendance_threshold || 75);
                             const newStatusMsg = newPercentage < target ? "Low Attendance" : "On Track";
 
@@ -87,7 +90,9 @@ export const useMarkAttendance = () => {
                         : 0;
 
                     const targetThreshold = queryClient.getQueryData<User>(['user'])?.attendance_threshold || 75;
-                    const newSafeBunks = totalClasses > 0 ? Math.max(0, Math.floor((totalAtt * 100 - targetThreshold * totalClasses) / targetThreshold)) : 0;
+                    const newSafeBunks = adjustedTotal > 0
+                        ? Math.max(0, Math.floor((adjustedAttended * 100 - targetThreshold * adjustedTotal) / targetThreshold))
+                        : 0;
 
                     return {
                         ...old,
@@ -97,8 +102,8 @@ export const useMarkAttendance = () => {
                         summary: {
                             ...(old.summary || {}),
                             overall_percentage: newOverall,
-                            total_attended: totalAtt,
-                            total_classes: totalClasses,
+                            total_attended: adjustedAttended,
+                            total_classes: adjustedTotal,
                             safe_bunks_remaining: newSafeBunks
                         }
                     };

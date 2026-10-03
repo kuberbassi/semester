@@ -93,6 +93,7 @@ export interface Subject {
     syllabus?: string;
     attended?: number; // legacy support
     total?: number;    // legacy support
+    medical_leave_count?: number;
     attendance_percentage?: number; // chart/dashboard support
     target?: number;
     status_message?: string;

@@ -133,14 +133,29 @@ compatHandlers.get('/all_semesters_overview', requireAuth, async (req: AuthReque
       const subjects = await prisma.subject.findMany({ where: { user_id: userId, semester: sem } })
       if (!subjects.length) continue
 
-      const totalAttended = subjects.reduce((sum: number, sub: any) => sum + (sub.attended ?? 0), 0)
-      const totalClasses = subjects.reduce((sum: number, sub: any) => sum + (sub.total ?? 0), 0)
+      const medicalLeaveGroups = await prisma.attendanceLog.groupBy({
+        by: ['subject_id'],
+        where: {
+          user_id: userId,
+          status: { in: ['medical', 'approved_medical'] },
+          OR: [
+            { semester: sem },
+            { semester: null, subject: { is: { semester: sem } } },
+          ],
+        },
+        _count: { _all: true },
+      })
+      const medicalLeaveCountBySubject = new Map(medicalLeaveGroups.map(group => [group.subject_id, group._count._all]))
+      const medicalLeaveCount = [...medicalLeaveCountBySubject.values()].reduce((sum, count) => sum + count, 0)
+      const totalAttended = subjects.reduce((sum: number, sub: any) => sum + Math.max(0, (sub.attended ?? 0) - (medicalLeaveCountBySubject.get(sub.id) ?? 0)), 0)
+      const totalClasses = subjects.reduce((sum: number, sub: any) => sum + Math.max(0, (sub.total ?? 0) - (medicalLeaveCountBySubject.get(sub.id) ?? 0)), 0)
 
       semesters.push({
         semester: sem,
         total_subjects: subjects.length,
         total_attended: totalAttended,
         total_classes: totalClasses,
+        medical_leave_count: medicalLeaveCount,
         attendance_percentage: totalClasses > 0 ? Math.round((totalAttended / totalClasses) * 1000) / 10 : 0,
       })
     }

@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../config/prisma.js'
-import { AttendanceCalculator, calculateAttendanceExcludingMedical, calculateAttendanceWithMedicalAsAbsent, GradeCalculator } from '../lib/calculations.js'
+import { AttendanceCalculator, GradeCalculator } from '../lib/calculations.js'
 import { ok, fail } from '../utils/response.js'
-import { isAttendedAttendanceStatus } from '../utils/attendanceStatus.js'
+import { isAttendedAttendanceStatus, isCountedAttendanceStatus } from '../utils/attendanceStatus.js'
 import { buildViewCacheId, clearUserViewCache, readViewCache, writeViewCache } from '../utils/viewCache.js'
 
 const router = Router()
@@ -26,7 +26,15 @@ router.get('/data', async (req: AuthRequest, res) => {
       }
     }
 
-    const [subjects, recentLogs, medicalLeaveCount] = await Promise.all([
+    const medicalAttendanceFilter = {
+      user_id: userId,
+      status: { in: ['medical' as const, 'approved_medical' as const] },
+      OR: [
+        { semester },
+        { semester: null, subject: { is: { semester } } },
+      ],
+    }
+    const [subjects, recentLogs, medicalLeaveCount, medicalLeaveGroups] = await Promise.all([
       prisma.subject.findMany({
         where: { user_id: userId, semester },
         orderBy: { name: 'asc' },
@@ -36,45 +44,52 @@ router.get('/data', async (req: AuthRequest, res) => {
         orderBy: [{ date: 'desc' }, { timestamp: 'desc' }],
         take: 30,
       }),
-      prisma.attendanceLog.count({
-        where: {
-          user_id: userId,
-          status: { in: ['medical', 'approved_medical'] },
-          OR: [
-            { semester },
-            { semester: null, subject: { is: { semester } } },
-          ],
-        },
+      prisma.attendanceLog.count({ where: medicalAttendanceFilter }),
+      prisma.attendanceLog.groupBy({
+        by: ['subject_id'],
+        where: medicalAttendanceFilter,
+        _count: { _all: true },
       }),
     ])
+    const medicalLeaveCountBySubject = new Map(
+      medicalLeaveGroups.map(group => [group.subject_id, group._count._all]),
+    )
     const resultRows: any[] = []
-    const summary = AttendanceCalculator.getAttendanceSummary(subjects, req.user?.attendance_threshold, req.user?.warning_threshold)
 
     const enriched = subjects.map((sub: any) => {
-      const pct = AttendanceCalculator.calculatePercentage(sub.attended, sub.total)
-      const guard = AttendanceCalculator.calculateBunkGuard(sub.attended, sub.total, sub.target ?? 75)
+      const subjectMedicalLeaveCount = medicalLeaveCountBySubject.get(sub.id) ?? 0
+      const adjustedAttended = Math.max(0, sub.attended - subjectMedicalLeaveCount)
+      const adjustedTotal = Math.max(0, sub.total - subjectMedicalLeaveCount)
+      const pct = AttendanceCalculator.calculatePercentage(adjustedAttended, adjustedTotal)
+      const guard = AttendanceCalculator.calculateBunkGuard(adjustedAttended, adjustedTotal, sub.target ?? 75)
       return {
         ...sub,
         _id: sub.id,
+        medical_leave_count: subjectMedicalLeaveCount,
         attendance_percentage: pct,
         status_message: guard.status_message,
       }
     })
+    const summary = AttendanceCalculator.getAttendanceSummary(
+      subjects.map((sub: any) => {
+        const medicalCount = medicalLeaveCountBySubject.get(sub.id) ?? 0
+        return {
+          attended: Math.max(0, sub.attended - medicalCount),
+          total: Math.max(0, sub.total - medicalCount),
+        }
+      }),
+      req.user?.attendance_threshold,
+      req.user?.warning_threshold,
+    )
 
     const cgpaCalc = resultRows.length ? GradeCalculator.calculateCGPA(resultRows.map((row: any) => row.subjects as Array<Record<string, unknown>>)) : { cgpa: 0 }
-    const adjustedOverallAttendance = calculateAttendanceExcludingMedical(
+    const attendanceWithMedicalAsAbsent = AttendanceCalculator.calculatePercentage(
       summary.total_attended,
-      summary.total_classes,
-      medicalLeaveCount,
-    )
-    const attendanceWithMedicalAsAbsent = calculateAttendanceWithMedicalAsAbsent(
-      summary.total_attended,
-      summary.total_classes,
-      medicalLeaveCount,
+      summary.total_classes + medicalLeaveCount,
     )
 
     const payload = {
-      overall_attendance: adjustedOverallAttendance,
+      overall_attendance: summary.overall_percentage,
       attendance_without_medical: attendanceWithMedicalAsAbsent,
       medical_leave_count: medicalLeaveCount,
       total_subjects: subjects.length,
@@ -113,17 +128,39 @@ router.get('/reports_data', async (req: AuthRequest, res) => {
     }
     const userTarget = req.user?.attendance_threshold ?? 75
 
-    const [subjects, logs] = await Promise.all([
+    const medicalAttendanceFilter = {
+      user_id: userId,
+      status: { in: ['medical' as const, 'approved_medical' as const] },
+      OR: [
+        { semester },
+        { semester: null, subject: { is: { semester } } },
+      ],
+    }
+    const [subjects, logs, medicalLeaveGroups] = await Promise.all([
       prisma.subject.findMany({
         where: { user_id: userId, semester },
         select: { id: true, name: true, attended: true, total: true, target: true, semester: true },
       }),
       prisma.attendanceLog.findMany({
-        where: { user_id: userId, semester },
+        where: {
+          user_id: userId,
+          OR: [
+            { semester },
+            { semester: null, subject: { is: { semester } } },
+          ],
+        },
         select: { date: true, status: true, subject_name: true },
         orderBy: { date: 'desc' },
       }),
+      prisma.attendanceLog.groupBy({
+        by: ['subject_id'],
+        where: medicalAttendanceFilter,
+        _count: { _all: true },
+      }),
     ])
+    const medicalLeaveCountBySubject = new Map(
+      medicalLeaveGroups.map(group => [group.subject_id, group._count._all]),
+    )
     const resultRows: any[] = []
 
     let totalAbsences = 0
@@ -133,8 +170,11 @@ router.get('/reports_data', async (req: AuthRequest, res) => {
     let safeBunksRemaining = 0
 
     const processedSubjects = subjects.map((sub: any) => {
-      const attended = sub.attended ?? 0
-      const total = sub.total ?? 0
+      const rawAttended = sub.attended ?? 0
+      const rawTotal = sub.total ?? 0
+      const medicalLeaveCount = medicalLeaveCountBySubject.get(sub.id) ?? 0
+      const attended = Math.max(0, rawAttended - medicalLeaveCount)
+      const total = Math.max(0, rawTotal - medicalLeaveCount)
       const target = sub.target ?? userTarget
       const pct = total > 0 ? Math.round((attended / total) * 1000) / 10 : 0
       const missed = total - attended
@@ -144,7 +184,7 @@ router.get('/reports_data', async (req: AuthRequest, res) => {
       totalClasses += total
       safeBunksRemaining += Math.max(0, guard.count ?? 0)
       if (total > 0 && pct < target) atRiskCount++
-      return { ...sub, _id: sub.id, percentage: pct, target, safe_bunks_remaining: Math.max(0, guard.count ?? 0) }
+      return { ...sub, _id: sub.id, attended, total, medical_leave_count: medicalLeaveCount, percentage: pct, target, safe_bunks_remaining: Math.max(0, guard.count ?? 0) }
     })
 
     const overallPct = totalClasses > 0 ? Math.round((totalAttended / totalClasses) * 1000) / 10 : 0
@@ -163,16 +203,18 @@ router.get('/reports_data', async (req: AuthRequest, res) => {
     // Calculate attendance streak — only counts consecutive weekdays (Mon-Fri)
     let streak = 0
     const dateSet = new Set<string>()
-    const recentDailyPct = new Map<string, { attended: number; total: number }>()
+    const recentDailyPct = new Map<string, { attended: number; total: number; medical: number }>()
     for (const log of logs) {
-      if (isAttendedAttendanceStatus(log.status)) {
+      const isMedicalLeave = log.status === 'medical' || log.status === 'approved_medical'
+      if (!isMedicalLeave && isAttendedAttendanceStatus(log.status)) {
         // Only count weekday attendance dates for streak
         const day = new Date(log.date + 'T00:00:00').getDay()
         if (day !== 0 && day !== 6) dateSet.add(log.date)
       }
-      const bucket = recentDailyPct.get(log.date) ?? { attended: 0, total: 0 }
-      bucket.total += 1
-      if (isAttendedAttendanceStatus(log.status)) bucket.attended += 1
+      const bucket = recentDailyPct.get(log.date) ?? { attended: 0, total: 0, medical: 0 }
+      if (isCountedAttendanceStatus(log.status)) bucket.total += 1
+      if (isMedicalLeave) bucket.medical += 1
+      else if (isAttendedAttendanceStatus(log.status)) bucket.attended += 1
       recentDailyPct.set(log.date, bucket)
     }
     // Latest 10 dates (most recent first)
@@ -184,7 +226,8 @@ router.get('/reports_data', async (req: AuthRequest, res) => {
       if (!dates.length) return 0
       const sum = dates.reduce((acc, d) => {
         const val = recentDailyPct.get(d)!
-        return acc + (val.attended / val.total) * 100
+        const eligibleTotal = Math.max(0, val.total - val.medical)
+        return acc + (eligibleTotal > 0 ? (val.attended / eligibleTotal) * 100 : 0)
       }, 0)
       return sum / dates.length
     }
@@ -293,14 +336,16 @@ router.get('/analytics/day-of-week', async (req: AuthRequest, res) => {
       select: { date: true, status: true },
     })
 
-    const dayCounts: Record<number, { present: number; absent: number }> = {}
+    const dayCounts: Record<number, { present: number; absent: number; medical: number }> = {}
 
     for (const log of logs) {
       const dt = new Date(log.date + 'T00:00:00')
       const dayIdx = dt.getDay() + 1 // 1=Sun, 2=Mon, ..., 7=Sat
 
-      if (!dayCounts[dayIdx]) dayCounts[dayIdx] = { present: 0, absent: 0 }
-      if (isAttendedAttendanceStatus(log.status)) {
+      if (!dayCounts[dayIdx]) dayCounts[dayIdx] = { present: 0, absent: 0, medical: 0 }
+      if (log.status === 'medical' || log.status === 'approved_medical') {
+        dayCounts[dayIdx].medical++
+      } else if (isAttendedAttendanceStatus(log.status)) {
         dayCounts[dayIdx].present++
       } else if (log.status === 'absent') {
         dayCounts[dayIdx].absent++
@@ -312,12 +357,13 @@ router.get('/analytics/day-of-week', async (req: AuthRequest, res) => {
     }
     // Only Mon-Fri (indices 2-6), Saturday and Sunday excluded
     const daysData = [2, 3, 4, 5, 6].map((d) => {
-      const counts = dayCounts[d] ?? { present: 0, absent: 0 }
+      const counts = dayCounts[d] ?? { present: 0, absent: 0, medical: 0 }
       const total = counts.present + counts.absent
       return {
         day: dayMapping[d],
         present: counts.present,
         total,
+        medical_leave_count: counts.medical,
         percentage: total > 0 ? Math.round((counts.present / total) * 1000) / 10 : 0,
       }
     })
@@ -341,18 +387,41 @@ router.get('/notifications', async (req: AuthRequest, res) => {
       ok(res, cached, 200, 0)
       return
     }
-    const subjects = await prisma.subject.findMany({
-      where: { user_id: userId, ...(semester ? { semester } : {}) },
-      select: { name: true, attended: true, total: true, target: true },
-    })
+    const [subjects, medicalLeaveGroups] = await Promise.all([
+      prisma.subject.findMany({
+        where: { user_id: userId, ...(semester ? { semester } : {}) },
+        select: { id: true, name: true, attended: true, total: true, target: true },
+      }),
+      prisma.attendanceLog.groupBy({
+        by: ['subject_id'],
+        where: {
+          user_id: userId,
+          status: { in: ['medical', 'approved_medical'] },
+          ...(semester ? {
+            OR: [
+              { semester },
+              { semester: null, subject: { is: { semester } } },
+            ],
+          } : {}),
+        },
+        _count: { _all: true },
+      }),
+    ])
+    const medicalLeaveCountBySubject = new Map(
+      medicalLeaveGroups.map(group => [group.subject_id, group._count._all]),
+    )
     const notifications: Array<Record<string, unknown>> = []
 
     const userWarningThreshold = req.user?.warning_threshold ?? 76
 
     for (const sub of subjects) {
       const target = sub.target ?? 75
-      const guard = AttendanceCalculator.calculateBunkGuard(sub.attended, sub.total, target)
-      const pct = sub.total > 0 ? Math.round((sub.attended / sub.total) * 1000) / 10 : 100
+      const medicalLeaveCount = medicalLeaveCountBySubject.get(sub.id) ?? 0
+      const attended = Math.max(0, sub.attended - medicalLeaveCount)
+      const total = Math.max(0, sub.total - medicalLeaveCount)
+      if (total === 0) continue
+      const guard = AttendanceCalculator.calculateBunkGuard(attended, total, target)
+      const pct = Math.round((attended / total) * 1000) / 10
 
       if (pct <= userWarningThreshold || (!guard.can_bunk && guard.count > 0)) {
         notifications.push({

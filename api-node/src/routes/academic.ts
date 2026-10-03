@@ -20,6 +20,27 @@ async function sysLog(req: AuthRequest, user_id: string, action: string, descrip
 
 type TrackerState = { total: number; completed: number; hardcopy: boolean }
 
+async function countSubjectMedicalLeaves(userId: string, subjectId: string): Promise<number> {
+    return prisma.attendanceLog.count({
+        where: { user_id: userId, subject_id: subjectId, status: { in: ['medical', 'approved_medical'] } },
+    })
+}
+
+async function groupMedicalLeavesBySubject(userId: string, semester: number) {
+    return prisma.attendanceLog.groupBy({
+        by: ['subject_id'],
+        where: {
+            user_id: userId,
+            status: { in: ['medical', 'approved_medical'] },
+            OR: [
+                { semester },
+                { semester: null, subject: { is: { semester } } },
+            ],
+        },
+        _count: { _all: true },
+    })
+}
+
 function trackerState(value: unknown, fallbackTotal: number): TrackerState {
     const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
     return {
@@ -88,14 +109,15 @@ router.get('/subjects', async (req: AuthRequest, res) => {
         const cacheId = buildViewCacheId('academic_subjects', { semester })
         const cached = await readViewCache<any>(userId, cacheId)
         if (cached) { ok(res, cached, 200, 0); return }
-        const subjects = await prisma.subject.findMany({
+        const [subjects, medicalLeaveGroups] = await Promise.all([prisma.subject.findMany({
             where: {
                 user_id: userId,
                 semester,
             },
             orderBy: { name: 'asc' },
-        })
-        const payload = subjects.map((s: any) => ({ ...s, _id: s.id }))
+        }), groupMedicalLeavesBySubject(userId, semester)])
+        const medicalLeaveCountBySubject = new Map(medicalLeaveGroups.map(group => [group.subject_id, group._count._all]))
+        const payload = subjects.map((s: any) => ({ ...s, _id: s.id, medical_leave_count: medicalLeaveCountBySubject.get(s.id) ?? 0 }))
         ok(res, payload, 200, 0)
         void writeViewCache(userId, cacheId, payload, 120_000).catch(() => {})
     } catch (err) {
@@ -113,17 +135,19 @@ router.get('/full_subjects_data', async (req: AuthRequest, res) => {
         const cacheId = buildViewCacheId('full_subjects_data', { semester })
         const cached = await readViewCache<any>(userId, cacheId)
         if (cached) { ok(res, cached, 200, 0); return }
-        const subjects = await prisma.subject.findMany({
+        const [subjects, medicalLeaveGroups] = await Promise.all([prisma.subject.findMany({
             where: {
                 user_id: userId,
                 semester,
             },
-        })
+        }), groupMedicalLeavesBySubject(userId, semester)])
+        const medicalLeaveCountBySubject = new Map(medicalLeaveGroups.map(group => [group.subject_id, group._count._all]))
         const enriched = subjects.map((sub: any) => {
-            const attended = sub.attended ?? 0
-            const total = sub.total ?? 0
+            const medicalLeaveCount = medicalLeaveCountBySubject.get(sub.id) ?? 0
+            const attended = Math.max(0, (sub.attended ?? 0) - medicalLeaveCount)
+            const total = Math.max(0, (sub.total ?? 0) - medicalLeaveCount)
             const pct = total > 0 ? Math.round((attended / total) * 1000) / 10 : 0
-            return { ...sub, _id: sub.id, percentage: pct, status_message: pct < 75 ? 'Low Attendance' : 'On Track' }
+            return { ...sub, _id: sub.id, medical_leave_count: medicalLeaveCount, percentage: pct, status_message: pct < 75 ? 'Low Attendance' : 'On Track' }
         })
         ok(res, enriched, 200, 0)
         void writeViewCache(userId, cacheId, enriched, 120_000).catch(() => {})
@@ -175,7 +199,8 @@ router.get('/subjects/:id', async (req: AuthRequest, res) => {
         const userId = req.userId!
         const subject = await prisma.subject.findFirst({ where: { id: subjectId, user_id: userId } })
         if (!subject) { fail(res, 'Subject not found', 'NOT_FOUND', 404); return }
-        ok(res, { _id: subject.id, ...subject })
+        const medicalLeaveCount = await countSubjectMedicalLeaves(userId, subjectId)
+        ok(res, { _id: subject.id, ...subject, medical_leave_count: medicalLeaveCount })
     } catch (err) {
         console.error('[academic/subjects/:id GET]', err)
         fail(res, 'Failed to fetch subject', 'FETCH_FAILED', 500)
@@ -195,6 +220,18 @@ async function handleUpdateSubject(req: AuthRequest, res: any) {
         const updateData: Record<string, unknown> = {}
         for (const k of allowedFields) {
             if (k in data) updateData[k] = (data as Record<string, unknown>)[k]
+        }
+        if (data.attended !== undefined || data.total !== undefined) {
+            const medicalLeaveCount = await countSubjectMedicalLeaves(userId, subjectId)
+            const total = data.total ?? existing.total
+            const physicalAttended = data.attended ?? Math.max(0, existing.attended - medicalLeaveCount)
+            if (total < medicalLeaveCount || physicalAttended > total - medicalLeaveCount) {
+                fail(res, 'Attended classes must not exceed total classes after medical leave is excluded', 'INVALID_ATTENDANCE_OVERRIDE', 400)
+                return
+            }
+            // The form accepts actual physical attendance; subject counters keep
+            // the historical raw representation so medical logs remain reversible.
+            if (data.attended !== undefined) updateData.attended = data.attended + medicalLeaveCount
         }
 
         // Handle practicals (JSON read-modify-write)
@@ -311,7 +348,12 @@ router.post('/subjects/:id/attendance-count', async (req: AuthRequest, res) => {
         const { attended, total } = AttendanceCountSchema.parse(req.body)
         const existing = await prisma.subject.findFirst({ where: { id: subjectId, user_id: userId } })
         if (!existing) { fail(res, 'Subject not found', 'NOT_FOUND', 404); return }
-        await prisma.subject.update({ where: { id: subjectId }, data: { attended, total } })
+        const medicalLeaveCount = await countSubjectMedicalLeaves(userId, subjectId)
+        if (total < medicalLeaveCount || attended > total - medicalLeaveCount) {
+            fail(res, 'Attended classes must not exceed total classes after medical leave is excluded', 'INVALID_ATTENDANCE_OVERRIDE', 400)
+            return
+        }
+        await prisma.subject.update({ where: { id: subjectId }, data: { attended: attended + medicalLeaveCount, total } })
         await clearUserViewCache(userId).catch(() => { })
         ok(res, { message: 'Attendance count updated' })
     } catch (err) {

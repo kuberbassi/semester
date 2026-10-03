@@ -125,16 +125,6 @@ export function calculateAttendanceExcludingMedical(
   return AttendanceCalculator.calculatePercentage(adjustedAttended, adjustedTotal)
 }
 
-/** Treat medical leave as missed attendance while keeping the conducted-class denominator. */
-export function calculateAttendanceWithMedicalAsAbsent(
-  attended: number,
-  total: number,
-  medicalLeaveCount: number,
-): number {
-  const physicalAttended = Math.max(0, attended - Math.max(0, medicalLeaveCount))
-  return AttendanceCalculator.calculatePercentage(physicalAttended, total)
-}
-
 // ─── GradeCalculator ─────────────────────────────────────────────────────────
 
 const IPU_GRADE_SCALE: Record<string, number> = {

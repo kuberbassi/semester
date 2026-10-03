@@ -165,9 +165,11 @@ async function issueAuthSession(req: any, res: any, userId: string, replaceOldHa
     }).catch(() => null)
   }
 
-  // 2. Clean up any existing sessions for this device ID to avoid bloating
+  // 2. Deduplicate sessions on an explicit login. During refresh, concurrent
+  // tabs/PWA contexts may each be rotating the same cookie; deleting another
+  // same-device session here can revoke the token returned by the other request.
   let duplicateSessions: Array<{ id: string }> = []
-  if (deviceId) {
+  if (deviceId && !replaceOldHash) {
     duplicateSessions = await sessionDb.findMany({
       where: {
         user_id: userId,

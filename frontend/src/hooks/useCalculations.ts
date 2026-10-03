@@ -41,8 +41,9 @@ export const useAttendanceCalculations = () => {
     setLoading(true)
     try {
       const results = subjects.map(subject => {
-        const attended = subject.attended || 0
-        const total = subject.total || 0
+        const medicalLeaveCount = Math.max(0, subject.medical_leave_count || 0)
+        const attended = Math.max(0, (subject.attended || 0) - medicalLeaveCount)
+        const total = Math.max(0, (subject.total || 0) - medicalLeaveCount)
 
         const percentage = AttendanceCalculator.calculatePercentage(attended, total)
         const { riskLevel, color } = AttendanceCalculator.getRiskLevel(percentage)
@@ -51,6 +52,8 @@ export const useAttendanceCalculations = () => {
 
         return {
           ...subject,
+          attended,
+          total,
           percentage: Math.round(percentage * 100) / 100,
           riskLevel,
           color,

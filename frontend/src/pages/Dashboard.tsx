@@ -24,6 +24,17 @@ type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLEle
 
 const normalizeId = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());
 
+const getMedicalAdjustedCounts = (subject: Subject) => {
+    const medicalLeaveCount = Math.max(0, subject.medical_leave_count || 0);
+    const attended = Math.max(0, (subject.attended || 0) - medicalLeaveCount);
+    return {
+        attended,
+        total: Math.max(0, (subject.total || 0) - medicalLeaveCount),
+        totalWithMedical: Math.max(0, subject.total || 0),
+        medicalLeaveCount,
+    };
+};
+
 const SubjectRow: React.FC<{
     subject: Subject;
     targetThreshold: number;
@@ -41,10 +52,12 @@ const SubjectRow: React.FC<{
     setEditingSubject,
     handleDeleteSubject,
 }) => {
-    const pct = subject.attendance_percentage || 0;
+    const { attended, total, totalWithMedical, medicalLeaveCount } = getMedicalAdjustedCounts(subject);
+    const pct = subject.attendance_percentage ?? (total > 0 ? (attended / total) * 100 : 0);
+    const withMedicalAsAbsentPct = totalWithMedical > 0 ? (attended / totalWithMedical) * 100 : 0;
     const isCritical = pct < targetThreshold;
-    const needed = classesNeeded(subject.attended || 0, subject.total || 0);
-    const canSkip = classesCanSkip(subject.attended || 0, subject.total || 0);
+    const needed = classesNeeded(attended, total);
+    const canSkip = classesCanSkip(attended, total);
     const subjectId = normalizeId(subject._id || subject.id);
     const longPressHandlers = useLongPress((event) => triggerBubbleMenu(subjectId, event), {
         threshold: 600,
@@ -76,10 +89,14 @@ const SubjectRow: React.FC<{
             <td className="px-6 py-3.5 text-on-surface-variant/50 font-medium text-xs">
                 <p className="truncate max-w-[150px] leading-tight">{formatTeacherName(subject.professor || '')}</p>
             </td>
-            <td className="px-6 py-3.5 text-center font-semibold text-on-surface text-xs">{subject.attended || 0} / {subject.total || 0}</td>
+            <td className="px-6 py-3.5 text-center font-semibold text-on-surface text-xs">
+                <div>{attended} / {total}</div>
+                {medicalLeaveCount > 0 && <div className="mt-1 text-[8px] font-medium text-on-surface-variant/50">medical counted absent: {attended} / {totalWithMedical}</div>}
+            </td>
             <td className="px-6 py-3.5 text-center">
                 <div className="flex flex-col items-center gap-1">
                     <span className={`font-bold text-xs ${isCritical ? 'text-red-500' : 'text-on-surface'}`}>{Math.round(pct)}%</span>
+                    {medicalLeaveCount > 0 && <span className="text-[8px] font-medium text-on-surface-variant/50">medical counted absent: {Math.round(withMedicalAsAbsentPct)}%</span>}
                     <div className="w-12 h-0.5 bg-on-surface/5 rounded-full overflow-hidden shrink-0">
                         <div className={`h-full ${isCritical ? 'bg-red-500' : 'bg-on-surface'}`} style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
@@ -220,17 +237,22 @@ const Dashboard: React.FC = () => {
         return Math.max(0, Math.floor((attended * 100 - targetThreshold * total) / targetThreshold));
     };
 
-    const medicalLeaveCount = dashboardData?.medical_leave_count ?? 0;
     const subjects = dashboardData?.subjects || [];
-    const totalClasses = subjects.reduce((a, c) => a + (c.total || 0), 0) || 0;
+    const attendanceTotals = subjects.reduce((totals, subject) => {
+        const medicalCount = Math.max(0, subject.medical_leave_count || 0);
+        totals.attended += Math.max(0, (subject.attended || 0) - medicalCount);
+        totals.eligibleClasses += Math.max(0, (subject.total || 0) - medicalCount);
+        totals.totalClasses += subject.total || 0;
+        totals.medicalLeaveCount += medicalCount;
+        return totals;
+    }, { attended: 0, eligibleClasses: 0, totalClasses: 0, medicalLeaveCount: 0 });
+    const { attended: physicalAttended, eligibleClasses, totalClasses, medicalLeaveCount } = attendanceTotals;
     const safeCount = subjects.filter(s => (s.attendance_percentage || 0) >= targetThreshold).length || 0;
     const riskCount = subjects.filter(s => (s.attendance_percentage || 0) < targetThreshold).length || 0;
     const subjectCount = dashboardData?.total_subjects || subjects.length || 0;
-    const totalAttended = subjects.reduce((sum, subject) => sum + (subject.attended || 0), 0);
-    const physicalAttended = Math.max(0, totalAttended - medicalLeaveCount);
-    const eligibleClasses = Math.max(0, totalClasses - medicalLeaveCount);
     const att = eligibleClasses > 0 ? (physicalAttended / eligibleClasses) * 100 : 0;
     const attendanceWithoutMedical = totalClasses > 0 ? (physicalAttended / totalClasses) * 100 : 0;
+    const physicalAttendanceProgress = Math.max(0, Math.min(100, attendanceWithoutMedical));
     const safeBunks = dashboardData?.summary?.safe_bunks_remaining ?? 0;
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
@@ -339,32 +361,42 @@ const Dashboard: React.FC = () => {
                     <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3 md:items-stretch">
                         
                         {/* Bento Card 1: Academic Health */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-5 sm:p-6 flex flex-col justify-between hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <div className="rounded-xl border border-outline/50 bg-surface p-4 sm:p-6 flex flex-col justify-between hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Overall Academic Health</span>
                                 <Activity size={13} className="text-on-surface-variant/40" />
                             </div>
                             
-                            <div className="flex flex-col justify-between gap-6 my-2">
+                            <div className="flex flex-col justify-between gap-5 my-2">
                                 <div>
                                     <p className="text-5xl md:text-6xl font-black tracking-tighter text-on-surface leading-none">{att.toFixed(1)}%</p>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40 mt-3">Overall Conducted Classes</p>
-                                    <div className="mt-3 inline-flex items-baseline gap-1.5 rounded-md border border-outline/50 bg-surface-container/50 px-2 py-1">
-                                        <span className="text-xs font-black text-on-surface">{attendanceWithoutMedical.toFixed(1)}%</span>
-                                        <span className="text-[8px] font-bold uppercase tracking-wider text-on-surface-variant/50">
-                                            Medical as absent{medicalLeaveCount > 0 ? ` · ${medicalLeaveCount}` : ''}
-                                        </span>
+                                    <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
+                                        <span>Medical excluded</span>
+                                        <span className="text-on-surface-variant/75">{physicalAttended} / {eligibleClasses}</span>
+                                    </div>
+                                    <div className="mt-3 rounded-lg border border-outline/40 bg-surface-container/40 px-3 py-2.5">
+                                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Medical counted absent</span>
+                                            <span className="text-sm font-black text-on-surface">{attendanceWithoutMedical.toFixed(1)}%</span>
+                                        </div>
+                                        <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant/45">{physicalAttended} / {totalClasses} classes · {medicalLeaveCount} medical leaves</p>
                                     </div>
                                 </div>
                                 
                                 <div className="w-full space-y-4">
                                     <div>
-                                        <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-2">
-                                            <span>Conduct Progress</span>
-                                            <span>{physicalAttended} / {totalClasses} classes</span>
+                                        <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">
+                                            <span>Physical attendance progress</span>
                                         </div>
-                                        <div className="w-full h-1 bg-on-surface/5 border border-outline/35 rounded-full overflow-hidden">
-                                            <div className="h-full bg-on-surface" style={{ width: `${Math.min(100, totalClasses > 0 ? (physicalAttended / totalClasses) * 100 : 0)}%` }} />
+                                        <div
+                                            role="progressbar"
+                                            aria-label="Physical attendance across all conducted classes"
+                                            aria-valuemin={0}
+                                            aria-valuemax={100}
+                                            aria-valuenow={Math.round(physicalAttendanceProgress)}
+                                            className="w-full h-1 bg-on-surface/5 border border-outline/35 rounded-full overflow-hidden"
+                                        >
+                                            <div className="h-full bg-on-surface" style={{ width: `${physicalAttendanceProgress}%` }} />
                                         </div>
                                     </div>
                                 </div>
@@ -575,7 +607,7 @@ const Dashboard: React.FC = () => {
                                                     <th className="px-6 py-3.5">Code</th>
                                                     <th className="px-6 py-3.5">Subject Name</th>
                                                     <th className="px-6 py-3.5">Professor</th>
-                                                    <th className="px-6 py-3.5 text-center">Attended</th>
+                                                    <th className="px-6 py-3.5 text-center">Attended / Eligible Total</th>
                                                     <th className="px-6 py-3.5 text-center">Percentage</th>
                                                     <th className="px-6 py-3.5 text-center">Can Bunk / Needed</th>
                                                     <th className="px-6 py-3.5 text-right">Actions</th>
@@ -601,15 +633,17 @@ const Dashboard: React.FC = () => {
                                     {/* Mobile/Tablet Card-list View */}
                                     <div className="block md:hidden divide-y divide-outline/20">
                                         {sortSubs(filteredSubjects).map((subject) => {
-                                            const pct = subject.attendance_percentage || 0;
+                                            const { attended, total, totalWithMedical, medicalLeaveCount } = getMedicalAdjustedCounts(subject);
+                                            const pct = subject.attendance_percentage ?? (total > 0 ? (attended / total) * 100 : 0);
+                                            const withMedicalAsAbsentPct = totalWithMedical > 0 ? (attended / totalWithMedical) * 100 : 0;
                                             const isCritical = pct < targetThreshold;
-                                            const needed = classesNeeded(subject.attended || 0, subject.total || 0);
-                                            const canSkip = classesCanSkip(subject.attended || 0, subject.total || 0);
+                                            const needed = classesNeeded(attended, total);
+                                            const canSkip = classesCanSkip(attended, total);
 
                                             return (
                                                 <div
                                                     key={subject._id}
-                                                    className="p-5 flex flex-col gap-3 hover:bg-surface-container/10 transition-colors"
+                                                    className="p-4 sm:p-5 flex flex-col gap-3 hover:bg-surface-container/10 transition-colors"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="min-w-0">
@@ -640,10 +674,20 @@ const Dashboard: React.FC = () => {
                                                             <span className={`text-sm font-bold ${isCritical ? 'text-red-500' : 'text-on-surface'}`}>
                                                                 {Math.round(pct)}%
                                                             </span>
-                                                            <span className="text-[10px] font-semibold text-on-surface-variant/40 leading-none">
-                                                                {subject.attended || 0}/{subject.total || 0} classes
-                                                            </span>
                                                         </div>
+                                                    </div>
+
+                                                    <div className="rounded-md border border-outline/35 bg-surface-container/25 px-3 py-2">
+                                                        <div className="flex items-center justify-between gap-3 text-[9px]">
+                                                            <span className="font-semibold uppercase tracking-wide text-on-surface-variant/50">{medicalLeaveCount > 0 ? 'Medical excluded' : 'Attendance'}</span>
+                                                            <span className="shrink-0 font-bold text-on-surface">{attended} / {total}</span>
+                                                        </div>
+                                                        {medicalLeaveCount > 0 && (
+                                                            <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-outline/20 pt-1.5 text-[9px]">
+                                                                <span className="font-semibold uppercase tracking-wide text-on-surface-variant/50">Medical counted absent</span>
+                                                                <span className="shrink-0 font-bold text-on-surface-variant/75">{Math.round(withMedicalAsAbsentPct)}% · {attended}/{totalWithMedical}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     <div className="w-full h-1 bg-on-surface/5 border border-outline/35 rounded-full overflow-hidden">
