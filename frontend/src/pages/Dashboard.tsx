@@ -220,8 +220,6 @@ const Dashboard: React.FC = () => {
         return Math.max(0, Math.floor((attended * 100 - targetThreshold * total) / targetThreshold));
     };
 
-    const att = dashboardData?.overall_attendance || 0;
-    const attendanceWithoutMedical = dashboardData?.attendance_without_medical ?? att;
     const medicalLeaveCount = dashboardData?.medical_leave_count ?? 0;
     const subjects = dashboardData?.subjects || [];
     const totalClasses = subjects.reduce((a, c) => a + (c.total || 0), 0) || 0;
@@ -229,6 +227,10 @@ const Dashboard: React.FC = () => {
     const riskCount = subjects.filter(s => (s.attendance_percentage || 0) < targetThreshold).length || 0;
     const subjectCount = dashboardData?.total_subjects || subjects.length || 0;
     const totalAttended = subjects.reduce((sum, subject) => sum + (subject.attended || 0), 0);
+    const physicalAttended = Math.max(0, totalAttended - medicalLeaveCount);
+    const eligibleClasses = Math.max(0, totalClasses - medicalLeaveCount);
+    const att = eligibleClasses > 0 ? (physicalAttended / eligibleClasses) * 100 : 0;
+    const attendanceWithoutMedical = totalClasses > 0 ? (physicalAttended / totalClasses) * 100 : 0;
     const safeBunks = dashboardData?.summary?.safe_bunks_remaining ?? 0;
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
@@ -359,10 +361,10 @@ const Dashboard: React.FC = () => {
                                     <div>
                                         <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-2">
                                             <span>Conduct Progress</span>
-                                            <span>{totalAttended} / {totalClasses} classes</span>
+                                            <span>{physicalAttended} / {totalClasses} classes</span>
                                         </div>
                                         <div className="w-full h-1 bg-on-surface/5 border border-outline/35 rounded-full overflow-hidden">
-                                            <div className="h-full bg-on-surface" style={{ width: `${Math.min(100, totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0)}%` }} />
+                                            <div className="h-full bg-on-surface" style={{ width: `${Math.min(100, totalClasses > 0 ? (physicalAttended / totalClasses) * 100 : 0)}%` }} />
                                         </div>
                                     </div>
                                 </div>

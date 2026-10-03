@@ -108,6 +108,33 @@ export const AttendanceCalculator = {
   },
 }
 
+/**
+ * Approved medical leave is removed from both sides of the attendance ratio:
+ * it is not a class attended, and it is not a conducted class for this metric.
+ * Subject counters historically included medical logs in `attended`, so remove
+ * those slots from the numerator as well.
+ */
+export function calculateAttendanceExcludingMedical(
+  attended: number,
+  total: number,
+  medicalLeaveCount: number,
+): number {
+  const excluded = Math.max(0, medicalLeaveCount)
+  const adjustedTotal = Math.max(0, total - excluded)
+  const adjustedAttended = Math.max(0, attended - excluded)
+  return AttendanceCalculator.calculatePercentage(adjustedAttended, adjustedTotal)
+}
+
+/** Treat medical leave as missed attendance while keeping the conducted-class denominator. */
+export function calculateAttendanceWithMedicalAsAbsent(
+  attended: number,
+  total: number,
+  medicalLeaveCount: number,
+): number {
+  const physicalAttended = Math.max(0, attended - Math.max(0, medicalLeaveCount))
+  return AttendanceCalculator.calculatePercentage(physicalAttended, total)
+}
+
 // ─── GradeCalculator ─────────────────────────────────────────────────────────
 
 const IPU_GRADE_SCALE: Record<string, number> = {

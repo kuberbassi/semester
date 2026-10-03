@@ -76,10 +76,14 @@ export const useMarkAttendance = () => {
                         totalAtt += s.attended || 0;
                         totalClasses += s.total || 0;
                     });
-                    const newOverall = totalClasses > 0 ? (totalAtt / totalClasses * 100) : 0;
                     const medicalLeaveCount = old.medical_leave_count ?? 0;
+                    const adjustedTotal = Math.max(0, totalClasses - medicalLeaveCount);
+                    const adjustedAttended = Math.max(0, totalAtt - medicalLeaveCount);
+                    const newOverall = adjustedTotal > 0
+                        ? (adjustedAttended / adjustedTotal * 100)
+                        : 0;
                     const newWithoutMedical = totalClasses > 0
-                        ? (Math.max(0, totalAtt - medicalLeaveCount) / totalClasses * 100)
+                        ? (adjustedAttended / totalClasses * 100)
                         : 0;
 
                     const targetThreshold = queryClient.getQueryData<User>(['user'])?.attendance_threshold || 75;

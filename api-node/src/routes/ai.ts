@@ -4,7 +4,7 @@ import { prisma } from '../config/prisma.js'
 import { ENV } from '../config/env.js'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { ok, fail } from '../utils/response.js'
-import { AttendanceCalculator } from '../lib/calculations.js'
+import { AttendanceCalculator, calculateAttendanceExcludingMedical, calculateAttendanceWithMedicalAsAbsent } from '../lib/calculations.js'
 import { callLLM, ChatMessage } from '../utils/llm.js'
 import { normalizeLegacyPrismaInstant } from '../utils/timestamps.js'
 
@@ -142,15 +142,21 @@ async function buildFullContext(req: AuthRequest, selectedSemester?: number): Pr
         }
         
         const summary = AttendanceCalculator.getAttendanceSummary(subjects, user?.attendance_threshold ?? 75, user?.warning_threshold ?? 76)
-        const withoutMedical = AttendanceCalculator.calculatePercentage(
-            Math.max(0, summary.total_attended - medicalLeaveCount),
-            summary.total_classes
+        const adjustedOverallAttendance = calculateAttendanceExcludingMedical(
+            summary.total_attended,
+            summary.total_classes,
+            medicalLeaveCount,
+        )
+        const attendanceWithMedicalAsAbsent = calculateAttendanceWithMedicalAsAbsent(
+            summary.total_attended,
+            summary.total_classes,
+            medicalLeaveCount,
         )
         
         lines.push('')
         lines.push('## Analytics KPIs')
-        lines.push(`Overall Attendance: ${summary.total_attended}/${summary.total_classes} = ${summary.overall_percentage}%`)
-        lines.push(`Attendance With Medical Leaves Counted As Absent: ${summary.total_attended - medicalLeaveCount}/${summary.total_classes} = ${withoutMedical}% (${medicalLeaveCount} medical leave${medicalLeaveCount === 1 ? '' : 's'})`)
+        lines.push(`Official Overall Attendance (medical leaves excluded): ${Math.max(0, summary.total_attended - medicalLeaveCount)}/${Math.max(0, summary.total_classes - medicalLeaveCount)} = ${adjustedOverallAttendance}% (${medicalLeaveCount} medical leave${medicalLeaveCount === 1 ? '' : 's'} excluded)`)
+        lines.push(`Attendance With Medical Leaves Counted As Absent: ${Math.max(0, summary.total_attended - medicalLeaveCount)}/${summary.total_classes} = ${attendanceWithMedicalAsAbsent}%`)
         lines.push(`Overall Attendance Status: ${summary.risk_level}`)
         lines.push(`Safe Bunks Remaining (Overall): ${summary.safe_bunks_remaining}`)
         lines.push(`Total Practical Items Tracked: ${completedPracticals}/${totalPracticals} Completed`)

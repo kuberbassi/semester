@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../config/prisma.js'
-import { AttendanceCalculator, GradeCalculator } from '../lib/calculations.js'
+import { AttendanceCalculator, calculateAttendanceExcludingMedical, calculateAttendanceWithMedicalAsAbsent, GradeCalculator } from '../lib/calculations.js'
 import { ok, fail } from '../utils/response.js'
 import { isAttendedAttendanceStatus } from '../utils/attendanceStatus.js'
 import { buildViewCacheId, clearUserViewCache, readViewCache, writeViewCache } from '../utils/viewCache.js'
@@ -62,14 +62,20 @@ router.get('/data', async (req: AuthRequest, res) => {
     })
 
     const cgpaCalc = resultRows.length ? GradeCalculator.calculateCGPA(resultRows.map((row: any) => row.subjects as Array<Record<string, unknown>>)) : { cgpa: 0 }
-    const attendanceWithoutMedical = AttendanceCalculator.calculatePercentage(
-      Math.max(0, summary.total_attended - medicalLeaveCount),
+    const adjustedOverallAttendance = calculateAttendanceExcludingMedical(
+      summary.total_attended,
       summary.total_classes,
+      medicalLeaveCount,
+    )
+    const attendanceWithMedicalAsAbsent = calculateAttendanceWithMedicalAsAbsent(
+      summary.total_attended,
+      summary.total_classes,
+      medicalLeaveCount,
     )
 
     const payload = {
-      overall_attendance: summary.overall_percentage,
-      attendance_without_medical: attendanceWithoutMedical,
+      overall_attendance: adjustedOverallAttendance,
+      attendance_without_medical: attendanceWithMedicalAsAbsent,
       medical_leave_count: medicalLeaveCount,
       total_subjects: subjects.length,
       subjects: enriched,
