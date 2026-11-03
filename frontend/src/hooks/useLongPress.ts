@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { haptics } from '../utils/haptics';
 
 type LongPressEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -28,13 +29,7 @@ export const useLongPress = (
 
       timerRef.current = setTimeout(() => {
         isTriggered.current = true;
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-          try {
-            navigator.vibrate([20, 40, 20]); // distinct OnePlus-like haptic feedback pattern
-          } catch {
-            // ignore
-          }
-        }
+        haptics.medium();
         callback(event);
       }, threshold);
     },

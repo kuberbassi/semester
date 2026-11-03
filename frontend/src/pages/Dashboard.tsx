@@ -17,6 +17,7 @@ import { useSemester } from '@/contexts/semester-context';
 import { Link } from 'react-router-dom';
 import { formatTeacherName } from '@/utils/formatters';
 import { useConfirm } from '@/contexts/confirm-context';
+import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
 import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
 
@@ -215,8 +216,10 @@ const Dashboard: React.FC = () => {
     };
 
     const handleQuickMark = async (subjectId: string, status: 'present' | 'absent') => {
-        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-            navigator.vibrate(15);
+        if (status === 'present') {
+            haptics.success();
+        } else {
+            haptics.medium();
         }
         try {
             await markAttendanceMutation.mutateAsync({ subjectId, status });
@@ -280,6 +283,7 @@ const Dashboard: React.FC = () => {
         const boundedX = Math.max(12, Math.min(clientX, window.innerWidth - menuWidth - 12));
         const boundedY = Math.max(12, Math.min(clientY, window.innerHeight - menuHeight - 12));
 
+        haptics.medium();
         setBubbleMenu({
             subjectId,
             x: boundedX,
@@ -737,7 +741,10 @@ const Dashboard: React.FC = () => {
                     <>
                         <div
                             className="fixed inset-0 z-50"
-                            onClick={() => setBubbleMenu(null)}
+                            onClick={() => {
+                                haptics.light();
+                                setBubbleMenu(null);
+                            }}
                         />
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -769,14 +776,22 @@ const Dashboard: React.FC = () => {
                                 return (
                                     <>
                                         <button
-                                            onClick={() => { setEditingSubject(targetSub); setBubbleMenu(null); }}
+                                            onClick={() => {
+                                                haptics.selection();
+                                                setEditingSubject(targetSub);
+                                                setBubbleMenu(null);
+                                            }}
                                             className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold hover:bg-surface-container rounded-md transition-colors cursor-pointer"
                                         >
                                             <Edit2 size={12} />
                                             Edit Details
                                         </button>
                                         <button
-                                            onClick={() => { handleDeleteSubject(targetSubId, targetSub.name); setBubbleMenu(null); }}
+                                            onClick={() => {
+                                                haptics.heavy();
+                                                handleDeleteSubject(targetSubId, targetSub.name);
+                                                setBubbleMenu(null);
+                                            }}
                                             className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/5 rounded-md transition-colors cursor-pointer"
                                         >
                                             <Trash2 size={12} />

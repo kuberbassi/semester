@@ -38,29 +38,33 @@ const BottomNav: React.FC = () => {
     const [profileOpen, setProfileOpen] = useState(false);
 
     const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Light vibration feedback when pointer hovers over menu items
-    useEffect(() => {
-        if (activeIdx !== null) {
-            haptics.light();
-        }
-    }, [activeIdx]);
+    const lastCrownAngleRef = useRef<number | null>(null);
+    const lastCrownDistanceRef = useRef<number>(0);
+    const lastCrownTickTimeRef = useRef<number>(0);
+    const prevActiveIdxRef = useRef<number | null>(null);
 
     // Triggers when user presses the central navigation button
     const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
         e.preventDefault();
         e.currentTarget.setPointerCapture(e.pointerId);
 
+        // Immediate tactile response on initial bubble press
+        haptics.light();
+
         const buttonRect = e.currentTarget.getBoundingClientRect();
         const centerX = buttonRect.left + buttonRect.width / 2;
         const centerY = buttonRect.top + buttonRect.height / 2;
         setCenter({ x: centerX, y: centerY });
+        lastCrownAngleRef.current = null;
+        lastCrownDistanceRef.current = 0;
+        prevActiveIdxRef.current = null;
         
         if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
         
         holdTimerRef.current = setTimeout(() => {
             setIsHolding(true);
             haptics.medium();
+            lastCrownTickTimeRef.current = performance.now() + 50;
         }, 220);
         
         setPointerDownTime(Date.now());
@@ -69,7 +73,7 @@ const BottomNav: React.FC = () => {
     useEffect(() => {
         if (!pointerDownTime) return;
 
-        // Tracks user dragging motion to calculate highlighted menu items
+        // Tracks user dragging motion like an Apple Watch Digital Crown rotating with haptic detents
         const handlePointerMove = (e: PointerEvent) => {
             if (!isHolding) return;
             const dX = e.clientX - center.x;
@@ -78,6 +82,32 @@ const BottomNav: React.FC = () => {
             
             let angle = Math.atan2(-dY, dX) * 180 / Math.PI;
             if (angle < 0) angle += 360;
+
+            const now = performance.now();
+
+            // Crown rotation detent ticks while dragging in an arc or radially
+            if (distance > 24) {
+                if (lastCrownAngleRef.current === null) {
+                    lastCrownAngleRef.current = angle;
+                    lastCrownDistanceRef.current = distance;
+                } else {
+                    let diff = angle - lastCrownAngleRef.current;
+                    if (diff > 180) diff -= 360;
+                    if (diff < -180) diff += 360;
+                    const absDiff = Math.abs(diff);
+                    const radialDiff = Math.abs(distance - lastCrownDistanceRef.current);
+
+                    // ~7.2° per notch (5 crown notches per 36° radial item sector) or radial step
+                    if (absDiff >= 7.2 || radialDiff >= 28) {
+                        if (now - lastCrownTickTimeRef.current >= 30) {
+                            haptics.crownTick();
+                            lastCrownTickTimeRef.current = now;
+                        }
+                        lastCrownAngleRef.current = angle;
+                        lastCrownDistanceRef.current = distance;
+                    }
+                }
+            }
 
             // Check if distance is inside the radial menu target zone
             if (distance > 30 && distance < 240) {
@@ -95,8 +125,20 @@ const BottomNav: React.FC = () => {
                         closestIdx = idx;
                     }
                 });
+
+                if (closestIdx !== prevActiveIdxRef.current) {
+                    // Firm focus snap when entering an item sector
+                    haptics.focus();
+                    lastCrownTickTimeRef.current = now + 25;
+                    prevActiveIdxRef.current = closestIdx;
+                }
                 setActiveIdx(closestIdx);
             } else {
+                if (prevActiveIdxRef.current !== null) {
+                    // Subtle detent release when moving out into the deadzone / cancellation area
+                    haptics.tick();
+                    prevActiveIdxRef.current = null;
+                }
                 setActiveIdx(null);
             }
         };
@@ -109,17 +151,28 @@ const BottomNav: React.FC = () => {
             if (duration < 250) {
                 const now = Date.now();
                 if (now - lastTap < 300) {
+                    haptics.medium();
                     setProfileOpen(true);
+                } else {
+                    haptics.light();
                 }
                 setLastTap(now);
             } else if (isHolding && activeIdx !== null) {
+                // Decisive haptic confirmation when choosing a page from the bubble menu
+                haptics.selection();
                 const target = radialItems[activeIdx];
                 navigate(target.href);
+            } else if (isHolding && activeIdx === null) {
+                // Soft cancel feedback when releasing outside selectable items
+                haptics.tick();
             }
             
             setIsHolding(false);
             setActiveIdx(null);
             setPointerDownTime(0);
+            lastCrownAngleRef.current = null;
+            lastCrownDistanceRef.current = 0;
+            prevActiveIdxRef.current = null;
         };
 
         window.addEventListener('pointermove', handlePointerMove);
@@ -321,7 +374,10 @@ const BottomNav: React.FC = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 bg-black/60 z-[9998] backdrop-blur-sm"
-                            onClick={() => setProfileOpen(false)}
+                            onClick={() => {
+                                haptics.light();
+                                setProfileOpen(false);
+                            }}
                         />
 
                         <motion.div
@@ -348,7 +404,10 @@ const BottomNav: React.FC = () => {
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 {/* Theme Action */}
                                 <button
-                                    onClick={() => { toggleTheme(); }}
+                                    onClick={() => {
+                                        haptics.light();
+                                        toggleTheme();
+                                    }}
                                     className="flex flex-col items-start justify-between p-4 h-24 rounded-xl border border-outline/10 bg-surface-container-low hover:bg-surface-container transition-all text-left cursor-pointer"
                                 >
                                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -363,7 +422,10 @@ const BottomNav: React.FC = () => {
                                 {/* Settings Action */}
                                 <Link
                                     to="/settings"
-                                    onClick={() => setProfileOpen(false)}
+                                    onClick={() => {
+                                        haptics.light();
+                                        setProfileOpen(false);
+                                    }}
                                     className="flex flex-col items-start justify-between p-4 h-24 rounded-xl border border-outline/10 bg-surface-container-low hover:bg-surface-container transition-all text-left"
                                 >
                                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -377,7 +439,11 @@ const BottomNav: React.FC = () => {
 
                                 {/* Logout Action */}
                                 <button
-                                    onClick={() => { setProfileOpen(false); logout(); }}
+                                    onClick={() => {
+                                        haptics.medium();
+                                        setProfileOpen(false);
+                                        logout();
+                                    }}
                                     className="col-span-2 flex items-center justify-between p-4 rounded-xl border border-red-500/15 bg-red-500/5 hover:bg-red-500/10 transition-all text-left cursor-pointer animate-fade-in"
                                 >
                                     <div className="flex items-center gap-3">
