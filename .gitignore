@@ -130,3 +130,7 @@ archive/legacy/mobile/android/app/build/
 # ── Mobile builds ────────────────────────────────────────────
 *.apk
 *.aab
+
+# ─── Rust builds ──────────────────────────────────────────────
+target/
+**/target/
