@@ -39,6 +39,8 @@ const Calendar = lazy(() => import('./pages/Calendar'));
 const TimeTable = lazy(() => import('./pages/TimeTable'));
 const Courses = lazy(() => import('./pages/Courses'));
 const Practicals = lazy(() => import('./pages/Practicals'));
+const Results = lazy(() => import('./pages/Results'));
+const Notes = lazy(() => import('./pages/Notes'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -149,6 +151,22 @@ const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <Practicals />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/results"
+          element={
+            <ProtectedRoute>
+              <Results />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notes"
+          element={
+            <ProtectedRoute>
+              <Notes />
             </ProtectedRoute>
           }
         />

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     LayoutDashboard, CalendarClock, Settings,
     GraduationCap, Sun, Moon,
-    CalendarDays, Beaker, LogOut, ChevronRight, type LucideIcon
+    CalendarDays, Beaker, Award, StickyNote, LogOut, ChevronRight, type LucideIcon
 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
@@ -17,6 +17,8 @@ const radialItems = [
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Courses', href: '/courses', icon: GraduationCap },
     { name: 'Practicals & Assignments', href: '/practicals', icon: Beaker },
+    { name: 'IPU Results', href: '/results', icon: Award },
+    { name: 'Notes', href: '/notes', icon: StickyNote },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

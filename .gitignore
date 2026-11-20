@@ -134,3 +134,9 @@ archive/legacy/mobile/android/app/build/
 # ─── Rust builds ──────────────────────────────────────────────
 target/
 **/target/
+
+# ─── Gradle & Android builds ──────────────────────────────────
+.gradle/
+**/.gradle/
+build/
+**/build/
