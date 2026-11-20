@@ -6,6 +6,7 @@ import { attendanceService } from '@/services/attendance.service';
 import { useConfirm } from '@/contexts/confirm-context';
 import { getErrorMessage } from '@/utils/errors';
 import type { DriveBackup, DriveStatus } from '@/types';
+import { HoldButton } from '@/components/react-bits/HoldButton';
 
 type SettingsDataSectionProps = {
     onLogout: () => void | Promise<void>;
@@ -472,12 +473,14 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
                             <h4 className="text-xs font-bold text-red-500">Wipe All Data</h4>
                             <p className="text-[11px] text-on-surface-variant/60 mt-0.5">Irreversibly erase all subjects, attendance logs, timetables, and checklists.</p>
                         </div>
-                        <button
-                            onClick={() => void onDeleteAllData()}
-                            className="shrink-0 h-8 px-3 rounded-lg bg-red-500 text-white text-[11px] font-semibold uppercase hover:bg-red-600 transition-all cursor-pointer shadow-sm shadow-red-500/10"
-                        >
-                            Wipe Data
-                        </button>
+                        <HoldButton
+                            variant="danger"
+                            label="Hold to Wipe Data"
+                            completedLabel="Wiping All Data..."
+                            holdDuration={1500}
+                            onComplete={() => void onDeleteAllData()}
+                            className="shrink-0 h-9 px-3.5 text-xs uppercase"
+                        />
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 last:pb-0 last:border-b-0">
@@ -485,12 +488,14 @@ const SettingsDataSection: React.FC<SettingsDataSectionProps> = ({ onLogout, onD
                             <h4 className="text-xs font-bold text-red-500">Delete Account Permanently</h4>
                             <p className="text-[11px] text-on-surface-variant/60 mt-0.5">Remove your profile, Google Drive connections, and settings permanently.</p>
                         </div>
-                        <button
-                            onClick={() => void onDeleteAccount()}
-                            className="shrink-0 h-8 px-3 rounded-lg border border-red-500/30 text-red-500 dark:text-red-400 text-[11px] font-semibold uppercase hover:bg-red-500/10 transition-all cursor-pointer shadow-sm"
-                        >
-                            Delete Account
-                        </button>
+                        <HoldButton
+                            variant="danger"
+                            label="Hold to Delete Account"
+                            completedLabel="Deleting Account..."
+                            holdDuration={1800}
+                            onComplete={() => void onDeleteAccount()}
+                            className="shrink-0 h-9 px-3.5 text-xs uppercase"
+                        />
                     </div>
                 </div>
             </div>

@@ -157,14 +157,15 @@ const SubjectRow: React.FC<{
                         >
                             <Edit2 size={14} strokeWidth={1.8} />
                         </button>
-                        <button
-                            onClick={() => handleDeleteSubject(subjectId, subject.name)}
-                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 transition-all cursor-pointer"
-                            title={`Delete ${subject.name}`}
-                            aria-label={`Delete ${subject.name}`}
+                        <HoldButton
+                            variant="danger"
+                            holdDuration={750}
+                            title={`Hold to delete ${subject.name}`}
+                            onComplete={() => handleDeleteSubject(subjectId, subject.name)}
+                            className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border border-transparent hover:border-red-500/20"
                         >
                             <Trash2 size={14} strokeWidth={1.8} />
-                        </button>
+                        </HoldButton>
                     </div>
                 </div>
             </td>
@@ -803,12 +804,14 @@ const Dashboard: React.FC = () => {
                                                             >
                                                                 Edit
                                                             </button>
-                                                            <button
-                                                                onClick={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
-                                                                className="h-7 px-2.5 border border-red-500/20 hover:bg-red-500/5 rounded-lg flex items-center justify-center text-[10px] font-semibold text-red-500 transition-all cursor-pointer whitespace-nowrap"
-                                                            >
-                                                                Delete
-                                                            </button>
+                                                            <HoldButton
+                                                                variant="danger"
+                                                                label="Hold Delete"
+                                                                completedLabel="Deleted"
+                                                                holdDuration={750}
+                                                                onComplete={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
+                                                                className="h-7 px-2.5 text-[10px] rounded-lg"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -875,17 +878,21 @@ const Dashboard: React.FC = () => {
                                             <Edit2 size={12} />
                                             Edit Details
                                         </button>
-                                        <button
-                                            onClick={() => {
+                                        <HoldButton
+                                            variant="danger"
+                                            label="Hold to Delete Course"
+                                            completedLabel="Deleted"
+                                            holdDuration={750}
+                                            onComplete={() => {
                                                 haptics.heavy();
                                                 handleDeleteSubject(targetSubId, targetSub.name);
                                                 setBubbleMenu(null);
                                             }}
-                                            className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/5 rounded-md transition-colors cursor-pointer"
+                                            className="w-full text-left px-2.5 py-1.5 text-xs font-semibold rounded-md mt-1"
                                         >
-                                            <Trash2 size={12} />
-                                            Delete Course
-                                        </button>
+                                            <Trash2 size={12} className="mr-1 inline-block" />
+                                            <span>Hold to Delete</span>
+                                        </HoldButton>
                                     </>
                                 );
                             })()}

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
+import { HoldButton } from '@/components/react-bits';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { useConfirm } from '@/contexts/confirm-context';
@@ -287,7 +288,15 @@ const Courses: React.FC = () => {
                                                 <button aria-label={`Increase ${course.title} progress`} onClick={() => { const previous = courses; const nextProgress = clampProgress(course.progress + 10); setCourses(courses.map(c => getCourseId(c) === getCourseId(course) ? { ...c, progress: nextProgress } : c)); void attendanceService.updateManualCourse(getCourseId(course), { progress: nextProgress }).catch(() => { setCourses(previous); showToast('error', 'Save Failed'); }); }} className="no-fluid h-8 md:h-7 px-2.5 text-[9px] font-bold rounded-md border border-outline/60 bg-surface text-on-surface-variant hover:bg-surface-container transition-all cursor-pointer">+10%</button>
                                                 <button aria-label={`Open ${course.title}`} onClick={() => openCourse(course)} className="no-fluid h-8 w-8 md:h-7 md:w-7 flex items-center justify-center rounded-md border border-outline/60 bg-surface text-on-surface-variant hover:bg-surface-container transition-all cursor-pointer"><ExternalLink size={11} /></button>
                                                 <button aria-label={`Edit ${course.title}`} onClick={() => handleEditCourse(course)} className="no-fluid h-8 w-8 md:h-7 md:w-7 flex items-center justify-center rounded-md border border-outline/60 bg-surface text-on-surface-variant hover:bg-surface-container transition-all cursor-pointer"><Edit2 size={11} /></button>
-                                                <button aria-label={`Delete ${course.title}`} onClick={() => void handleDeleteCourse(getCourseId(course))} className="no-fluid h-8 w-8 md:h-7 md:w-7 flex items-center justify-center rounded-md border border-outline bg-surface text-red-500/60 hover:text-red-500 hover:bg-red-500/5 transition-all cursor-pointer"><Trash size={11} /></button>
+                                                <HoldButton
+                                                    variant="danger"
+                                                    holdDuration={700}
+                                                    title={`Hold to delete ${course.title}`}
+                                                    onComplete={() => void handleDeleteCourse(getCourseId(course))}
+                                                    className="no-fluid h-8 w-8 md:h-7 md:w-7 p-0 flex items-center justify-center rounded-md"
+                                                >
+                                                    <Trash size={11} />
+                                                </HoldButton>
                                             </div>
                                         </div>
                                     );
@@ -306,7 +315,15 @@ const Courses: React.FC = () => {
                                             <div className="w-8 h-8 rounded-md border border-outline/50 bg-surface-container-high flex items-center justify-center text-on-surface"><Award size={13} /></div>
                                             <div className="flex gap-1.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                 <button aria-label={`Edit ${course.title}`} onClick={() => handleEditCourse(course)} className="no-fluid p-1 text-on-surface-variant/40 hover:text-on-surface cursor-pointer"><Edit2 size={11} /></button>
-                                                <button aria-label={`Delete ${course.title}`} onClick={() => void handleDeleteCourse(getCourseId(course))} className="no-fluid p-1 text-on-surface-variant/40 hover:text-red-500 cursor-pointer"><Trash size={11} /></button>
+                                                <HoldButton
+                                                    variant="danger"
+                                                    holdDuration={700}
+                                                    title={`Hold to delete ${course.title}`}
+                                                    onComplete={() => void handleDeleteCourse(getCourseId(course))}
+                                                    className="no-fluid p-1 flex items-center justify-center rounded"
+                                                >
+                                                    <Trash size={11} />
+                                                </HoldButton>
                                             </div>
                                         </div>
                                         <h4 className="text-xs font-bold text-on-surface-variant/70 line-clamp-2 mb-4 break-words">{course.title}</h4>

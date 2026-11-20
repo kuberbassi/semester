@@ -7,6 +7,7 @@ import { haptics } from '@/utils/haptics';
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
 import { CallChip } from '@/components/react-bits/CallChip';
 import { WarmTooltip } from '@/components/react-bits/WarmTooltip';
+import { HoldButton } from '@/components/react-bits/HoldButton';
 
 interface SubjectAccordionGalleryProps {
     subjects: Subject[];
@@ -299,17 +300,15 @@ const SubjectLiquidCard: React.FC<{
                                     >
                                         <Edit2 size={13} />
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onDeleteSubject(subjectId, subject.name);
-                                        }}
-                                        className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all cursor-pointer"
-                                        title={`Delete ${subject.name}`}
+                                    <HoldButton
+                                        variant="danger"
+                                        holdDuration={750}
+                                        title={`Hold to delete ${subject.name}`}
+                                        onComplete={() => onDeleteSubject(subjectId, subject.name)}
+                                        className="h-8 w-8 p-0 flex items-center justify-center rounded-lg"
                                     >
                                         <Trash2 size={13} />
-                                    </button>
+                                    </HoldButton>
                                 </div>
                             </div>
 
