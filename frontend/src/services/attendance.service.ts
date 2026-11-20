@@ -1,4 +1,4 @@
-import api from './api';
+﻿import api from './api';
 import type {
     DashboardData,
     ReportsData,
@@ -21,6 +21,7 @@ import type {
     User,
     SemesterResult
 } from '@/types';
+import { isDevTestMode, loadDevDashboardData, devMarkAttendance, getDevTodayTimetableSlots, getDevInitialResults } from '@/utils/devTestData';
 
 type JsonObject = Record<string, unknown>;
 type TimetablePayload = { schedule?: TimetableSchedule; periods?: GridPeriod[] };
@@ -136,6 +137,9 @@ export const attendanceService = {
     },
 
     getDashboardData: async (semester: number = 1, refresh = false): Promise<DashboardData> => {
+        if (isDevTestMode()) {
+            return loadDevDashboardData();
+        }
         const cacheKey = `dashboard:${semester}`;
         if (!refresh) {
             const cached = getAnyCached<DashboardData>(cacheKey);
@@ -188,6 +192,19 @@ export const attendanceService = {
         semester?: number,
         type?: string
     ): Promise<AttendanceMutationResult> => {
+        if (isDevTestMode()) {
+            devMarkAttendance(subjectId, status === 'present' ? 'present' : 'absent');
+            clearDerivedCaches();
+            return {
+                message: `Marked ${status}`,
+                subject_id: subjectId,
+                date: date || new Date().toISOString(),
+                status: status as any,
+                total: 0,
+                attended: 0,
+                percentage: 0
+            } as unknown as AttendanceMutationResult;
+        }
         const res = await api.post('/api/attendance/mark', {
             subject_id: subjectId,
             status,
@@ -232,7 +249,7 @@ export const attendanceService = {
         const data = response.data.data;
 
         // Node backend returns { calendar: { "YYYY-MM-DD": { logs, total, attended } }, start_date, end_date }
-        // Calendar.tsx expects a flat array of log objects — normalise here
+        // Calendar.tsx expects a flat array of log objects â€” normalise here
         if (data && typeof data === 'object' && !Array.isArray(data) && data.calendar) {
             const flatLogs: AttendanceRecord[] = [];
             for (const entry of Object.values(data.calendar as Record<string, { logs?: AttendanceRecord[] }>)) {
@@ -425,6 +442,22 @@ export const attendanceService = {
 
     // Timetable
     getTimetable: async (semester: number = 1): Promise<{ schedule: TimetableSchedule; periods?: GridPeriod[] }> => {
+        if (isDevTestMode()) {
+            const slots = getDevTodayTimetableSlots();
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const currentDay = days[new Date().getDay()];
+            const sched: TimetableSchedule = {
+                Monday: slots,
+                Tuesday: slots,
+                Wednesday: slots,
+                Thursday: slots,
+                Friday: slots,
+                Saturday: [],
+                Sunday: [],
+            };
+            sched[currentDay] = slots;
+            return { schedule: sched, periods: [] };
+        }
         const cacheKey = `timetable:${semester}`;
         const cached = getAnyCached<{ schedule: TimetableSchedule; periods?: GridPeriod[] }>(cacheKey);
         if (cached) return cached;
@@ -483,7 +516,7 @@ export const attendanceService = {
         return data;
     },
 
-    // Medical leaves (not yet ported to Node — return empty stubs)
+    // Medical leaves (not yet ported to Node â€” return empty stubs)
     getPendingLeaves: async () => {
         return [];
     },
@@ -495,7 +528,7 @@ export const attendanceService = {
 
     // Substitutions
     getUnresolvedSubstitutions: async () => {
-        // Not ported to Node — return empty
+        // Not ported to Node â€” return empty
         return [];
     },
 
@@ -585,7 +618,7 @@ export const attendanceService = {
         };
     },
 
-    // Academic Records (not ported — stub)
+    // Academic Records (not ported â€” stub)
     getAcademicRecords: async (): Promise<AcademicRecord[]> => {
         return [];
     },
@@ -669,6 +702,9 @@ export const attendanceService = {
 
     // Get previously saved IPU results from DB (no login needed)
     getSavedIPUResults: async () => {
+        if (isDevTestMode()) {
+            return getDevInitialResults();
+        }
         const response = await api.get('/api/academic/results/analytics');
         return response.data.data;
     },

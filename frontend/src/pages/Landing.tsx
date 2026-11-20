@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
-import { Sun, Moon, ArrowRight, Calendar, Clock, Activity, CheckCircle2 } from 'lucide-react';
+import { Sun, Moon, ArrowRight, Calendar, Clock, Activity, CheckCircle2, Sparkles } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { enableDevTestMode } from '@/utils/devTestData';
 
 // Premium Landing Page featuring interactive split layout and floating widgets in black & white theme
 const Landing: React.FC = () => {
     const { isAuthenticated } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [scrolled, setScrolled] = useState(false);
+    const navigate = useNavigate();
 
     // Track scroll position to style navbar
     useEffect(() => {
@@ -49,7 +51,7 @@ const Landing: React.FC = () => {
     return (
         <div className="min-h-screen text-on-background select-none flex flex-col justify-between relative bg-background overflow-x-hidden transition-colors duration-300">
             
-            {/* ── Navbar ── */}
+            {/* â”€â”€ Navbar â”€â”€ */}
             <nav className={[
                 'sticky top-0 z-50 w-full transition-all duration-300 ease-in-out',
                 scrolled
@@ -73,6 +75,18 @@ const Landing: React.FC = () => {
                             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
                         </button>
                         
+                        <button
+                            onClick={() => {
+                                enableDevTestMode();
+                                navigate('/dashboard');
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                            title="Instant Dev Test Mode"
+                        >
+                            <Sparkles size={13} className="text-emerald-500 animate-pulse" />
+                            <span>Dev Test Mode</span>
+                        </button>
+
                         <Link to="/login" className="no-fluid">
                             <Button variant="outlined" size="sm" className="rounded-lg font-medium border border-outline hover:bg-surface-container">Sign In</Button>
                         </Link>
@@ -80,7 +94,7 @@ const Landing: React.FC = () => {
                 </div>
             </nav>
 
-            {/* ── Hero Area ── */}
+            {/* â”€â”€ Hero Area â”€â”€ */}
             <main className="flex-1 w-full flex items-center relative z-10 py-6 md:py-10">
                 <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
                     
@@ -255,7 +269,7 @@ const Landing: React.FC = () => {
                 </div>
             </main>
 
-            {/* ── Footer ── */}
+            {/* â”€â”€ Footer â”€â”€ */}
             <footer className="w-full max-w-7xl px-6 z-10 mx-auto pb-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-outline/10">
                     <p className="text-[10px] text-on-surface-variant/40 font-medium">

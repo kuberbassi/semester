@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useDashboard, useMarkAttendance, useDeleteSubject } from '@/hooks/useDashboard';
 import { useAuth } from '@/contexts/auth-context';
@@ -25,6 +25,7 @@ import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator'
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
 import { triggerCelebration } from '@/utils/celebration';
+import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/devTestData';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -180,7 +181,7 @@ const Dashboard: React.FC = () => {
 
     usePageMeta({
         title: 'Dashboard | Semester',
-        description: 'Your academic overview — attendance, upcoming classes, and performance at a glance.',
+        description: 'Your academic overview â€” attendance, upcoming classes, and performance at a glance.',
     });
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -244,7 +245,7 @@ const Dashboard: React.FC = () => {
             { subjectId, status },
             {
                 onSuccess: () => {
-                    showToast('success', status === 'present' ? '✓ Marked Present' : '✕ Marked Absent');
+                    showToast('success', status === 'present' ? 'âœ“ Marked Present' : 'âœ• Marked Absent');
                     if (status === 'present' && att >= 74.0) {
                         triggerCelebration();
                     }
@@ -378,6 +379,43 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
+            {isDevTestMode() && (
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+                    <div className="flex items-center gap-2.5">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-xs font-bold tracking-wide">
+                            DEV TEST MODE ACTIVE — Interactive Mock Data Loaded
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                resetDevTestData();
+                                loadDashboard();
+                                showToast('success', 'Dev test data reset to initial benchmark state');
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-emerald-500/40 bg-surface/80 hover:bg-surface text-emerald-700 dark:text-emerald-300 transition-all cursor-pointer shadow-xs"
+                        >
+                            ↺ Reset Test Data
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                disableDevTestMode();
+                                window.location.href = '/login';
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-all cursor-pointer shadow-xs"
+                        >
+                            ✕ Exit Dev Mode
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {isLoading && !dashboardData ? (
                 <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -410,7 +448,7 @@ const Dashboard: React.FC = () => {
                                             <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Medical counted absent</span>
                                             <span className="text-sm font-black text-on-surface">{attendanceWithoutMedical.toFixed(1)}%</span>
                                         </div>
-                                        <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant/45">{physicalAttended} / {totalClasses} classes · {medicalLeaveCount} medical leaves</p>
+                                        <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant/45">{physicalAttended} / {totalClasses} classes Â· {medicalLeaveCount} medical leaves</p>
                                     </div>
                                 </div>
 
@@ -470,7 +508,7 @@ const Dashboard: React.FC = () => {
                                         <div className="text-right">
                                             <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Current</p>
                                             <p className={`text-base font-bold ${hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-on-surface'}`}>
-                                                {hasAttendanceData ? `${att.toFixed(1)}%` : '—'}
+                                                {hasAttendanceData ? `${att.toFixed(1)}%` : 'â€”'}
                                             </p>
                                         </div>
                                     </div>
@@ -506,11 +544,11 @@ const Dashboard: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40 font-mono">Enrollment</p>
-                                            <p className="text-xs font-semibold text-on-surface truncate font-mono">{user?.enrollment_number || '—'}</p>
+                                            <p className="text-xs font-semibold text-on-surface truncate font-mono">{user?.enrollment_number || 'â€”'}</p>
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Batch</p>
-                                            <p className="text-xs font-semibold text-on-surface truncate">{user?.batch || '—'}</p>
+                                            <p className="text-xs font-semibold text-on-surface truncate">{user?.batch || 'â€”'}</p>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -552,7 +590,7 @@ const Dashboard: React.FC = () => {
                                             return (
                                                 <div key={idx} className="flex min-h-11 items-center gap-3 py-2.5 border-b border-outline/30 last:border-b-0">
                                                     <div className="text-center bg-surface-container border border-outline/40 rounded-md px-2 py-0.5 shrink-0 min-w-[55px]">
-                                                        <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || '—'}</span>
+                                                        <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || 'â€”'}</span>
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-xs font-bold text-on-surface truncate leading-tight">{sub?.name || cls.subject_name || cls.subjectName || cls.label || cls.name || 'Break'}</p>
@@ -734,7 +772,7 @@ const Dashboard: React.FC = () => {
                                                         {medicalLeaveCount > 0 && (
                                                             <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-outline/20 pt-1.5 text-[9px]">
                                                                 <span className="font-semibold uppercase tracking-wide text-on-surface-variant/50">Medical counted absent</span>
-                                                                <span className="shrink-0 font-bold text-on-surface-variant/75">{Math.round(withMedicalAsAbsentPct)}% · {attended}/{totalWithMedical}</span>
+                                                                <span className="shrink-0 font-bold text-on-surface-variant/75">{Math.round(withMedicalAsAbsentPct)}% Â· {attended}/{totalWithMedical}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -866,6 +904,5 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-
 
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,17 +6,17 @@ import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
-import { Sun, Moon, ArrowLeft } from 'lucide-react';
+import { Sun, Moon, ArrowLeft, Sparkles } from 'lucide-react';
 import { getErrorMessage } from '@/utils/errors';
 
 const Login: React.FC = () => {
-    const { loginWithGoogle } = useAuth();
+    const { loginWithGoogle, loginAsDevTestUser } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [error, setError] = useState<string | null>(null);
 
     usePageMeta({
         title: 'Semester | Student Center',
-        description: 'Sign in to Semester — your all-in-one student dashboard for IPU. Track attendance, sync results, manage timetables, and develop your skills.',
+        description: 'Sign in to Semester â€” your all-in-one student dashboard for IPU. Track attendance, sync results, manage timetables, and develop your skills.',
         indexable: false,
     });
 
@@ -95,13 +95,13 @@ const Login: React.FC = () => {
                                         if (!credentialResponse.credential) throw new Error('No credential received');
                                         await loginWithGoogle(credentialResponse.credential);
                                     } catch (err: unknown) {
-                                        console.error('❌ Backend login failed:', err);
+                                        console.error('âŒ Backend login failed:', err);
                                         const errMsg = getErrorMessage(err, 'Login failed. Please try again.');
                                         setError(errMsg);
                                     }
                                 }}
                                 onError={() => {
-                                    console.error('❌ Google Login Failed');
+                                    console.error('âŒ Google Login Failed');
                                     setError('Auth provider failed. Please try again.');
                                 }}
                                 theme={theme === 'dark' ? 'filled_black' : 'outline'}
@@ -120,6 +120,28 @@ const Login: React.FC = () => {
                                 {error}
                             </motion.p>
                         )}
+
+                        <div className="w-full flex items-center gap-3 my-1 opacity-40">
+                            <div className="flex-1 h-px bg-outline" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Developer & UI/UX Testing</span>
+                            <div className="flex-1 h-px bg-outline" />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (loginAsDevTestUser) {
+                                    loginAsDevTestUser();
+                                }
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                        >
+                            <Sparkles size={15} className="animate-spin text-emerald-500" style={{ animationDuration: '3s' }} />
+                            <span>⚡ Enter Dev Test Mode (Instant Full Data)</span>
+                        </button>
+                        <p className="text-[10px] text-on-surface-variant/60 -mt-2">
+                            Offline mock database with live radar, timetable, notes & IPU results
+                        </p>
                     </motion.div>
 
                     {/* Policies Agreement Info */}
@@ -137,7 +159,7 @@ const Login: React.FC = () => {
                 </motion.div>
             </main>
 
-            {/* Footer — synced with Landing page */}
+            {/* Footer â€” synced with Landing page */}
             <footer className="w-full max-w-7xl px-6 z-10">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-outline">
                     <p className="text-[10px] text-on-surface-variant/40 font-medium">
@@ -162,4 +184,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
