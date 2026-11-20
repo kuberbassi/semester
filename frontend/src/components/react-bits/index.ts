@@ -1,4 +1,5 @@
 // React Bits UI / UX Component Library for Semester (Framer-tier aesthetics)
+export * from './AccordionGallery';
 export * from './CometDial';
 export * from './FuseButton';
 export * from './HoldButton';

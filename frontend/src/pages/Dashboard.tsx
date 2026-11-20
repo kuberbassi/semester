@@ -28,6 +28,7 @@ import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/dev
 import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
 import { AuroraGlow } from '@/components/ui/AuroraGlow';
 import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
+import { SubjectAccordionGallery } from '@/components/dashboard/SubjectAccordionGallery';
 import {
     GlideSelect,
     HoldButton,
@@ -213,6 +214,10 @@ const Dashboard: React.FC = () => {
     const [categoryFilter, setCategoryFilter] = useState<'Theory' | 'Practical' | 'All'>(() => {
         const saved = localStorage.getItem('semester_dashboard_subject_filter');
         return (saved === 'Theory' || saved === 'Practical' || saved === 'All') ? saved : 'All';
+    });
+    const [subjectViewMode, setSubjectViewMode] = useState<'gallery' | 'table'>(() => {
+        const saved = localStorage.getItem('semester_dashboard_subject_view');
+        return (saved === 'table' || saved === 'gallery') ? saved : 'gallery';
     });
     const targetThreshold = user?.attendance_threshold || 75;
 
@@ -589,10 +594,31 @@ const Dashboard: React.FC = () => {
 
                         {/* Bento Card 5: Courses Breakdown */}
                         <FramerSpotlightCard glowColor="cyan" className="overflow-hidden md:col-span-3 mt-2">
-                            <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Courses Breakdown</span>
-                                {/* Category filter tabs */}
-                                <div className="self-start sm:self-auto">
+                            <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div>
+                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest block">
+                                        Courses Breakdown
+                                    </span>
+                                    <p className="text-xs text-white/50 mt-0.5">
+                                        Interactive liquid-filled subject cards with category aurora styling.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+                                    {/* View Mode Toggle */}
+                                    <GlideSelect<'gallery' | 'table'>
+                                        options={[
+                                            { id: 'gallery', label: '🎴 Accordion Gallery' },
+                                            { id: 'table', label: '☰ Table' },
+                                        ]}
+                                        value={subjectViewMode}
+                                        onChange={(mode) => {
+                                            setSubjectViewMode(mode);
+                                            localStorage.setItem('semester_dashboard_subject_view', mode);
+                                        }}
+                                    />
+
+                                    {/* Category filter tabs */}
                                     <GlideSelect<'Theory' | 'Practical' | 'All'>
                                         options={[
                                             { id: 'All', label: 'All', count: subjects.length },
@@ -644,6 +670,19 @@ const Dashboard: React.FC = () => {
                                     <Target size={24} className="text-on-surface-variant/20 mb-4" />
                                     <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-widest">No subjects tracked yet</p>
                                 </div>
+                                ) : subjectViewMode === 'gallery' ? (
+                                    /* Bespoke Liquid Fill Accordion Gallery View */
+                                    <div className="p-5 sm:p-6 bg-slate-950/40">
+                                        <SubjectAccordionGallery
+                                            subjects={sortSubs(filteredSubjects)}
+                                            targetThreshold={targetThreshold}
+                                            classesNeeded={classesNeeded}
+                                            classesCanSkip={classesCanSkip}
+                                            onQuickMark={handleQuickMark}
+                                            onEditSubject={setEditingSubject}
+                                            onDeleteSubject={handleDeleteSubject}
+                                        />
+                                    </div>
                                 ) : (
                                 <>
                                     {/* Desktop View */}
