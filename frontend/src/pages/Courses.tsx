@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
-import { HoldButton } from '@/components/react-bits';
+import { HoldButton, ScrubField } from '@/components/react-bits';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { useConfirm } from '@/contexts/confirm-context';
@@ -351,11 +351,16 @@ const Courses: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <div className="flex justify-between mb-1.5">
-                                <label className="text-[10px] font-bold text-on-surface-variant/40 uppercase">Progress</label>
-                                <span className="text-[10px] font-bold text-on-surface">{formData.progress || 0}%</span>
-                            </div>
-                            <input type="range" min="0" max="100" value={formData.progress || 0} onChange={e => setFormData({ ...formData, progress: clampProgress(e.target.value) })} className="w-full accent-primary h-1 bg-on-surface/15 rounded-full appearance-none cursor-pointer" />
+                            <ScrubField
+                                label="Course Progress"
+                                value={formData.progress || 0}
+                                min={0}
+                                max={100}
+                                step={5}
+                                unit="%"
+                                color="primary"
+                                onChange={val => setFormData({ ...formData, progress: clampProgress(val) })}
+                            />
                         </div>
                         <div>
                             <label className="block text-[10px] font-bold text-on-surface-variant/40 uppercase mb-1.5">Target Date</label>

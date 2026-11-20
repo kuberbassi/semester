@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useSemester } from '@/contexts/semester-context';
 import Select from '@/components/ui/Select';
+import { ScrubField } from '@/components/react-bits';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { authService } from '@/services/auth.service';
@@ -360,20 +361,28 @@ const Settings: React.FC = () => {
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Attendance Targets</span>
                                 </div>
                                 <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-[11px] font-medium text-on-surface-variant/50">Goal</label>
-                                            <span className="text-xs font-bold text-on-surface">{profileForm.attendance_threshold}%</span>
-                                        </div>
-                                        <input type="range" min="50" max="100" value={profileForm.attendance_threshold} onChange={e => setProfileForm({ ...profileForm, attendance_threshold: parseInt(e.target.value) })} disabled={!isEditingProfile} className="w-full accent-primary h-1 bg-on-surface/15 rounded-full appearance-none cursor-pointer disabled:opacity-50" />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between mb-2">
-                                            <label className="text-[11px] font-medium text-on-surface-variant/50">Warning</label>
-                                            <span className="text-xs font-bold text-red-500">{profileForm.warning_threshold}%</span>
-                                        </div>
-                                        <input type="range" min="50" max="100" value={profileForm.warning_threshold} onChange={e => setProfileForm({ ...profileForm, warning_threshold: parseInt(e.target.value) })} disabled={!isEditingProfile} className="w-full accent-red-500 h-1 bg-on-surface/15 rounded-full appearance-none cursor-pointer disabled:opacity-50" />
-                                    </div>
+                                    <ScrubField
+                                        label="Goal Target"
+                                        value={profileForm.attendance_threshold}
+                                        min={50}
+                                        max={100}
+                                        step={1}
+                                        unit="%"
+                                        color="primary"
+                                        disabled={!isEditingProfile}
+                                        onChange={val => setProfileForm({ ...profileForm, attendance_threshold: val })}
+                                    />
+                                    <ScrubField
+                                        label="Warning Threshold"
+                                        value={profileForm.warning_threshold}
+                                        min={50}
+                                        max={100}
+                                        step={1}
+                                        unit="%"
+                                        color="red"
+                                        disabled={!isEditingProfile}
+                                        onChange={val => setProfileForm({ ...profileForm, warning_threshold: val })}
+                                    />
                                 </div>
                             </div>
                         </div>

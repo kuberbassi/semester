@@ -104,6 +104,7 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
                         Upcoming Total Classes:
                     </div>
                     <ScrubField
+                        variant="compact"
                         value={futureClasses}
                         onChange={(val) => {
                             setFutureClasses(val);
