@@ -14,23 +14,23 @@ export function AnimatedList<T>({
   renderItem,
   keyExtractor,
   className = '',
-  staggerDelay = 0.05,
+  staggerDelay = 0.04,
 }: AnimatedListProps<T>) {
   return (
-    <div className={`flex flex-col gap-2.5 ${className}`}>
+    <div className={`flex flex-col ${className}`}>
       <AnimatePresence mode="popLayout">
         {items.map((item, index) => (
           <motion.div
             key={keyExtractor(item)}
             layout
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.2 } }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
             transition={{
               type: 'spring',
-              stiffness: 350,
-              damping: 25,
-              delay: index * staggerDelay,
+              stiffness: 400,
+              damping: 28,
+              delay: Math.min(index * staggerDelay, 0.3),
             }}
           >
             {renderItem(item, index)}
