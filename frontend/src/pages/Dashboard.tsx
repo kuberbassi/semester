@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useDashboard, useMarkAttendance, useDeleteSubject } from '@/hooks/useDashboard';
 import { useAuth } from '@/contexts/auth-context';
@@ -26,6 +26,8 @@ import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWid
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
 import { triggerCelebration } from '@/utils/celebration';
 import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/devTestData';
+import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
+import { AuroraGlow } from '@/components/ui/AuroraGlow';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -320,7 +322,8 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="pb-24 w-full select-none">
+        <div className="pb-24 w-full select-none relative">
+            <AuroraGlow variant="multi" className="top-[-50px] left-1/2 -translate-x-1/2" intensity="subtle" />
             {/* Header Section */}
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -430,7 +433,7 @@ const Dashboard: React.FC = () => {
                     <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3 md:items-stretch">
                         
                         {/* Bento Card 1: Academic Health */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-4 sm:p-6 flex flex-col justify-between hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <FramerSpotlightCard glowColor="emerald" className="p-4 sm:p-6 flex flex-col justify-between md:h-full">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Overall Academic Health</span>
                                 <Activity size={13} className="text-on-surface-variant/40" />
@@ -489,10 +492,10 @@ const Dashboard: React.FC = () => {
                                     <span className="text-sm md:text-base font-bold text-on-surface">{safeCount}/{subjectCount}</span>
                                 </div>
                             </div>
-                        </div>
+                        </FramerSpotlightCard>
 
                         {/* Bento Card 2: Student Target */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-5 sm:p-6 flex flex-col justify-between hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <FramerSpotlightCard glowColor="blue" className="p-5 sm:p-6 flex flex-col justify-between md:h-full">
                             <div>
                                 <div className="flex items-center justify-between mb-6">
                                     <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Academic Target</span>
@@ -573,10 +576,10 @@ const Dashboard: React.FC = () => {
                                     Configure Settings
                                 </Link>
                             </div>
-                        </div>
+                        </FramerSpotlightCard>
 
                         {/* Bento Card 3: Today's Schedule */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-5 sm:p-6 flex flex-col hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <FramerSpotlightCard glowColor="purple" className="p-5 sm:p-6 flex flex-col md:h-full">
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex items-center justify-between mb-6">
                                     <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Today's Schedule</span>
@@ -590,7 +593,7 @@ const Dashboard: React.FC = () => {
                                             return (
                                                 <div key={idx} className="flex min-h-11 items-center gap-3 py-2.5 border-b border-outline/30 last:border-b-0">
                                                     <div className="text-center bg-surface-container border border-outline/40 rounded-md px-2 py-0.5 shrink-0 min-w-[55px]">
-                                                        <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || 'â€”'}</span>
+                                                        <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || '—'}</span>
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-xs font-bold text-on-surface truncate leading-tight">{sub?.name || cls.subject_name || cls.subjectName || cls.label || cls.name || 'Break'}</p>
@@ -615,7 +618,7 @@ const Dashboard: React.FC = () => {
                                     <ChevronRight size={12} />
                                 </Link>
                             </div>
-                        </div>
+                        </FramerSpotlightCard>
 
                         {/* Kinetic Interactive Section: Live Radar & What-If Simulator */}
                         <div className="md:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6 my-2">
@@ -632,7 +635,7 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Bento Card 5: Courses Breakdown */}
-                        <div className="rounded-xl border border-outline/50 bg-surface overflow-hidden md:col-span-3 hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] mt-2">
+                        <FramerSpotlightCard glowColor="cyan" className="overflow-hidden md:col-span-3 mt-2">
                             <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Courses Breakdown</span>
                                 {/* Category filter tabs */}
@@ -820,7 +823,7 @@ const Dashboard: React.FC = () => {
                                 </>
                                 );
                             })()}
-                        </div>
+                        </FramerSpotlightCard>
                     </div>
                 </div>
             )}

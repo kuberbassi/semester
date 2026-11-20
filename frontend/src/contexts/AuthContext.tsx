@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import axios from 'axios';
 import type { User } from '@/types';
 import { authService } from '@/services/auth.service';
