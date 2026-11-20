@@ -39,7 +39,7 @@ const BottomNav: React.FC = () => {
     const [lastTap, setLastTap] = useState(0);
     const [profileOpen, setProfileOpen] = useState(false);
 
-    const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastCrownAngleRef = useRef<number | null>(null);
     const lastCrownDistanceRef = useRef<number>(0);
     const lastCrownTickTimeRef = useRef<number>(0);

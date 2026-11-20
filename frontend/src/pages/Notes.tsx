@@ -1116,7 +1116,7 @@ const Notes: React.FC = () => {
         localStorage.setItem('zenith_notes_view_mode', mode);
     };
     const [searchQuery, setSearchQuery] = useState('');
-    const saveTimer = useRef<NodeJS.Timeout | null>(null);
+    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     usePageMeta({
         title: 'Notes & Tasks | Zenith',

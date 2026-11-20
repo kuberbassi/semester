@@ -20,6 +20,11 @@ import { useConfirm } from '@/contexts/confirm-context';
 import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
 import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
+import { LiquidFillGauge } from '@/components/ui/LiquidFillGauge';
+import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
+import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
+import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
+import { triggerCelebration } from '@/utils/celebration';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -44,6 +49,7 @@ const SubjectRow: React.FC<{
     triggerBubbleMenu: (subjectId: string, event: SubjectMenuEvent) => void;
     setEditingSubject: (subject: Subject) => void;
     handleDeleteSubject: (subjectId: string, subjectName: string) => void;
+    onQuickMark: (subjectId: string, status: 'present' | 'absent') => void;
 }> = ({
     subject,
     targetThreshold,
@@ -52,6 +58,7 @@ const SubjectRow: React.FC<{
     triggerBubbleMenu,
     setEditingSubject,
     handleDeleteSubject,
+    onQuickMark,
 }) => {
     const { attended, total, totalWithMedical, medicalLeaveCount } = getMedicalAdjustedCounts(subject);
     const pct = subject.attendance_percentage ?? (total > 0 ? (attended / total) * 100 : 0);
@@ -114,23 +121,35 @@ const SubjectRow: React.FC<{
             </td>
 
             <td className="px-6 py-3.5 text-right">
-                <div className="flex justify-end gap-1.5 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                    <button
-                        onClick={() => setEditingSubject(subject)}
-                        className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-outline/60 hover:bg-surface-container hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-all cursor-pointer"
-                        title={`Edit ${subject.name}`}
-                        aria-label={`Edit ${subject.name}`}
-                    >
-                        <Edit2 size={14} strokeWidth={1.8} />
-                    </button>
-                    <button
-                        onClick={() => handleDeleteSubject(subjectId, subject.name)}
-                        className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 transition-all cursor-pointer"
-                        title={`Delete ${subject.name}`}
-                        aria-label={`Delete ${subject.name}`}
-                    >
-                        <Trash2 size={14} strokeWidth={1.8} />
-                    </button>
+                <div className="flex items-center justify-end gap-2.5">
+                    <div className="flex items-center gap-1">
+                        <TactileMarkButton
+                            status="present"
+                            onMark={() => onQuickMark(subjectId, 'present')}
+                        />
+                        <TactileMarkButton
+                            status="absent"
+                            onMark={() => onQuickMark(subjectId, 'absent')}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <button
+                            onClick={() => setEditingSubject(subject)}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-outline/60 hover:bg-surface-container hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-all cursor-pointer"
+                            title={`Edit ${subject.name}`}
+                            aria-label={`Edit ${subject.name}`}
+                        >
+                            <Edit2 size={14} strokeWidth={1.8} />
+                        </button>
+                        <button
+                            onClick={() => handleDeleteSubject(subjectId, subject.name)}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 transition-all cursor-pointer"
+                            title={`Delete ${subject.name}`}
+                            aria-label={`Delete ${subject.name}`}
+                        >
+                            <Trash2 size={14} strokeWidth={1.8} />
+                        </button>
+                    </div>
                 </div>
             </td>
         </tr>
@@ -215,18 +234,26 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    const handleQuickMark = async (subjectId: string, status: 'present' | 'absent') => {
+    const handleQuickMark = (subjectId: string, status: 'present' | 'absent') => {
         if (status === 'present') {
             haptics.success();
         } else {
             haptics.medium();
         }
-        try {
-            await markAttendanceMutation.mutateAsync({ subjectId, status });
-            showToast('success', `Marked ${status}`);
-        } catch {
-            showToast('error', 'Failed to mark attendance');
-        }
+        markAttendanceMutation.mutate(
+            { subjectId, status },
+            {
+                onSuccess: () => {
+                    showToast('success', status === 'present' ? '✓ Marked Present' : '✕ Marked Absent');
+                    if (status === 'present' && att >= 74.0) {
+                        triggerCelebration();
+                    }
+                },
+                onError: () => {
+                    showToast('error', 'Failed to mark attendance');
+                },
+            }
+        );
     };
 
     const classesNeeded = (attended: number, total: number) => {
@@ -371,8 +398,8 @@ const Dashboard: React.FC = () => {
                                 <Activity size={13} className="text-on-surface-variant/40" />
                             </div>
                             
-                            <div className="flex flex-col justify-between gap-5 my-2">
-                                <div>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 my-2">
+                                <div className="flex-1">
                                     <p className="text-5xl md:text-6xl font-black tracking-tighter text-on-surface leading-none">{att.toFixed(1)}%</p>
                                     <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
                                         <span>Medical excluded</span>
@@ -386,6 +413,11 @@ const Dashboard: React.FC = () => {
                                         <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant/45">{physicalAttended} / {totalClasses} classes · {medicalLeaveCount} medical leaves</p>
                                     </div>
                                 </div>
+
+                                <div className="shrink-0 flex items-center justify-center p-2">
+                                    <LiquidFillGauge percentage={att} size={120} targetThreshold={targetThreshold} />
+                                </div>
+                            </div>
                                 
                                 <div className="w-full space-y-4">
                                     <div>
@@ -404,7 +436,6 @@ const Dashboard: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
                             <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-outline/40 pt-4 mt-8">
                                 <div className="text-left">
@@ -548,6 +579,19 @@ const Dashboard: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Kinetic Interactive Section: Live Radar & What-If Simulator */}
+                        <div className="md:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6 my-2">
+                            <LivePeriodRadarWidget
+                                slots={todayClasses}
+                                subjects={subjects}
+                                onMarkAttendance={handleQuickMark}
+                            />
+                            <WhatIfBunkSimulator
+                                overallAttended={physicalAttended}
+                                overallTotal={eligibleClasses}
+                                targetThreshold={targetThreshold}
+                            />
+                        </div>
 
                         {/* Bento Card 5: Courses Breakdown */}
                         <div className="rounded-xl border border-outline/50 bg-surface overflow-hidden md:col-span-3 hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] mt-2">
@@ -628,6 +672,7 @@ const Dashboard: React.FC = () => {
                                                         triggerBubbleMenu={triggerBubbleMenu}
                                                         setEditingSubject={setEditingSubject}
                                                         handleDeleteSubject={handleDeleteSubject}
+                                                        onQuickMark={handleQuickMark}
                                                     />
                                                 ))}
                                             </tbody>
@@ -707,16 +752,24 @@ const Dashboard: React.FC = () => {
                                                             {isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
                                                         </span>
 
-                                                        <div className="flex gap-2 shrink-0">
+                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                            <TactileMarkButton
+                                                                status="present"
+                                                                onMark={() => handleQuickMark(normalizeId(subject._id || subject.id), 'present')}
+                                                            />
+                                                            <TactileMarkButton
+                                                                status="absent"
+                                                                onMark={() => handleQuickMark(normalizeId(subject._id || subject.id), 'absent')}
+                                                            />
                                                             <button
                                                                 onClick={() => setEditingSubject(subject)}
-                                                                className="h-7 px-3 border border-outline hover:bg-surface-container rounded-lg flex items-center justify-center text-[10px] font-semibold text-on-surface transition-all cursor-pointer whitespace-nowrap"
+                                                                className="h-7 px-2.5 border border-outline hover:bg-surface-container rounded-lg flex items-center justify-center text-[10px] font-semibold text-on-surface transition-all cursor-pointer whitespace-nowrap"
                                                             >
                                                                 Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
-                                                                className="h-7 px-3 border border-red-500/20 hover:bg-red-500/5 rounded-lg flex items-center justify-center text-[10px] font-semibold text-red-500 transition-all cursor-pointer whitespace-nowrap"
+                                                                className="h-7 px-2.5 border border-red-500/20 hover:bg-red-500/5 rounded-lg flex items-center justify-center text-[10px] font-semibold text-red-500 transition-all cursor-pointer whitespace-nowrap"
                                                             >
                                                                 Delete
                                                             </button>

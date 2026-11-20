@@ -17,7 +17,7 @@ import { useToast } from '@/components/ui/toast-context';
 export const useKeyboardShortcuts = () => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const sequenceTimer = useRef<NodeJS.Timeout | null>(null);
+  const sequenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prefixPressed = useRef<boolean>(false);
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
