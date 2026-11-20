@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useDashboard, useMarkAttendance, useDeleteSubject } from '@/hooks/useDashboard';
 import { useAuth } from '@/contexts/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, Check, X,
-    Target, Flame, ChevronRight, ChevronsUpDown, Settings as SettingsIcon
+    Target, Flame, ChevronRight, Settings as SettingsIcon
 } from 'lucide-react';
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
 import AttendanceModal from '@/components/modals/AttendanceModal';
+import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import useLongPress from '@/hooks/useLongPress';
@@ -178,19 +179,6 @@ const Dashboard: React.FC = () => {
     const { user } = useAuth();
     const { currentSemester, setCurrentSemester } = useSemester();
     const { data: dashboardData, isLoading, refetch: loadDashboard } = useDashboard();
-    const [semDropOpen, setSemDropOpen] = useState(false);
-    const semRef = useRef<HTMLDivElement>(null);
-
-    // Close mobile semester dropdown on outside click
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (semRef.current && !semRef.current.contains(e.target as Node)) {
-                setSemDropOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
 
     const markAttendanceMutation = useMarkAttendance();
     const deleteSubjectMutation = useDeleteSubject();
@@ -352,40 +340,17 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 self-start sm:self-auto">
-                    {/* Semester Selector */}
-                    <div ref={semRef} className="relative z-20">
-                        <button
-                            onClick={() => setSemDropOpen(!semDropOpen)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline bg-surface hover:bg-surface-container-high transition-colors text-xs font-semibold text-on-surface-variant hover:text-on-surface whitespace-nowrap cursor-pointer"
-                        >
-                            Sem {currentSemester}
-                            <ChevronsUpDown size={14} aria-hidden="true" />
-                        </button>
-                        <AnimatePresence>
-                            {semDropOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -4 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -4 }}
-                                    transition={{ duration: 0.1 }}
-                                    className="absolute left-0 top-full mt-2 w-32 bg-surface border border-outline rounded-lg p-1 shadow-lg z-50 text-on-surface"
-                                >
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                                        <button
-                                            key={s}
-                                            onClick={() => { setCurrentSemester(s); setSemDropOpen(false); }}
-                                            className={`w-full text-left px-2.5 py-1.5 rounded text-[11px] font-semibold transition-colors cursor-pointer flex justify-between items-center ${s === currentSemester
-                                                ? 'bg-on-surface text-surface font-bold'
-                                                : 'text-on-surface-variant hover:bg-surface-container'
-                                                }`}
-                                        >
-                                            <span>Sem {s}</span>
-                                            {s === currentSemester && <Check size={10} aria-hidden="true" />}
-                                        </button>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    {/* GlideSelect Semester Dropdown */}
+                    <div className="w-28 shrink-0">
+                        <Select
+                            options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({
+                                value: s,
+                                label: `Sem ${s}`,
+                            }))}
+                            value={currentSemester}
+                            onChange={(e) => setCurrentSemester(parseInt(e.target.value) || 1)}
+                            className="py-1.5 px-3 text-xs"
+                        />
                     </div>
 
                     <FuseButton
