@@ -15,6 +15,7 @@ import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
 import { enableDevTestMode } from '@/utils/devTestData';
+import { ClickSpark, FuseButton, SloshGauge } from '@/components/react-bits';
 
 const Landing: React.FC = () => {
     const { isAuthenticated } = useAuth();
@@ -158,40 +159,45 @@ const Landing: React.FC = () => {
                         className="flex flex-wrap items-center justify-center gap-4 w-full"
                     >
                         {/* Windows Installer Button */}
-                        <a
-                            href="/dist-installers/Semester-Setup.exe"
-                            download="Semester-Setup.exe"
-                            className="group relative inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all duration-300 hover:shadow-[0_0_35px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                        >
-                            <Download size={18} className="transition-transform group-hover:-translate-y-0.5" />
-                            <span>Download for Windows (.exe)</span>
-                            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-black/10 text-black/70">
-                                64-bit
-                            </span>
-                        </a>
+                        <ClickSpark sparkColor="#ffffff" sparkCount={12} sparkRadius={30}>
+                            <a
+                                href="/dist-installers/Semester-Setup.exe"
+                                download="Semester-Setup.exe"
+                                className="group relative inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all duration-300 hover:shadow-[0_0_35px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                            >
+                                <Download size={18} className="transition-transform group-hover:-translate-y-0.5" />
+                                <span>Download for Windows (.exe)</span>
+                                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-black/10 text-black/70">
+                                    64-bit
+                                </span>
+                            </a>
+                        </ClickSpark>
 
                         {/* Android APK Button */}
-                        <a
-                            href="https://github.com/kuberbassi/semester/releases"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border border-white/[0.15] bg-white/[0.05] hover:bg-white/[0.1] text-white font-bold text-sm transition-all duration-300 backdrop-blur-xl hover:border-cyan-500/40 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                        >
-                            <Cpu size={18} className="text-cyan-400" />
-                            <span>Download Android APK</span>
-                            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                                $0 Free
-                            </span>
-                        </a>
+                        <ClickSpark sparkColor="#22d3ee" sparkCount={12} sparkRadius={30}>
+                            <a
+                                href="https://github.com/kuberbassi/semester/releases"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border border-white/[0.15] bg-white/[0.05] hover:bg-white/[0.1] text-white font-bold text-sm transition-all duration-300 backdrop-blur-xl hover:border-cyan-500/40 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                            >
+                                <Cpu size={18} className="text-cyan-400" />
+                                <span>Download Android APK</span>
+                                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                    $0 Free
+                                </span>
+                            </a>
+                        </ClickSpark>
 
                         {/* Instant Dev Mode */}
-                        <button
+                        <FuseButton
                             onClick={handleEnterDevMode}
-                            className="inline-flex items-center justify-center gap-2 px-5 py-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-lg"
+                            variant="primary"
+                            className="px-5 py-4 text-sm"
                         >
-                            <Sparkles size={16} className="animate-spin text-emerald-400" style={{ animationDuration: '4s' }} />
+                            <Sparkles size={16} className="text-cyan-400 mr-2 inline-block animate-spin" style={{ animationDuration: '4s' }} />
                             <span>⚡ Launch Dev Test Mode</span>
-                        </button>
+                        </FuseButton>
                     </motion.div>
 
                     {/* Trust Indicators */}
@@ -387,18 +393,30 @@ const Landing: React.FC = () => {
                             </p>
                         </div>
 
-                        <div className="p-5 rounded-2xl bg-black/40 border border-white/[0.05] space-y-2.5">
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-white/60">Distribution Model</span>
-                                <span className="font-bold text-white">Direct .apk &amp; .exe</span>
+                        <div className="p-5 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center justify-between gap-4">
+                            <div className="space-y-2 flex-1">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-white/60">Distribution</span>
+                                    <span className="font-bold text-white">Direct .apk &amp; .exe</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-white/60">Database</span>
+                                    <span className="font-bold text-white">Embedded SQLite (0ms)</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-white/60">Backup</span>
+                                    <span className="font-bold text-white">Google Drive</span>
+                                </div>
                             </div>
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-white/60">Database Engine</span>
-                                <span className="font-bold text-white">Embedded SQLite (0ms)</span>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                                <span className="text-white/60">Cloud Backup</span>
-                                <span className="font-bold text-white">Google Drive AppData</span>
+                            <div className="shrink-0">
+                                <SloshGauge
+                                    value={100}
+                                    size={80}
+                                    strokeWidth={6}
+                                    color="#10b981"
+                                    label="Offline"
+                                    sublabel="Native"
+                                />
                             </div>
                         </div>
                     </FramerSpotlightCard>

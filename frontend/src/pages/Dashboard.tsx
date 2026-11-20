@@ -28,6 +28,15 @@ import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/dev
 import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
 import { AuroraGlow } from '@/components/ui/AuroraGlow';
 import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
+import {
+    GlideSelect,
+    HoldButton,
+    FuseButton,
+    CallChip,
+    CometDial,
+    WarmTooltip,
+    AnimatedList,
+} from '@/components/react-bits';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -102,25 +111,28 @@ const SubjectRow: React.FC<{
             </td>
             <td className="px-6 py-3.5 text-center font-semibold text-on-surface text-xs">
                 <div>{attended} / {total}</div>
-                {medicalLeaveCount > 0 && <div className="mt-1 text-[8px] font-medium text-on-surface-variant/50">medical counted absent: {attended} / {totalWithMedical}</div>}
+                {medicalLeaveCount > 0 && (
+                    <WarmTooltip content={`Medical counted as absent: ${attended}/${totalWithMedical} (${Math.round(withMedicalAsAbsentPct)}%)`}>
+                        <div className="mt-1 text-[8px] font-medium text-cyan-400/80 cursor-help underline decoration-dotted">
+                            med: +{medicalLeaveCount} excluded
+                        </div>
+                    </WarmTooltip>
+                )}
             </td>
             <td className="px-6 py-3.5 text-center">
                 <div className="flex flex-col items-center gap-1">
                     <span className={`font-bold text-xs ${isCritical ? 'text-red-500' : 'text-on-surface'}`}>{Math.round(pct)}%</span>
-                    {medicalLeaveCount > 0 && <span className="text-[8px] font-medium text-on-surface-variant/50">medical counted absent: {Math.round(withMedicalAsAbsentPct)}%</span>}
-                    <div className="w-12 h-0.5 bg-on-surface/5 rounded-full overflow-hidden shrink-0">
-                        <div className={`h-full ${isCritical ? 'bg-red-500' : 'bg-on-surface'}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                    <div className="w-12 h-1 bg-on-surface/5 rounded-full overflow-hidden shrink-0">
+                        <div className={`h-full ${isCritical ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                 </div>
             </td>
             <td className="px-6 py-3.5 text-center whitespace-nowrap">
-                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border whitespace-nowrap tracking-wide ${
-                    isCritical 
-                        ? 'bg-red-500/5 border-red-500/10 text-red-500' 
-                        : 'bg-primary/5 border-outline/30 text-on-surface-variant/80'
-                }`}>
-                    {isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
-                </span>
+                <CallChip
+                    label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
+                    variant={isCritical ? 'danger' : 'success'}
+                    pulse={isCritical}
+                />
             </td>
 
             <td className="px-6 py-3.5 text-right">
@@ -370,17 +382,17 @@ const Dashboard: React.FC = () => {
                         </AnimatePresence>
                     </div>
 
-                    <button
+                    <FuseButton
                         onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-3 py-1.5 rounded bg-on-surface text-surface text-xs font-bold transition-all hover:bg-on-surface/90 cursor-pointer"
+                        className="py-1.5 px-3 text-xs"
                     >
-                        <Plus size={14} /> Add Subject
-                    </button>
+                        <Plus size={14} className="mr-1 inline-block" /> Add Subject
+                    </FuseButton>
                 </div>
             </div>
 
             {isDevTestMode() && (
-                <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 backdrop-blur-xl">
                     <div className="flex items-center gap-2.5">
                         <span className="relative flex h-2.5 w-2.5">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -390,28 +402,29 @@ const Dashboard: React.FC = () => {
                             DEV TEST MODE ACTIVE — Interactive Mock Data Loaded
                         </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => {
+                    <div className="flex items-center gap-2.5">
+                        <HoldButton
+                            label="Hold to Reset Data"
+                            completedLabel="Resetting..."
+                            holdTime={900}
+                            variant="primary"
+                            className="py-1 px-3 text-[11px]"
+                            onComplete={() => {
                                 resetDevTestData();
                                 loadDashboard();
                                 showToast('success', 'Dev test data reset to initial benchmark state');
                             }}
-                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-emerald-500/40 bg-surface/80 hover:bg-surface text-emerald-700 dark:text-emerald-300 transition-all cursor-pointer shadow-xs"
-                        >
-                            ↺ Reset Test Data
-                        </button>
-                        <button
-                            type="button"
+                        />
+                        <FuseButton
                             onClick={() => {
                                 disableDevTestMode();
                                 window.location.href = '/login';
                             }}
-                            className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-all cursor-pointer shadow-xs"
+                            variant="secondary"
+                            className="py-1 px-3 text-[11px]"
                         >
                             ✕ Exit Dev Mode
-                        </button>
+                        </FuseButton>
                     </div>
                 </div>
             )}
@@ -450,40 +463,28 @@ const Dashboard: React.FC = () => {
                                     <Target size={13} className="text-on-surface-variant/40" />
                                 </div>
                                 
-                                <div className="rounded-lg border border-outline/50 bg-surface-container/25 p-4 mb-5">
-                                    <div className="flex items-end justify-between gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Minimum Goal</p>
-                                            <p className="text-2xl font-black tracking-tight text-on-surface">{targetThreshold}%</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Current</p>
-                                            <p className={`text-base font-bold ${hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-on-surface'}`}>
-                                                {hasAttendanceData ? `${att.toFixed(1)}%` : 'â€”'}
-                                            </p>
+                                <div className="rounded-2xl border border-white/10 bg-surface-container/20 p-4 mb-5 flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Minimum Goal</p>
+                                        <p className="text-2xl font-black tracking-tight text-on-surface">{targetThreshold}%</p>
+                                        <div className="mt-2 text-[10px] font-semibold">
+                                            <span className={hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-emerald-400'}>
+                                                {!hasAttendanceData
+                                                    ? 'No classes recorded yet'
+                                                    : targetDelta >= 0
+                                                        ? `${targetDelta.toFixed(1)}% above goal`
+                                                        : `${Math.abs(targetDelta).toFixed(1)}% below goal`}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="relative mt-3 h-1.5 rounded-full bg-on-surface/5">
-                                        <div
-                                            className={`h-full rounded-full ${hasAttendanceData && targetDelta < 0 ? 'bg-red-500' : 'bg-on-surface'}`}
-                                            style={{ width: `${hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}%` }}
+                                    <div className="shrink-0 flex items-center justify-center">
+                                        <CometDial
+                                            value={hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}
+                                            size={84}
+                                            strokeWidth={8}
+                                            color={targetDelta < 0 ? '#f43f5e' : '#38bdf8'}
+                                            label="Attended"
                                         />
-                                        <span
-                                            className="absolute top-1/2 h-3 w-0.5 -translate-y-1/2 rounded-full bg-primary ring-2 ring-surface"
-                                            style={{ left: `${Math.min(100, Math.max(0, targetThreshold))}%` }}
-                                            title={`${targetThreshold}% target`}
-                                        />
-                                    </div>
-                                    <div className="mt-2 flex items-center justify-between gap-3 text-[9px] font-semibold">
-                                        <span className="text-on-surface-variant/40">0%</span>
-                                        <span className={hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-on-surface-variant/60'}>
-                                            {!hasAttendanceData
-                                                ? 'No classes recorded yet'
-                                                : targetDelta >= 0
-                                                    ? `${targetDelta.toFixed(1)} points above target`
-                                                    : `${Math.abs(targetDelta).toFixed(1)} points below target`}
-                                        </span>
-                                        <span className="text-on-surface-variant/40">100%</span>
                                     </div>
                                 </div>
 
@@ -536,19 +537,23 @@ const Dashboard: React.FC = () => {
                                 
                                 <div className="my-2 min-h-0 flex-1 max-h-[360px] overflow-y-auto custom-scrollbar pr-1 md:flex md:max-h-[430px] md:flex-col">
                                     {todayClasses.length > 0 ? (
-                                        todayClasses.map((cls, idx) => {
-                                            const sub = findSubjectForSlot(subjects, cls);
-                                            return (
-                                                <div key={idx} className="flex min-h-11 items-center gap-3 py-2.5 border-b border-outline/30 last:border-b-0">
-                                                    <div className="text-center bg-surface-container border border-outline/40 rounded-md px-2 py-0.5 shrink-0 min-w-[55px]">
-                                                        <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || '—'}</span>
+                                        <AnimatedList
+                                            items={todayClasses}
+                                            keyExtractor={(cls) => `${cls.start_time}-${cls.subject_name || cls.subjectName || 'slot'}`}
+                                            renderItem={(cls) => {
+                                                const sub = findSubjectForSlot(subjects, cls);
+                                                return (
+                                                    <div className="flex min-h-11 items-center gap-3 py-2.5 border-b border-outline/30 last:border-b-0">
+                                                        <div className="text-center bg-surface-container border border-outline/40 rounded-md px-2 py-0.5 shrink-0 min-w-[55px]">
+                                                            <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || '—'}</span>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-xs font-bold text-on-surface truncate leading-tight">{sub?.name || cls.subject_name || cls.subjectName || cls.label || cls.name || 'Break'}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-xs font-bold text-on-surface truncate leading-tight">{sub?.name || cls.subject_name || cls.subjectName || cls.label || cls.name || 'Break'}</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
+                                                );
+                                            }}
+                                        />
                                     ) : (
                                         <div className="py-8 text-center">
                                             <p className="text-xs font-semibold text-on-surface-variant/30 italic">No classes today. Enjoy your day!</p>
@@ -587,35 +592,40 @@ const Dashboard: React.FC = () => {
                             <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Courses Breakdown</span>
                                 {/* Category filter tabs */}
-                                <div className="flex items-center gap-1 p-0.5 bg-surface border border-outline/50 rounded-md self-start sm:self-auto">
-                                    {(['Theory', 'Practical', 'All'] as const).map(cat => {
-                                        const count = cat === 'All'
-                                            ? subjects.length
-                                            : subjects.filter((s) => {
-                                                const isPractical = s.categories?.includes('Practical') || 
-                                                                    s.type?.toLowerCase() === 'practical' || 
-                                                                    s.type?.toLowerCase() === 'lab' || 
-                                                                    s.name?.toLowerCase().includes('lab');
-                                                return cat === 'Theory' ? !isPractical : isPractical;
-                                            }).length;
-                                        return (
-                                            <button
-                                                key={cat}
-                                                onClick={() => {
-                                                    setCategoryFilter(cat);
-                                                    localStorage.setItem('semester_dashboard_subject_filter', cat);
-                                                }}
-                                                className={`flex items-center gap-1.5 px-3 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                    categoryFilter === cat
-                                                        ? 'bg-on-surface text-surface'
-                                                        : 'text-on-surface-variant/50 hover:text-on-surface'
-                                                }`}
-                                            >
-                                                {cat}
-                                                <span className={`text-[8px] ${categoryFilter === cat ? 'opacity-60' : 'opacity-40'}`}>{count}</span>
-                                            </button>
-                                        );
-                                    })}
+                                <div className="self-start sm:self-auto">
+                                    <GlideSelect<'Theory' | 'Practical' | 'All'>
+                                        options={[
+                                            { id: 'All', label: 'All', count: subjects.length },
+                                            {
+                                                id: 'Theory',
+                                                label: 'Theory',
+                                                count: subjects.filter((s) => {
+                                                    const isPractical = s.categories?.includes('Practical') ||
+                                                                        s.type?.toLowerCase() === 'practical' ||
+                                                                        s.type?.toLowerCase() === 'lab' ||
+                                                                        s.name?.toLowerCase().includes('lab');
+                                                    return !isPractical;
+                                                }).length
+                                            },
+                                            {
+                                                id: 'Practical',
+                                                label: 'Practical',
+                                                count: subjects.filter((s) => {
+                                                    const isPractical = s.categories?.includes('Practical') ||
+                                                                        s.type?.toLowerCase() === 'practical' ||
+                                                                        s.type?.toLowerCase() === 'lab' ||
+                                                                        s.name?.toLowerCase().includes('lab');
+                                                    return isPractical;
+                                                }).length
+                                            },
+                                        ]}
+                                        value={categoryFilter}
+                                        onChange={(val) => {
+                                            const typedVal = val as 'Theory' | 'Practical' | 'All';
+                                            setCategoryFilter(typedVal);
+                                            localStorage.setItem('semester_dashboard_subject_filter', typedVal);
+                                        }}
+                                    />
                                 </div>
                             </div>
                             
@@ -733,13 +743,11 @@ const Dashboard: React.FC = () => {
                                                     </div>
 
                                                     <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-outline/10">
-                                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border tracking-wide whitespace-nowrap ${
-                                                            isCritical 
-                                                                ? 'bg-red-500/5 border-red-500/10 text-red-500' 
-                                                                : 'bg-primary/5 border-outline/30 text-on-surface-variant/80'
-                                                        }`}>
-                                                            {isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
-                                                        </span>
+                                                        <CallChip
+                                                            label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
+                                                            variant={isCritical ? 'danger' : 'success'}
+                                                            pulse={isCritical}
+                                                        />
 
                                                         <div className="flex items-center gap-1.5 shrink-0">
                                                             <TactileMarkButton
