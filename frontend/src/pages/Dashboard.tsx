@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, Check, X,
-    Target, Flame, ChevronRight, Settings as SettingsIcon
+    Target, Settings as SettingsIcon
 } from 'lucide-react';
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
@@ -20,9 +20,10 @@ import { formatTeacherName } from '@/utils/formatters';
 import { useConfirm } from '@/contexts/confirm-context';
 import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
-import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
+import { sortTimetableSlots } from '@/lib/timetable';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
+import { DashboardTodoWidget } from '@/components/dashboard/DashboardTodoWidget';
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
 import { triggerCelebration } from '@/utils/celebration';
 import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/devTestData';
@@ -37,7 +38,6 @@ import {
     CallChip,
     CometDial,
     WarmTooltip,
-    AnimatedList,
 } from '@/components/react-bits';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
@@ -426,122 +426,90 @@ const Dashboard: React.FC = () => {
                             className="md:h-full min-h-[380px]"
                         />
 
-                        {/* Bento Card 2: Student Target */}
+                        {/* Bento Card 2: Academic Profile & Target */}
                         <FramerSpotlightCard glowColor="blue" className="p-5 sm:p-6 flex flex-col justify-between md:h-full">
                             <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Academic Target</span>
-                                    <Target size={13} className="text-on-surface-variant/40" />
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                                            <Target size={14} />
+                                        </span>
+                                        <span className="text-[10px] font-extrabold text-on-surface-variant/60 uppercase tracking-widest">
+                                            Academic Target
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400">
+                                        Sem {currentSemester}
+                                    </span>
                                 </div>
                                 
-                                <div className="rounded-2xl border border-white/10 bg-surface-container/20 p-4 mb-5 flex items-center justify-between gap-4">
+                                {/* Target Meter with Orbital CometDial */}
+                                <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d12]/80 backdrop-blur-xl p-4 mb-4 flex items-center justify-between gap-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
                                     <div className="flex-1">
                                         <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Minimum Goal</p>
-                                        <p className="text-2xl font-black tracking-tight text-on-surface">{targetThreshold}%</p>
-                                        <div className="mt-2 text-[10px] font-semibold">
-                                            <span className={hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-emerald-400'}>
-                                                {!hasAttendanceData
-                                                    ? 'No classes recorded yet'
+                                        <p className="text-3xl font-black tracking-tight text-white">{targetThreshold}%</p>
+                                        <div className="mt-2 text-[10px] font-bold">
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono ${
+                                                !hasAttendanceData
+                                                    ? 'text-on-surface-variant/50 bg-white/[0.04]'
                                                     : targetDelta >= 0
-                                                        ? `${targetDelta.toFixed(1)}% above goal`
-                                                        : `${Math.abs(targetDelta).toFixed(1)}% below goal`}
+                                                        ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                                        : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                                            }`}>
+                                                {!hasAttendanceData
+                                                    ? 'No classes recorded'
+                                                    : targetDelta >= 0
+                                                        ? `+${targetDelta.toFixed(1)}% safe buffer`
+                                                        : `${Math.abs(targetDelta).toFixed(1)}% deficit`}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="shrink-0 flex items-center justify-center">
                                         <CometDial
                                             value={hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}
-                                            size={84}
+                                            size={88}
                                             strokeWidth={8}
-                                            color={targetDelta < 0 ? '#f43f5e' : '#38bdf8'}
+                                            color={targetDelta < 0 ? '#f43f5e' : '#00f0ff'}
                                             label="Attended"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-4 my-2 border-t border-outline/30 pt-4">
-                                    <div>
-                                        <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Student Name</p>
-                                        <p className="text-sm font-bold text-on-surface">{user?.name || 'Student'}</p>
+                                {/* Clean Bento Tiles for Student Attributes */}
+                                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Student Name</p>
+                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">{user?.name || 'Alex Mercer'}</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40 font-mono">Enrollment</p>
-                                            <p className="text-xs font-semibold text-on-surface truncate font-mono">{user?.enrollment_number || 'â€”'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Batch</p>
-                                            <p className="text-xs font-semibold text-on-surface truncate">{user?.batch || 'â€”'}</p>
-                                        </div>
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40 font-mono">Enrollment</p>
+                                        <p className="text-xs font-bold text-on-surface truncate font-mono mt-0.5">{user?.enrollment_number || '04216403223'}</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Target Goal</p>
-                                            <p className="text-xs font-semibold text-on-surface">{targetThreshold}% Minimum</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Current Semester</p>
-                                            <p className="text-xs font-semibold text-on-surface">Semester {currentSemester}</p>
-                                        </div>
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Batch</p>
+                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">{user?.batch || '2023-2027'}</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Current Term</p>
+                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">Semester {currentSemester}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="border-t border-outline/40 pt-4 mt-6">
+                            <div className="border-t border-outline/30 pt-3 mt-4">
                                 <Link
                                     to="/settings"
-                                    className="w-full h-10 flex items-center justify-center gap-2 border border-outline hover:border-on-surface/20 hover:bg-surface-container rounded-md text-xs font-semibold text-on-surface transition-all cursor-pointer shadow-sm"
+                                    className="w-full h-9 flex items-center justify-center gap-2 border border-white/[0.08] hover:border-white/[0.18] hover:bg-surface-container/50 rounded-xl text-xs font-bold text-on-surface transition-all cursor-pointer shadow-sm"
                                 >
-                                    <SettingsIcon size={12} />
-                                    Configure Settings
+                                    <SettingsIcon size={13} />
+                                    Configure Settings & Targets
                                 </Link>
                             </div>
                         </FramerSpotlightCard>
 
-                        {/* Bento Card 3: Today's Schedule */}
+                        {/* Bento Card 3: Tasks & Todo Box */}
                         <FramerSpotlightCard glowColor="purple" className="p-5 sm:p-6 flex flex-col md:h-full">
-                            <div className="flex min-h-0 flex-1 flex-col">
-                                <div className="flex items-center justify-between mb-6">
-                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Today's Schedule</span>
-                                    <Flame size={13} className="text-on-surface-variant/40" />
-                                </div>
-                                
-                                <div className="my-2 min-h-0 flex-1 max-h-[360px] overflow-y-auto custom-scrollbar pr-1 md:flex md:max-h-[430px] md:flex-col">
-                                    {todayClasses.length > 0 ? (
-                                        <AnimatedList
-                                            items={todayClasses}
-                                            keyExtractor={(cls) => `${cls.start_time}-${cls.subject_name || cls.subjectName || 'slot'}`}
-                                            renderItem={(cls) => {
-                                                const sub = findSubjectForSlot(subjects, cls);
-                                                return (
-                                                    <div className="flex min-h-11 items-center gap-3 py-2.5 border-b border-outline/30 last:border-b-0">
-                                                        <div className="text-center bg-surface-container border border-outline/40 rounded-md px-2 py-0.5 shrink-0 min-w-[55px]">
-                                                            <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || '—'}</span>
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-xs font-bold text-on-surface truncate leading-tight">{sub?.name || cls.subject_name || cls.subjectName || cls.label || cls.name || 'Break'}</p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="py-8 text-center">
-                                            <p className="text-xs font-semibold text-on-surface-variant/30 italic">No classes today. Enjoy your day!</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="border-t border-outline/40 pt-4 mt-6 shrink-0">
-                                <Link
-                                    to="/timetable"
-                                    className="w-full h-10 flex items-center justify-center gap-1 border border-outline hover:border-on-surface/20 hover:bg-surface-container rounded-md text-xs font-semibold text-on-surface transition-all cursor-pointer shadow-sm"
-                                >
-                                    View Full Timetable
-                                    <ChevronRight size={12} />
-                                </Link>
-                            </div>
+                            <DashboardTodoWidget />
                         </FramerSpotlightCard>
 
                         {/* Kinetic Interactive Section: Live Radar & What-If Simulator */}

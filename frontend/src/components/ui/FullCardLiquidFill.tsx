@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
-import { Activity, Shield, Sparkles } from 'lucide-react';
+import { Activity, Shield, Check } from 'lucide-react';
 import { haptics } from '@/utils/haptics';
 
 interface FullCardLiquidFillProps {
@@ -212,7 +212,7 @@ export const FullCardLiquidFill: React.FC<FullCardLiquidFillProps> = ({
                             {clampedPct.toFixed(1)}%
                         </h1>
                         <span className="text-xs font-mono font-bold text-white/50 uppercase tracking-widest">
-                            Live Fluid
+                            Physical Attendance
                         </span>
                     </div>
 
@@ -224,7 +224,7 @@ export const FullCardLiquidFill: React.FC<FullCardLiquidFillProps> = ({
                         </div>
                         {safeBunks > 0 && (
                             <div className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold backdrop-blur-md flex items-center gap-1.5">
-                                <Sparkles size={12} />
+                                <Check size={12} strokeWidth={2.5} />
                                 <span>{safeBunks} Bunks Available</span>
                             </div>
                         )}
@@ -262,7 +262,7 @@ export const FullCardLiquidFill: React.FC<FullCardLiquidFillProps> = ({
 
                 {/* Bottom Interactive Tap Hint */}
                 <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-[10px] text-white/40 font-medium">
-                    <span>Tap card to induce physical wave slosh</span>
+                    <span>Interactive Attendance Reservoir</span>
                     <span className="text-white/60 group-hover:text-white transition-colors">Target: {targetThreshold}%</span>
                 </div>
             </div>

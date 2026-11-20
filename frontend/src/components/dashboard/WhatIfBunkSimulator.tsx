@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
+import { SlidersHorizontal, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
 import { haptics } from '@/utils/haptics';
 import { WakeSlider } from '@/components/react-bits/WakeSlider';
 import { ScrubField } from '@/components/react-bits/ScrubField';
@@ -59,11 +59,11 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2.5">
                     <span className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                        <Sparkles size={16} />
+                        <SlidersHorizontal size={16} />
                     </span>
                     <div>
                         <h3 className="text-sm font-bold text-on-surface tracking-tight">"What-If" Bunk Simulator</h3>
-                        <p className="text-[11px] text-on-surface-variant/50">Simulate upcoming college leaves or trips with spring physics</p>
+                        <p className="text-[11px] text-on-surface-variant/50">Simulate attendance margin & future class impacts</p>
                     </div>
                 </div>
                 <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm ${statusBg} ${statusColor}`}>
@@ -138,7 +138,7 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
                 {/* React Bits JellyRadio for Presets */}
                 <div className="pt-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40 block mb-2">
-                        Quick Scenarios (Jelly Spring):
+                        Quick Presets
                     </span>
                     <JellyRadio
                         options={[

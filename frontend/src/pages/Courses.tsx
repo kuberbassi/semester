@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
-import { HoldButton, ScrubField } from '@/components/react-bits';
+import { HoldButton, WakeSlider } from '@/components/react-bits';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { useConfirm } from '@/contexts/confirm-context';
@@ -351,14 +351,14 @@ const Courses: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <ScrubField
+                            <WakeSlider
                                 label="Course Progress"
                                 value={formData.progress || 0}
                                 min={0}
                                 max={100}
                                 step={5}
                                 unit="%"
-                                color="primary"
+                                color="cyan"
                                 onChange={val => setFormData({ ...formData, progress: clampProgress(val) })}
                             />
                         </div>

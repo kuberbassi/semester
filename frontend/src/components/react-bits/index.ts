@@ -14,4 +14,5 @@ export * from './WarmTooltip';
 export * from './MagicBento';
 export * from './AnimatedList';
 export * from './ClickSpark';
+export * from './GlobalClickSpark';
 export * from './SpotlightCard';
