@@ -7,11 +7,11 @@ import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
 import {
     Sun, Moon, Download, Sparkles, Shield, Cpu,
-    Layers, CheckCircle2, ChevronRight, Activity, Terminal
+    Layers, CheckCircle2, ChevronRight, Terminal
 } from 'lucide-react';
 import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
 import { AuroraGlow } from '@/components/ui/AuroraGlow';
-import { LiquidFillGauge } from '@/components/ui/LiquidFillGauge';
+import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
 import { enableDevTestMode } from '@/utils/devTestData';
@@ -214,42 +214,17 @@ const Landing: React.FC = () => {
                 {/* ── Framer Showcase Bento Grid (The 6 Signature Cards) ── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-                    {/* Card 1: GSAP Kinetic Liquid Gauge (Cyan Aura) */}
-                    <FramerSpotlightCard glowColor="cyan" className="p-8 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400 px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
-                                    Fluid Dynamics
-                                </span>
-                                <Activity size={16} className="text-cyan-400" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
-                                GSAP Liquid Wave Gauge
-                            </h2>
-                            <p className="text-xs text-white/50 leading-relaxed mb-6">
-                                Dual-wave sinusoidal Bézier fluid physics that sloshes upon user tap and morphs color as attendance crosses critical thresholds.
-                            </p>
-                        </div>
-
-                        {/* Interactive Gauge Preview */}
-                        <div className="flex flex-col items-center justify-center py-4 bg-black/40 rounded-2xl border border-white/[0.05]">
-                            <LiquidFillGauge percentage={demoPct} size={150} />
-                            <div className="flex items-center gap-2 mt-4">
-                                <button
-                                    onClick={() => setDemoPct((prev) => Math.min(100, Math.round((prev + 2.5) * 10) / 10))}
-                                    className="px-3 py-1 rounded-lg text-[10px] font-bold bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
-                                >
-                                    + Attend (+2.5%)
-                                </button>
-                                <button
-                                    onClick={() => setDemoPct((prev) => Math.max(0, Math.round((prev - 3.2) * 10) / 10))}
-                                    className="px-3 py-1 rounded-lg text-[10px] font-bold bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer"
-                                >
-                                    - Bunk (-3.2%)
-                                </button>
-                            </div>
-                        </div>
-                    </FramerSpotlightCard>
+                    {/* Card 1: Full Card Gradient Liquid Fill Reservoir (Cyan/Emerald Aura) */}
+                    <FullCardLiquidFill
+                        percentage={demoPct}
+                        attended={183}
+                        total={224}
+                        safeBunks={20}
+                        deficitCount={1}
+                        targetThreshold={75}
+                        className="h-full min-h-[380px]"
+                        onSlosh={() => setDemoPct(p => (p >= 85 ? 81.7 : Math.round((p + 1.5) * 10) / 10))}
+                    />
 
                     {/* Card 2: Live Period Radar (Cobalt Blue Aura) */}
                     <FramerSpotlightCard glowColor="blue" className="p-8 flex flex-col justify-between">

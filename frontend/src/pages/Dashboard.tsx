@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, Check, X,
-    Activity, Target, Flame, ChevronRight, ChevronsUpDown, Settings as SettingsIcon
+    Target, Flame, ChevronRight, ChevronsUpDown, Settings as SettingsIcon
 } from 'lucide-react';
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
@@ -20,7 +20,6 @@ import { useConfirm } from '@/contexts/confirm-context';
 import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
 import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
-import { LiquidFillGauge } from '@/components/ui/LiquidFillGauge';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
@@ -28,6 +27,7 @@ import { triggerCelebration } from '@/utils/celebration';
 import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/devTestData';
 import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
 import { AuroraGlow } from '@/components/ui/AuroraGlow';
+import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -280,12 +280,9 @@ const Dashboard: React.FC = () => {
         return totals;
     }, { attended: 0, eligibleClasses: 0, totalClasses: 0, medicalLeaveCount: 0 });
     const { attended: physicalAttended, eligibleClasses, totalClasses, medicalLeaveCount } = attendanceTotals;
-    const safeCount = subjects.filter(s => (s.attendance_percentage || 0) >= targetThreshold).length || 0;
     const riskCount = subjects.filter(s => (s.attendance_percentage || 0) < targetThreshold).length || 0;
-    const subjectCount = dashboardData?.total_subjects || subjects.length || 0;
     const att = eligibleClasses > 0 ? (physicalAttended / eligibleClasses) * 100 : 0;
     const attendanceWithoutMedical = totalClasses > 0 ? (physicalAttended / totalClasses) * 100 : 0;
-    const physicalAttendanceProgress = Math.max(0, Math.min(100, attendanceWithoutMedical));
     const safeBunks = dashboardData?.summary?.safe_bunks_remaining ?? 0;
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
@@ -432,67 +429,18 @@ const Dashboard: React.FC = () => {
                     {/* Bento Grid */}
                     <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3 md:items-stretch">
                         
-                        {/* Bento Card 1: Academic Health */}
-                        <FramerSpotlightCard glowColor="emerald" className="p-4 sm:p-6 flex flex-col justify-between md:h-full">
-                            <div className="flex items-center justify-between mb-6">
-                                <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Overall Academic Health</span>
-                                <Activity size={13} className="text-on-surface-variant/40" />
-                            </div>
-                            
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 my-2">
-                                <div className="flex-1">
-                                    <p className="text-5xl md:text-6xl font-black tracking-tighter text-on-surface leading-none">{att.toFixed(1)}%</p>
-                                    <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
-                                        <span>Medical excluded</span>
-                                        <span className="text-on-surface-variant/75">{physicalAttended} / {eligibleClasses}</span>
-                                    </div>
-                                    <div className="mt-3 rounded-lg border border-outline/40 bg-surface-container/40 px-3 py-2.5">
-                                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                                            <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Medical counted absent</span>
-                                            <span className="text-sm font-black text-on-surface">{attendanceWithoutMedical.toFixed(1)}%</span>
-                                        </div>
-                                        <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant/45">{physicalAttended} / {totalClasses} classes Â· {medicalLeaveCount} medical leaves</p>
-                                    </div>
-                                </div>
-
-                                <div className="shrink-0 flex items-center justify-center p-2">
-                                    <LiquidFillGauge percentage={att} size={120} targetThreshold={targetThreshold} />
-                                </div>
-                            </div>
-                                
-                                <div className="w-full space-y-4">
-                                    <div>
-                                        <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                                            <span>Physical attendance progress</span>
-                                        </div>
-                                        <div
-                                            role="progressbar"
-                                            aria-label="Physical attendance across all conducted classes"
-                                            aria-valuemin={0}
-                                            aria-valuemax={100}
-                                            aria-valuenow={Math.round(physicalAttendanceProgress)}
-                                            className="w-full h-1 bg-on-surface/5 border border-outline/35 rounded-full overflow-hidden"
-                                        >
-                                            <div className="h-full bg-on-surface" style={{ width: `${physicalAttendanceProgress}%` }} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-outline/40 pt-4 mt-8">
-                                <div className="text-left">
-                                    <span className="block text-[8px] font-bold text-on-surface-variant/45 uppercase tracking-wider">Deficit Risk</span>
-                                    <span className={`text-sm md:text-base font-bold ${riskCount > 0 ? 'text-red-500' : 'text-on-surface'}`}>{riskCount} {riskCount === 1 ? 'Subject' : 'Subjects'}</span>
-                                </div>
-                                <div className="text-left">
-                                    <span className="block text-[8px] font-bold text-on-surface-variant/45 uppercase tracking-wider">Safe Bunks</span>
-                                    <span className="text-sm md:text-base font-bold text-on-surface">{safeBunks} Left</span>
-                                </div>
-                                <div className="text-left">
-                                    <span className="block text-[8px] font-bold text-on-surface-variant/45 uppercase tracking-wider">Total Tracked</span>
-                                    <span className="text-sm md:text-base font-bold text-on-surface">{safeCount}/{subjectCount}</span>
-                                </div>
-                            </div>
-                        </FramerSpotlightCard>
+                        {/* Bento Card 1: Full Card Gradient Liquid Fill Reservoir */}
+                        <FullCardLiquidFill
+                            percentage={att}
+                            attended={physicalAttended}
+                            total={eligibleClasses}
+                            safeBunks={safeBunks}
+                            deficitCount={riskCount}
+                            medicalLeaveCount={medicalLeaveCount}
+                            attendanceWithoutMedical={attendanceWithoutMedical}
+                            targetThreshold={targetThreshold}
+                            className="md:h-full min-h-[380px]"
+                        />
 
                         {/* Bento Card 2: Student Target */}
                         <FramerSpotlightCard glowColor="blue" className="p-5 sm:p-6 flex flex-col justify-between md:h-full">
