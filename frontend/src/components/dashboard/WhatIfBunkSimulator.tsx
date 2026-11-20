@@ -4,7 +4,7 @@ import { SlidersHorizontal, AlertTriangle, ShieldCheck, ArrowRight } from 'lucid
 import { haptics } from '@/utils/haptics';
 import { WakeSlider } from '@/components/react-bits/WakeSlider';
 import { ScrubField } from '@/components/react-bits/ScrubField';
-import { JellyRadio } from '@/components/react-bits/JellyRadio';
+import { RubberSegment } from '@/components/react-bits';
 
 interface WhatIfBunkSimulatorProps {
     overallAttended: number;
@@ -135,20 +135,22 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
                     />
                 </div>
 
-                {/* React Bits JellyRadio for Presets */}
+                {/* React Bits RubberSegment for Presets */}
                 <div className="pt-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40 block mb-2">
                         Quick Presets
                     </span>
-                    <JellyRadio
+                    <RubberSegment
                         options={[
-                            { value: 'custom', label: 'Custom' },
-                            { value: 'skip1', label: 'Skip 1 Day (4)' },
-                            { value: 'weekend', label: 'Long Weekend (6)' },
-                            { value: 'attendAll', label: 'Attend All (0)' },
+                            { id: 'custom', label: 'Custom' },
+                            { id: 'skip1', label: 'Skip 1 Day' },
+                            { id: 'weekend', label: 'Long Weekend' },
+                            { id: 'attendAll', label: 'Attend All' },
                         ]}
                         value={presetChoice}
                         onChange={handlePreset}
+                        size="sm"
+                        variant="white"
                     />
                 </div>
             </div>

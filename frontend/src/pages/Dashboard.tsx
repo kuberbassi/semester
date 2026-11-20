@@ -32,7 +32,7 @@ import { AuroraGlow } from '@/components/ui/AuroraGlow';
 import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
 import { SubjectAccordionGallery } from '@/components/dashboard/SubjectAccordionGallery';
 import {
-    GlideSelect,
+    RubberSegment,
     HoldButton,
     FuseButton,
     CallChip,
@@ -540,12 +540,15 @@ const Dashboard: React.FC = () => {
 
                                 <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
                                     {/* View Mode Toggle */}
-                                    <GlideSelect<'gallery' | 'table'>
+                                    <RubberSegment<'gallery' | 'table'>
                                         options={[
-                                            { id: 'gallery', label: '🎴 Accordion Gallery' },
+                                            { id: 'gallery', label: '🎴 Gallery' },
                                             { id: 'table', label: '☰ Table' },
                                         ]}
                                         value={subjectViewMode}
+                                        size="sm"
+                                        variant="white"
+                                        layoutId="subject-view-mode-rubber"
                                         onChange={(mode) => {
                                             setSubjectViewMode(mode);
                                             localStorage.setItem('semester_dashboard_subject_view', mode);
@@ -553,7 +556,7 @@ const Dashboard: React.FC = () => {
                                     />
 
                                     {/* Category filter tabs */}
-                                    <GlideSelect<'Theory' | 'Practical' | 'All'>
+                                    <RubberSegment<'Theory' | 'Practical' | 'All'>
                                         options={[
                                             { id: 'All', label: 'All', count: subjects.length },
                                             {
@@ -580,10 +583,12 @@ const Dashboard: React.FC = () => {
                                             },
                                         ]}
                                         value={categoryFilter}
+                                        size="sm"
+                                        variant="white"
+                                        layoutId="category-filter-rubber"
                                         onChange={(val) => {
-                                            const typedVal = val as 'Theory' | 'Practical' | 'All';
-                                            setCategoryFilter(typedVal);
-                                            localStorage.setItem('semester_dashboard_subject_filter', typedVal);
+                                            setCategoryFilter(val);
+                                            localStorage.setItem('semester_dashboard_subject_filter', val);
                                         }}
                                     />
                                 </div>

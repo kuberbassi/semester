@@ -15,4 +15,5 @@ export * from './MagicBento';
 export * from './AnimatedList';
 export * from './ClickSpark';
 export * from './GlobalClickSpark';
+export * from './RubberSegment';
 export * from './SpotlightCard';

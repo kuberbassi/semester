@@ -10,7 +10,7 @@ import {
     Image as ImageIcon, MoreHorizontal, RotateCcw, Sparkles
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast-context';
-import { HoldButton } from '@/components/react-bits';
+import { HoldButton, RubberSegment } from '@/components/react-bits';
 import api from '@/services/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConfirm } from '@/contexts/confirm-context';
@@ -1264,17 +1264,17 @@ const Notes: React.FC = () => {
                 <div className="w-full">
                     {/* Top bar with tabs only */}
                     <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-1 p-1 bg-surface-container border border-outline rounded-lg">
-                            {(['notes', 'todos'] as const).map(mode => (
-                                <button
-                                    key={mode}
-                                    onClick={() => handleViewModeChange(mode)}
-                                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${viewMode === mode ? 'bg-surface text-on-surface shadow-sm border border-outline' : 'text-on-surface-variant/50 hover:text-on-surface'}`}
-                                >
-                                    {mode === 'notes' ? <><StickyNote size={12} />Notes</> : <><ListTodo size={12} />Tasks</>}
-                                </button>
-                            ))}
-                        </div>
+                        <RubberSegment<'notes' | 'todos'>
+                            options={[
+                                { id: 'notes', label: 'Notes', icon: <StickyNote size={12} /> },
+                                { id: 'todos', label: 'Tasks', icon: <ListTodo size={12} /> },
+                            ]}
+                            value={viewMode}
+                            size="sm"
+                            variant="white"
+                            layoutId="notes-view-mode-rubber-1"
+                            onChange={handleViewModeChange}
+                        />
                     </div>
 
                     {loading ? (
@@ -1312,17 +1312,17 @@ const Notes: React.FC = () => {
                     <div className="flex-1 min-w-0">
                         {/* Top bar */}
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 mb-6">
-                            <div className="flex items-center gap-1 p-1 bg-surface-container border border-outline rounded-lg self-start">
-                                {(['notes', 'todos'] as const).map(mode => (
-                                    <button
-                                        key={mode}
-                                        onClick={() => handleViewModeChange(mode)}
-                                        className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${viewMode === mode ? 'bg-surface text-on-surface shadow-sm border border-outline' : 'text-on-surface-variant/50 hover:text-on-surface'}`}
-                                    >
-                                        {mode === 'notes' ? <><StickyNote size={12} />Notes</> : <><ListTodo size={12} />Tasks</>}
-                                    </button>
-                                ))}
-                            </div>
+                            <RubberSegment<'notes' | 'todos'>
+                                options={[
+                                    { id: 'notes', label: 'Notes', icon: <StickyNote size={12} /> },
+                                    { id: 'todos', label: 'Tasks', icon: <ListTodo size={12} /> },
+                                ]}
+                                value={viewMode}
+                                size="sm"
+                                variant="white"
+                                layoutId="notes-view-mode-rubber-2"
+                                onChange={handleViewModeChange}
+                            />
 
                             <div className="flex items-center gap-2 flex-1 max-w-sm">
                                 <input

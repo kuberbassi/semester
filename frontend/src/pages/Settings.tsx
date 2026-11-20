@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { useSemester } from '@/contexts/semester-context';
 import Select from '@/components/ui/Select';
-import { WakeSlider } from '@/components/react-bits';
+import { WakeSlider, RubberSegment } from '@/components/react-bits';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import { authService } from '@/services/auth.service';
@@ -268,20 +268,15 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-0 border-b border-outline mb-8 overflow-x-auto no-scrollbar">
-                {tabs.map(t => (
-                    <button
-                        key={t.key}
-                        onClick={() => setActiveTab(t.key)}
-                        className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                            activeTab === t.key
-                                ? 'border-on-surface text-on-surface'
-                                : 'border-transparent text-on-surface-variant/40 hover:text-on-surface-variant hover:border-outline'
-                        }`}
-                    >
-                        {t.label}
-                    </button>
-                ))}
+            <div className="mb-8 overflow-x-auto no-scrollbar">
+                <RubberSegment<TabKey>
+                    options={tabs.map(t => ({ id: t.key, label: t.label }))}
+                    value={activeTab}
+                    onChange={setActiveTab}
+                    size="md"
+                    variant="white"
+                    layoutId="settings-tabs-rubber"
+                />
             </div>
 
             {/* Tab Content */}
