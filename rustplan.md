@@ -1,4 +1,5 @@
 # Architecture & Implementation Plan: Semester Native Core (Rust + Kotlin + PC)
+
 ## 1. Executive Summary
 
 This plan details the transition of **Semester** from a remote-dependent web application into an **offline-first, cross-platform native suite** powered by a lightweight **Rust Core (~450 lines)**.
