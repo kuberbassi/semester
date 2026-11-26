@@ -1,16 +1,37 @@
 package com.semester.app.ui.components
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -21,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.semester.app.haptics.HapticCrownEngine
+import com.semester.app.ui.theme.SemesterColors
 import uniffi.semester_core.AttendanceStatus
 import uniffi.semester_core.TimetableSlot
 
@@ -28,84 +50,94 @@ enum class PeriodState {
     PAST, ACTIVE, UPCOMING
 }
 
+/**
+ * Upgraded OpenTune-styled Liquid Glass LivePeriodRadarCard with pulsing
+ * radar beacon, Outfit typography, and tactile haptic 1-tap attendance controls.
+ */
 @Composable
 fun LivePeriodRadarCard(
     slot: TimetableSlot,
     state: PeriodState,
     remainingMinutes: Int?,
     haptics: HapticCrownEngine,
-    onMark: (AttendanceStatus) -> Unit
+    onMark: (AttendanceStatus) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    // Beacon Pulse Animation for Active Class
     val infiniteTransition = rememberInfiniteTransition(label = "RadarBeacon")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = 2.4f,
+        targetValue = 2.6f,
         animationSpec = infiniteRepeatable(
             animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "PulseScale"
+        label = "PulseScale",
     )
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
+        initialValue = 0.72f,
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "PulseAlpha"
+        label = "PulseAlpha",
     )
 
-    val cardAlpha = if (state == PeriodState.PAST) 0.5f else 1f
-    val borderColor = if (state == PeriodState.ACTIVE) Color(0xFF10B981) else Color(0xFF27272A)
+    val cardAlpha = if (state == PeriodState.PAST) 0.55f else 1f
+    val accentColor = when (state) {
+        PeriodState.ACTIVE -> SemesterColors.SafeEmerald
+        PeriodState.UPCOMING -> SemesterColors.ElectricBlue
+        PeriodState.PAST -> SemesterColors.TextMuted
+    }
+    val shape = RoundedCornerShape(22.dp)
 
-    Card(
-        modifier = Modifier
+    Box(
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
-            .alpha(cardAlpha),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF18181B))
+            .alpha(cardAlpha)
+            .liquidGlass(
+                shape = shape,
+                tint = Color(0xFF141418).copy(alpha = 0.88f),
+                accentTint = if (state == PeriodState.ACTIVE) accentColor else null,
+                elevation = if (state == PeriodState.ACTIVE) 16.dp else 6.dp,
+                touchResponse = state != PeriodState.PAST,
+                swell = false,
+            )
+            .then(
+                if (state == PeriodState.ACTIVE) {
+                    Modifier.border(1.4.dp, accentColor.copy(alpha = 0.65f), shape)
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(
-                    width = if (state == PeriodState.ACTIVE) 1.5.dp else 1.dp,
-                    color = borderColor,
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(16.dp)
+                .padding(16.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Period Status Beacon Dot
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+                // Pulsing Beacon Dot
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(26.dp)) {
                     if (state == PeriodState.ACTIVE) {
-                        // Expanding Radar Ring
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
                                 .scale(pulseScale)
                                 .alpha(pulseAlpha)
                                 .clip(CircleShape)
-                                .background(Color(0xFF10B981))
+                                .background(accentColor),
                         )
-                    }
-                    // Solid Core Dot
-                    val dotColor = when (state) {
-                        PeriodState.ACTIVE -> Color(0xFF10B981)
-                        PeriodState.UPCOMING -> Color(0xFF3B82F6)
-                        PeriodState.PAST -> Color(0xFF71717A)
                     }
                     Box(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(dotColor)
+                            .background(accentColor),
                     )
                 }
 
@@ -114,41 +146,38 @@ fun LivePeriodRadarCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = slot.subjectName,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color.White
+                        color = Color.White,
                     )
                     Text(
-                        text = "Period ${slot.periodNumber} • ${slot.startTime} - ${slot.endTime} • Room ${slot.room}",
-                        fontSize = 12.sp,
-                        color = Color(0xFFA1A1AA)
+                        text = "Period ${slot.periodNumber} • ${slot.startTime} – ${slot.endTime} • Room ${slot.room}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                // Active Timer Chip
                 if (state == PeriodState.ACTIVE && remainingMinutes != null) {
                     Surface(
-                        color = Color(0x2010B981),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.padding(start = 8.dp)
+                        color = SemesterColors.SafeEmerald.copy(alpha = 0.16f),
+                        shape = CircleShape,
                     ) {
                         Text(
-                            text = "⏱️ ${remainingMinutes}m left",
-                            color = Color(0xFF10B981),
-                            fontSize = 11.sp,
+                            text = "${remainingMinutes}m left",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SemesterColors.SafeEmeraldSoft,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         )
                     }
                 }
             }
 
-            // Tactile 1-Tap Attendance Buttons
             if (state == PeriodState.ACTIVE || state == PeriodState.UPCOMING) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
                     FilledTonalButton(
                         onClick = {
@@ -156,13 +185,13 @@ fun LivePeriodRadarCard(
                             onMark(AttendanceStatus.PRESENT)
                         },
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = Color(0xFF064E3B),
-                            contentColor = Color(0xFF34D399)
+                            containerColor = SemesterColors.SafeEmeraldContainer,
+                            contentColor = SemesterColors.SafeEmeraldSoft,
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Present", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
@@ -175,13 +204,13 @@ fun LivePeriodRadarCard(
                             onMark(AttendanceStatus.ABSENT)
                         },
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = Color(0xFF450A0A),
-                            contentColor = Color(0xFFF87171)
+                            containerColor = SemesterColors.CriticalCrimsonContainer,
+                            contentColor = SemesterColors.CriticalCrimsonSoft,
                         ),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Close, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Skip", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }

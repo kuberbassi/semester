@@ -21,6 +21,7 @@ import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
 import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
 import { LiquidFillGauge } from '@/components/ui/LiquidFillGauge';
+import { HorizontalLiquidSubjects } from '@/components/dashboard/HorizontalLiquidSubjects';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
@@ -287,6 +288,16 @@ const Dashboard: React.FC = () => {
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
 
+    // Seed OpenTune-style ambient top glow dynamically from overall attendance health
+    useEffect(() => {
+        const accent = !hasAttendanceData || att >= targetThreshold
+            ? '#10b981'
+            : att >= Math.max(50, targetThreshold - 10)
+                ? '#f59e0b'
+                : '#ef4444';
+        document.documentElement.style.setProperty('--semester-ambient-accent', accent);
+    }, [att, targetThreshold, hasAttendanceData]);
+
     const sortSubs = (subs: Subject[]) => {
         if (!subs) return [];
         return [...subs].sort((a, b) => {
@@ -388,11 +399,23 @@ const Dashboard: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-6">
+                    {/* Semester Signature: Collapsible Horizontal Liquid Subjects Shelf */}
+                    <HorizontalLiquidSubjects
+                        subjects={sortSubs(subjects)}
+                        targetThreshold={targetThreshold}
+                        classesNeeded={classesNeeded}
+                        classesCanSkip={classesCanSkip}
+                        onQuickMark={handleQuickMark}
+                        onSelectAccent={(hex) => {
+                            document.documentElement.style.setProperty('--semester-ambient-accent', hex);
+                        }}
+                    />
+
                     {/* Bento Grid */}
                     <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3 md:items-stretch">
                         
                         {/* Bento Card 1: Academic Health */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-4 sm:p-6 flex flex-col justify-between hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <div className="liquid-glass rounded-[24px] p-4 sm:p-6 flex flex-col justify-between md:h-full">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Overall Academic Health</span>
                                 <Activity size={13} className="text-on-surface-variant/40" />
@@ -454,7 +477,7 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Bento Card 2: Student Target */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-5 sm:p-6 flex flex-col justify-between hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <div className="liquid-glass rounded-[24px] p-5 sm:p-6 flex flex-col justify-between md:h-full">
                             <div>
                                 <div className="flex items-center justify-between mb-6">
                                     <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Academic Target</span>
@@ -538,7 +561,7 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Bento Card 3: Today's Schedule */}
-                        <div className="rounded-xl border border-outline/50 bg-surface p-5 sm:p-6 flex flex-col hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] md:h-full">
+                        <div className="liquid-glass rounded-[24px] p-5 sm:p-6 flex flex-col md:h-full">
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex items-center justify-between mb-6">
                                     <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Today's Schedule</span>
@@ -594,7 +617,7 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Bento Card 5: Courses Breakdown */}
-                        <div className="rounded-xl border border-outline/50 bg-surface overflow-hidden md:col-span-3 hover:border-on-surface/20 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.01)] mt-2">
+                        <div className="liquid-glass rounded-[24px] overflow-hidden md:col-span-3 mt-2">
                             <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Courses Breakdown</span>
                                 {/* Category filter tabs */}

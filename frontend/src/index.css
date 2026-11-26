@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Local bundled Outfit variable font (SIL OFL) for 100% offline Tauri .exe support */
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/outfit_variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     /* ─── LIGHT MODE — Neutral-Cool (Google / Linear / Notion inspired) ──────
@@ -62,56 +71,45 @@
   }
 
   .dark {
-    /* ─── DARK MODE — Warm Charcoal (GitHub / Linear / Vercel inspired) ─────
-     *
-     *  Background   #0d0d0f  — not pure black; warm charcoal with a subtle blue-grey tint
-     *  Surface      #141417  — elevated surface, clearly distinct from bg
-     *  Container    #1c1c20  — cards: GitHub uses #161b22, Linear #1c1c1e
-     *  High         #252529  — nested elements inside cards
-     *  Highest      #2f2f34  — hovered/active states inside containers
-     *
-     *  Primary text #f2f2f2  — not blinding pure white; slightly warm off-white
-     *  Secondary    #a0a0a8  — muted labels — 4.6:1 on #141417 (AA pass)
-     *  Outline      #38383e  — dividers visible on dark bg
-     *
-     *  All text-on-surface combos pass WCAG AA (≥ 4.5:1).
-     * ─────────────────────────────────────────────────────────────────────── */
-    --md-sys-color-primary: #f2f2f2;
-    --md-sys-color-on-primary: #0d0d0f;
-    --md-sys-color-primary-container: #1c1c20;
-    --md-sys-color-on-primary-container: #f2f2f2;
+    /* ─── DARK MODE — OpenTune Pure Black OLED + Neutral Elevated Cards ───── */
+    --md-sys-color-primary: #10b981;
+    --md-sys-color-on-primary: #000000;
+    --md-sys-color-primary-container: #064e3b;
+    --md-sys-color-on-primary-container: #34d399;
 
-    --md-sys-color-secondary: #a0a0a8;
-    --md-sys-color-on-secondary: #0d0d0f;
-    --md-sys-color-secondary-container: #252529;
-    --md-sys-color-on-secondary-container: #f2f2f2;
+    --md-sys-color-secondary: #9a9aa0;
+    --md-sys-color-on-secondary: #000000;
+    --md-sys-color-secondary-container: #212124;
+    --md-sys-color-on-secondary-container: #f2f2f3;
 
-    --md-sys-color-tertiary: #d4d4d8;
-    --md-sys-color-on-tertiary: #0d0d0f;
-    --md-sys-color-tertiary-container: #1c1c20;
-    --md-sys-color-on-tertiary-container: #f2f2f2;
+    --md-sys-color-tertiary: #8b5cf6;
+    --md-sys-color-on-tertiary: #ffffff;
+    --md-sys-color-tertiary-container: #1b1b1f;
+    --md-sys-color-on-tertiary-container: #f2f2f3;
 
-    --md-sys-color-error: #ff6b6b;
-    --md-sys-color-on-error: #3b0000;
-    --md-sys-color-error-container: #5c1414;
-    --md-sys-color-on-error-container: #ffb3b3;
+    --md-sys-color-error: #ef4444;
+    --md-sys-color-on-error: #ffffff;
+    --md-sys-color-error-container: #450a0a;
+    --md-sys-color-on-error-container: #f87171;
 
-    --md-sys-color-background: #0d0d0f;
-    --md-sys-color-on-background: #f2f2f2;
+    --md-sys-color-background: #000000;
+    --md-sys-color-on-background: #f2f2f3;
 
-    --md-sys-color-surface: #141417;
-    --md-sys-color-on-surface: #f2f2f2;
-    --md-sys-color-surface-variant: #1c1c20;
-    --md-sys-color-on-surface-variant: #d4d4d8;
+    --md-sys-color-surface: #0e0e10;
+    --md-sys-color-on-surface: #f2f2f3;
+    --md-sys-color-surface-variant: #17171a;
+    --md-sys-color-on-surface-variant: #9a9aa0;
 
-    --md-sys-color-outline: #38383e;
-    --md-sys-color-outline-variant: #4a4a52;
+    --md-sys-color-outline: #2e2e33;
+    --md-sys-color-outline-variant: #232327;
 
-    --md-sys-color-surface-container: #1c1c20;
-    --md-sys-color-surface-container-low: #111114;
-    --md-sys-color-surface-container-high: #252529;
-    --md-sys-color-surface-container-highest: #2f2f34;
-    --md-sys-color-surface-dim: #0a0a0c;
+    --md-sys-color-surface-container: #17171a;
+    --md-sys-color-surface-container-low: #0e0e0f;
+    --md-sys-color-surface-container-high: #212124;
+    --md-sys-color-surface-container-highest: #2c2c30;
+    --md-sys-color-surface-dim: #000000;
+
+    --semester-ambient-accent: #10b981;
 
     --md-sys-elevation-level-0: 0px 0px 0px 0px;
     --md-sys-elevation-level-1: 0px 0px 0px 0px;
@@ -830,4 +828,108 @@ main {
   box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.6), 
               0 0 15px -3px color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent) !important;
   background-color: var(--md-sys-color-surface-variant) !important;
+}
+
+/* ─── OpenTune Liquid Glass & SoftGlow System (Tauri Desktop / Web) ──────── */
+.liquid-glass {
+  position: relative;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  box-shadow:
+    0 18px 40px -16px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              border-color 0.25s ease,
+              box-shadow 0.25s ease;
+}
+
+.dark .liquid-glass {
+  background: linear-gradient(
+    180deg,
+    rgba(28, 28, 34, 0.84) 0%,
+    rgba(16, 16, 20, 0.88) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    0 22px 48px -18px rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.liquid-glass-pill {
+  position: relative;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(17, 17, 17, 0.10);
+  box-shadow:
+    0 20px 44px -14px rgba(0, 0, 0, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.dark .liquid-glass-pill {
+  background: linear-gradient(
+    180deg,
+    rgba(26, 26, 32, 0.82) 0%,
+    rgba(14, 14, 18, 0.88) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 22px 50px -12px rgba(0, 0, 0, 0.82),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* OpenTune TopEdgeFrost: soft progressive fade along the top viewport edge */
+.top-edge-frost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  pointer-events: none;
+  z-index: 30;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--md-sys-color-background) 82%, transparent) 0%,
+    color-mix(in srgb, var(--md-sys-color-background) 32%, transparent) 55%,
+    transparent 100%
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  mask-image: linear-gradient(to bottom, black 0%, black 35%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 35%, transparent 100%);
+}
+
+/* OpenTune SoftGlow: bandless (1 - t^2)^2 ambient top radial glow */
+.ambient-top-glow {
+  position: fixed;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1100px, 120vw);
+  height: 420px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 60% 60% at 50% 22%,
+    color-mix(in srgb, var(--semester-ambient-accent, #10b981) 20%, transparent) 0%,
+    color-mix(in srgb, var(--semester-ambient-accent, #10b981) 11%, transparent) 30%,
+    color-mix(in srgb, var(--semester-ambient-accent, #10b981) 4%, transparent) 60%,
+    transparent 100%
+  );
+  transition: background 0.6s ease;
+}
+
+/* Hide scrollbars cleanly for horizontal liquid strips */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

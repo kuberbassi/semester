@@ -6,22 +6,23 @@ interface PageTransitionProps {
     children: React.ReactNode;
 }
 
+/**
+ * OpenTune PageMotion spring transition:
+ * Crisp depth scale (0.985 -> 1) + subtle glide so route switches feel native and fluid.
+ */
 const variants = {
-    initial: { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0 },
-    exit:    { opacity: 0, y: -6 },
+    initial: { opacity: 0, y: 10, scale: 0.985 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -6, scale: 0.99 },
 };
 
 const transition = {
-    duration: 0.28,
-    ease: [0.16, 1, 0.3, 1] as const,
+    type: 'spring' as const,
+    stiffness: 420,
+    damping: 34,
+    mass: 0.8,
 };
 
-/**
- * Wraps app content and applies a smooth fade + subtle vertical slide
- * whenever the route changes. AnimatePresence uses `mode="wait"` so the
- * old page exits fully before the new one enters, preventing flicker.
- */
 const PageTransition: React.FC<PageTransitionProps> = ({ children }) => {
     const location = useLocation();
 

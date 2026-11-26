@@ -57,19 +57,20 @@ export default {
       },
 
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Inter', 'sans-serif'],
+        sans: ['Outfit', 'Inter', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'sans-serif'],
       },
 
       borderRadius: {
         'none': '0px',
-        'xs': '2px',
-        'sm': '4px',
-        'DEFAULT': '6px',
-        'md': '6px',
-        'lg': '8px',
-        'xl': '12px',
-        '2xl': '16px',
+        'xs': '4px',
+        'sm': '6px',
+        'DEFAULT': '10px',
+        'md': '10px',
+        'lg': '16px',
+        'xl': '20px',
+        '2xl': '24px',
+        '3xl': '32px',
         'full': '9999px',
       },
 

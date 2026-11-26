@@ -1,179 +1,282 @@
 package com.semester.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.School
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.semester.app.core.CoreRepository
 import com.semester.app.haptics.HapticCrownEngine
+import com.semester.app.ui.components.AmbientTopGlow
+import com.semester.app.ui.components.GlassIconButton
+import com.semester.app.ui.components.LocalChromeScroll
+import com.semester.app.ui.components.liquidGlass
+import com.semester.app.ui.theme.SemesterColors
 import kotlinx.coroutines.launch
 import uniffi.semester_core.SemesterResultData
 
 @Composable
 fun IpuResultsScreen(
     repo: CoreRepository,
-    haptics: HapticCrownEngine
+    haptics: HapticCrownEngine,
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val chromeScroll = LocalChromeScroll.current
     var savedResults by remember { mutableStateOf<List<SemesterResultData>>(emptyList()) }
     var showFetchDialog by remember { mutableStateOf(false) }
     var rollNo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var captcha by remember { mutableStateOf("") }
-    var selectedSemester by remember { mutableStateOf("3") }
     var isLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         savedResults = repo.getSemesterResults()
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF09090B))
-            .padding(20.dp)
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        AmbientTopGlow(
+            color = SemesterColors.ElectricBlue,
+            peakAlpha = 0.22f,
+            height = 290.dp,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (chromeScroll != null) Modifier.nestedScroll(chromeScroll) else Modifier),
+            contentPadding = PaddingValues(bottom = 128.dp),
         ) {
-            Column {
-                Text(
-                    text = "🎓 IPU Academic Results",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = "Official GGSIPU portal records & offline copies",
-                    fontSize = 13.sp,
-                    color = Color(0xFFA1A1AA)
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    haptics.focusSnap()
-                    showFetchDialog = true
-                },
-                modifier = Modifier
-                    .background(Color(0xFF27272A), RoundedCornerShape(12.dp))
-            ) {
-                Icon(Icons.Default.CloudDownload, contentDescription = "Fetch Results", tint = Color.White)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        if (savedResults.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.School,
-                        contentDescription = null,
-                        tint = Color(0xFF71717A),
-                        modifier = Modifier.size(56.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "No saved semester results yet.",
-                        color = Color(0xFFA1A1AA),
-                        fontSize = 15.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { showFetchDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
-                    ) {
-                        Text("Fetch from IPU Portal")
+            item(key = "results_header") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "GGSIPU ARCHIVE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            letterSpacing = 1.2.sp,
+                        )
+                        Text(
+                            text = "IPU Results",
+                            style = MaterialTheme.typography.displaySmall,
+                            color = Color.White,
+                        )
                     }
+
+                    GlassIconButton(
+                        icon = Icons.Rounded.CloudDownload,
+                        contentDescription = "Fetch Results",
+                        onClick = {
+                            haptics.focusSnap()
+                            showFetchDialog = true
+                        },
+                        accentTint = SemesterColors.ElectricBlue,
+                    )
                 }
             }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(savedResults) { result ->
-                    Card(
+
+            if (savedResults.isEmpty()) {
+                item(key = "results_empty") {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF18181B))
+                            .padding(horizontal = 20.dp, vertical = 24.dp)
+                            .liquidGlass(
+                                shape = RoundedCornerShape(26.dp),
+                                tint = Color(0xFF141418).copy(alpha = 0.88f),
+                                elevation = 10.dp,
+                            )
+                            .padding(28.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
+                                    .background(SemesterColors.ElectricBlue.copy(alpha = 0.16f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    Icons.Rounded.School,
+                                    contentDescription = null,
+                                    tint = SemesterColors.ElectricBlue,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            }
+                            Text(
+                                text = "No archived results yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                            Text(
+                                text = "Fetch your official GGSIPU scorecard and store it permanently offline.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Button(
+                                onClick = {
+                                    haptics.crownTick()
+                                    showFetchDialog = true
+                                },
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SemesterColors.ElectricBlue,
+                                    contentColor = Color.White,
+                                ),
+                            ) {
+                                Text("Fetch from IPU Portal", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(savedResults, key = { "sem_${it.semester}" }) { result ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                            .liquidGlass(
+                                shape = RoundedCornerShape(24.dp),
+                                tint = Color(0xFF141418).copy(alpha = 0.90f),
+                                accentTint = SemesterColors.SafeEmerald,
+                                elevation = 12.dp,
+                                touchResponse = true,
+                                swell = false,
+                            )
+                            .padding(18.dp),
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
                                     text = "Semester ${result.semester}",
-                                    fontSize = 18.sp,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = Color.White,
                                 )
                                 Surface(
-                                    color = Color(0x2010B981),
-                                    shape = RoundedCornerShape(8.dp)
+                                    color = SemesterColors.SafeEmerald.copy(alpha = 0.18f),
+                                    shape = CircleShape,
                                 ) {
                                     Text(
-                                        text = "SGPA: ${String.format("%.2f", result.sgpa)}",
-                                        color = Color(0xFF10B981),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                        text = "SGPA ${String.format("%.2f", result.sgpa)}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = SemesterColors.SafeEmeraldSoft,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(Modifier.height(14.dp))
 
-                            result.subjects.forEach { sub ->
+                            result.subjects.forEachIndexed { idx, sub ->
+                                if (idx > 0) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                    )
+                                }
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(sub.subjectName, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                        Text("${sub.subjectCode} • ${sub.credits} Credits", color = Color(0xFFA1A1AA), fontSize = 11.sp)
+                                        Text(
+                                            text = sub.subjectName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text = "${sub.subjectCode} • ${sub.credits} Credits",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             text = "${sub.totalMarks.toInt()}/100",
-                                            color = Color(0xFFA1A1AA),
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.padding(end = 8.dp)
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(end = 10.dp),
                                         )
+                                        val isFail = sub.grade == "F"
                                         Surface(
-                                            color = if (sub.grade == "F") Color(0x30EF4444) else Color(0x303B82F6),
-                                            shape = RoundedCornerShape(6.dp)
+                                            color = if (isFail) SemesterColors.CriticalCrimson.copy(alpha = 0.2f)
+                                            else SemesterColors.ElectricBlue.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(8.dp),
                                         ) {
                                             Text(
                                                 text = sub.grade,
-                                                color = if (sub.grade == "F") Color(0xFFEF4444) else Color(0xFF60A5FA),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = if (isFail) SemesterColors.CriticalCrimsonSoft
+                                                else Color(0xFF93C5FD),
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                             )
                                         }
                                     }
@@ -186,41 +289,43 @@ fun IpuResultsScreen(
         }
     }
 
-    // IPU Portal Captcha Relay Dialog
     if (showFetchDialog) {
         AlertDialog(
             onDismissRequest = { showFetchDialog = false },
-            title = { Text("IPU Portal Credentials", color = Color.White) },
+            title = {
+                Text(
+                    "IPU Portal Credentials",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                )
+            },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Enter credentials for examweb.ggsipu.ac.in. Result will be archived into local SQLite permanently.",
-                        fontSize = 12.sp,
-                        color = Color(0xFFA1A1AA)
+                        "Enter credentials for examweb.ggsipu.ac.in. Results are archived permanently in local SQLite.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = rollNo,
                         onValueChange = { rollNo = it },
                         label = { Text("Enrollment Number") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Password") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = captcha,
                         onValueChange = { captcha = it },
                         label = { Text("Captcha (from Portal)") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             },
@@ -230,7 +335,6 @@ fun IpuResultsScreen(
                         isLoading = true
                         haptics.selectionConfirm()
                         coroutineScope.launch {
-                            // Mock IPU fetch and parse for demo; in production OkHttp client hits StudentSearchProcess
                             val mockIpuPayload = """[
                                 {
                                     "euno": 3,
@@ -260,17 +364,22 @@ fun IpuResultsScreen(
                             haptics.attendanceSuccess()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SemesterColors.SafeEmerald,
+                        contentColor = Color.Black,
+                    ),
                 ) {
-                    Text(if (isLoading) "Fetching..." else "Sync Result")
+                    Text(if (isLoading) "Syncing..." else "Sync Result", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showFetchDialog = false }) {
-                    Text("Cancel", color = Color(0xFFA1A1AA))
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
-            containerColor = Color(0xFF18181B)
+            containerColor = Color(0xFF141418),
+            shape = RoundedCornerShape(24.dp),
         )
     }
 }
