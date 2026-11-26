@@ -3,6 +3,7 @@ import axios from 'axios';
 import type { User } from '@/types';
 import { authService } from '@/services/auth.service';
 import { AuthContext, type AuthContextValue } from './auth-context';
+import { isDevTestMode, DEV_TEST_USER, enableDevTestMode, disableDevTestMode } from '@/utils/devTestData';
 
 const FETCH_COOLDOWN = 5 * 60 * 1000;
 
@@ -12,8 +13,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const initAuth = async () => {
+            if (isDevTestMode()) {
+                setUser(DEV_TEST_USER);
+                setLoading(false);
+                return;
+            }
+
             const storedUser = authService.getStoredUser();
             if (storedUser) {
+                if (storedUser._id === 'dev-test-user-id' || storedUser.email === 'dev@semester.app') {
+                    setUser(DEV_TEST_USER);
+                    setLoading(false);
+                    return;
+                }
                 // Keep the cached identity provisional until the cookie-backed
                 // session is verified. Protected routes stay gated by loading.
                 setUser(storedUser);
@@ -81,7 +93,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             window.removeEventListener('focus', handleFocus);
             document.removeEventListener('visibilitychange', handleFocus);
         };
-    }, [isLoggedIn]); // primitive bool — only re-attaches on actual login/logout
+    }, [isLoggedIn]); // primitive bool â€” only re-attaches on actual login/logout
 
     const login = () => {
         // Legacy login (redirect) - largely unused now
@@ -99,18 +111,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 authService.storeUser(user);
 
             } else {
-                console.error('❌ No user returned from backend');
+                console.error('âŒ No user returned from backend');
                 throw new Error('No user data received');
             }
         } catch (error) {
-            console.error("❌ Login failed:", error);
+            console.error("âŒ Login failed:", error);
             throw error; // Re-throw so Login.tsx can catch it
         } finally {
             setLoading(false);
         }
     }
 
+    const loginAsDevTestUser = () => {
+        enableDevTestMode();
+        setUser(DEV_TEST_USER);
+        setLoading(false);
+    };
+
     const logout = async () => {
+        if (isDevTestMode()) {
+            disableDevTestMode();
+            setUser(null);
+            window.location.href = '/login';
+            return;
+        }
         await authService.logout();
         setUser(null);
     };
@@ -121,6 +145,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading,
         login,
         loginWithGoogle,
+        loginAsDevTestUser,
         logout,
         setUser,
     };

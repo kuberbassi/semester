@@ -15,6 +15,7 @@ import { useTheme } from '@/contexts/theme-context';
 import { attendanceService } from '@/services/attendance.service';
 import ResultsDashboard from '@/components/results/ResultsDashboard';
 import { useConfirm } from '@/contexts/confirm-context';
+import Select from '@/components/ui/Select';
 
 /*  Grade utilities  */
 const GRADE_POINTS: Record<string, number> = {
@@ -841,18 +842,18 @@ const Results: React.FC = () => {
                                             </span>
                                         )}
                                     </label>
-                                    <select
+                                    <Select
                                         value={editorSem}
                                         onChange={(e) => {
                                             setEditorSem(parseInt(e.target.value) || 1);
                                             setIsSemAutoDetected(false);
                                         }}
-                                        className="w-full px-4 py-2.5 rounded-lg border border-outline bg-surface text-xs text-on-surface"
-                                    >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                                            <option key={s} value={s}>Semester {s}</option>
-                                        ))}
-                                    </select>
+                                        options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({
+                                            value: s,
+                                            label: `Semester ${s}`
+                                        }))}
+                                        className="text-xs"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-on-surface-variant/70 mb-1.5 ml-1">Institute / College</label>

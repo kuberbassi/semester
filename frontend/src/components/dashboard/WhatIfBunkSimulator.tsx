@@ -1,7 +1,10 @@
-import React, { useState, useId } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
+import { SlidersHorizontal, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
 import { haptics } from '@/utils/haptics';
+import { WakeSlider } from '@/components/react-bits/WakeSlider';
+import { ScrubField } from '@/components/react-bits/ScrubField';
+import { RubberSegment } from '@/components/react-bits';
 
 interface WhatIfBunkSimulatorProps {
     overallAttended: number;
@@ -14,10 +17,9 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
     overallTotal,
     targetThreshold = 75,
 }) => {
-    const sliderId = useId();
     const [futureClasses, setFutureClasses] = useState(10);
     const [futureBunked, setFutureBunked] = useState(2);
-    const [lastBunked, setLastBunked] = useState(2);
+    const [presetChoice, setPresetChoice] = useState('custom');
 
     const futureAttended = Math.max(0, futureClasses - futureBunked);
     const simulatedAttended = overallAttended + futureAttended;
@@ -36,35 +38,42 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
         ? 'bg-amber-500/10 border-amber-500/30'
         : 'bg-red-500/10 border-red-500/30';
 
-    const handleSliderChange = (newBunked: number) => {
-        if (newBunked !== lastBunked) {
-            haptics.crownTick();
-            setLastBunked(newBunked);
+    const handlePreset = (id: string) => {
+        setPresetChoice(id);
+        haptics.selection();
+        if (id === 'skip1') {
+            setFutureClasses(10);
+            setFutureBunked(4);
+        } else if (id === 'weekend') {
+            setFutureClasses(12);
+            setFutureBunked(6);
+        } else if (id === 'attendAll') {
+            setFutureClasses(10);
+            setFutureBunked(0);
         }
-        setFutureBunked(newBunked);
     };
 
     return (
-        <div className="rounded-xl border border-outline/50 bg-surface p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.01)] hover:border-on-surface/20 transition-all">
+        <div className="rounded-2xl border border-outline/50 bg-surface/90 backdrop-blur-xl p-5 sm:p-6 shadow-2xl hover:border-on-surface/20 transition-all">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
-                        <Sparkles size={16} />
+                <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                        <SlidersHorizontal size={16} />
                     </span>
                     <div>
-                        <h3 className="text-sm font-bold text-on-surface">"What-If" Bunk Simulator</h3>
-                        <p className="text-[11px] text-on-surface-variant/50">Simulate upcoming college leaves or trips</p>
+                        <h3 className="text-sm font-bold text-on-surface tracking-tight">"What-If" Bunk Simulator</h3>
+                        <p className="text-[11px] text-on-surface-variant/50">Simulate attendance margin & future class impacts</p>
                     </div>
                 </div>
-                <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 ${statusBg} ${statusColor}`}>
+                <div className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm ${statusBg} ${statusColor}`}>
                     {isSafe ? <ShieldCheck size={12} /> : <AlertTriangle size={12} />}
                     <span>{isSafe ? 'Eligible' : isWarning ? 'Warning' : 'Critical'}</span>
                 </div>
             </div>
 
             {/* Projection Display */}
-            <div className="rounded-xl border border-outline/30 bg-surface-container/30 p-4 my-4 flex items-center justify-around">
+            <div className="rounded-xl border border-white/10 bg-surface-container/30 backdrop-blur-md p-4 my-4 flex items-center justify-around">
                 <div className="text-center">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50 block">Current</span>
                     <span className="text-2xl font-black text-on-surface">{currentPct.toFixed(1)}%</span>
@@ -78,7 +87,7 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
                         key={projectedPct.toFixed(1)}
                         initial={{ scale: 0.9, opacity: 0.7 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className={`text-3xl font-black ${statusColor}`}
+                        className={`text-3xl font-black ${statusColor} drop-shadow-md`}
                     >
                         {projectedPct.toFixed(1)}%
                     </motion.span>
@@ -88,46 +97,61 @@ export const WhatIfBunkSimulator: React.FC<WhatIfBunkSimulatorProps> = ({
                 </div>
             </div>
 
-            {/* Interactive Slider */}
+            {/* Precision Controls */}
             <div className="space-y-4 pt-2">
-                <div>
-                    <div className="flex justify-between text-xs font-semibold text-on-surface mb-1.5">
-                        <label htmlFor={sliderId}>Bunking {futureBunked} of next {futureClasses} classes</label>
-                        <span className="text-on-surface-variant/50 font-mono">({futureAttended} attended)</span>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container/20 p-3 rounded-xl border border-outline/30">
+                    <div className="text-xs font-semibold text-on-surface">
+                        Upcoming Total Classes:
                     </div>
-                    <input
-                        id={sliderId}
-                        type="range"
-                        min="0"
-                        max={futureClasses}
-                        step="1"
-                        value={futureBunked}
-                        onChange={(e) => handleSliderChange(parseInt(e.target.value, 10))}
-                        className="w-full accent-primary h-1.5 bg-outline/30 rounded-lg cursor-pointer"
-                        aria-label="Number of upcoming classes to bunk"
+                    <ScrubField
+                        variant="compact"
+                        value={futureClasses}
+                        onChange={(val) => {
+                            setFutureClasses(val);
+                            if (futureBunked > val) setFutureBunked(val);
+                            setPresetChoice('custom');
+                        }}
+                        min={1}
+                        max={60}
+                        step={1}
+                        label="Classes window"
+                        unit=" cls"
                     />
                 </div>
 
-                {/* Quick Presets */}
-                <div className="flex items-center gap-2 pt-1 flex-wrap">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40">Presets:</span>
-                    {[
-                        { label: 'Skip 1 Day (4 classes)', bunk: 4, total: 10 },
-                        { label: 'Long Weekend (6 classes)', bunk: 6, total: 12 },
-                        { label: 'Attend All (0 bunks)', bunk: 0, total: 10 },
-                    ].map((preset) => (
-                        <button
-                            key={preset.label}
-                            onClick={() => {
-                                haptics.selection();
-                                setFutureClasses(preset.total);
-                                setFutureBunked(preset.bunk);
-                            }}
-                            className="text-[10px] font-bold px-2.5 py-1 rounded-md border border-outline/40 bg-surface-container/20 hover:bg-surface-container text-on-surface transition-colors cursor-pointer"
-                        >
-                            {preset.label}
-                        </button>
-                    ))}
+                {/* React Bits WakeSlider with luminous particle wake */}
+                <div>
+                    <WakeSlider
+                        label={`Bunking ${futureBunked} classes (${futureAttended} attended)`}
+                        min={0}
+                        max={futureClasses}
+                        step={1}
+                        value={futureBunked}
+                        unit=" bunks"
+                        onChange={(val) => {
+                            setFutureBunked(val);
+                            setPresetChoice('custom');
+                        }}
+                    />
+                </div>
+
+                {/* React Bits RubberSegment for Presets */}
+                <div className="pt-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40 block mb-2">
+                        Quick Presets
+                    </span>
+                    <RubberSegment
+                        options={[
+                            { id: 'custom', label: 'Custom' },
+                            { id: 'skip1', label: 'Skip 1 Day' },
+                            { id: 'weekend', label: 'Long Weekend' },
+                            { id: 'attendAll', label: 'Attend All' },
+                        ]}
+                        value={presetChoice}
+                        onChange={handlePreset}
+                        size="sm"
+                        variant="white"
+                    />
                 </div>
             </div>
         </div>

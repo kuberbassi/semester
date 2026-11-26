@@ -1,15 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { useDashboard, useMarkAttendance, useDeleteSubject } from '@/hooks/useDashboard';
 import { useAuth } from '@/contexts/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, Check, X,
-    Activity, Target, Flame, ChevronRight, ChevronsUpDown, Settings as SettingsIcon
+    Target, Settings as SettingsIcon
 } from 'lucide-react';
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
 import AttendanceModal from '@/components/modals/AttendanceModal';
+import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
 import useLongPress from '@/hooks/useLongPress';
@@ -19,13 +20,26 @@ import { formatTeacherName } from '@/utils/formatters';
 import { useConfirm } from '@/contexts/confirm-context';
 import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
-import { findSubjectForSlot, sortTimetableSlots } from '@/lib/timetable';
-import { LiquidFillGauge } from '@/components/ui/LiquidFillGauge';
+import { sortTimetableSlots } from '@/lib/timetable';
 import { HorizontalLiquidSubjects } from '@/components/dashboard/HorizontalLiquidSubjects';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
+import { DashboardTodoWidget } from '@/components/dashboard/DashboardTodoWidget';
 import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
 import { triggerCelebration } from '@/utils/celebration';
+import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/devTestData';
+import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
+import { AuroraGlow } from '@/components/ui/AuroraGlow';
+import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
+import { SubjectAccordionGallery } from '@/components/dashboard/SubjectAccordionGallery';
+import {
+    RubberSegment,
+    HoldButton,
+    FuseButton,
+    CallChip,
+    CometDial,
+    WarmTooltip,
+} from '@/components/react-bits';
 
 type SubjectMenuEvent = React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>;
 
@@ -100,25 +114,28 @@ const SubjectRow: React.FC<{
             </td>
             <td className="px-6 py-3.5 text-center font-semibold text-on-surface text-xs">
                 <div>{attended} / {total}</div>
-                {medicalLeaveCount > 0 && <div className="mt-1 text-[8px] font-medium text-on-surface-variant/50">medical counted absent: {attended} / {totalWithMedical}</div>}
+                {medicalLeaveCount > 0 && (
+                    <WarmTooltip content={`Medical counted as absent: ${attended}/${totalWithMedical} (${Math.round(withMedicalAsAbsentPct)}%)`}>
+                        <div className="mt-1 text-[8px] font-medium text-cyan-400/80 cursor-help underline decoration-dotted">
+                            med: +{medicalLeaveCount} excluded
+                        </div>
+                    </WarmTooltip>
+                )}
             </td>
             <td className="px-6 py-3.5 text-center">
                 <div className="flex flex-col items-center gap-1">
                     <span className={`font-bold text-xs ${isCritical ? 'text-red-500' : 'text-on-surface'}`}>{Math.round(pct)}%</span>
-                    {medicalLeaveCount > 0 && <span className="text-[8px] font-medium text-on-surface-variant/50">medical counted absent: {Math.round(withMedicalAsAbsentPct)}%</span>}
-                    <div className="w-12 h-0.5 bg-on-surface/5 rounded-full overflow-hidden shrink-0">
-                        <div className={`h-full ${isCritical ? 'bg-red-500' : 'bg-on-surface'}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                    <div className="w-12 h-1 bg-on-surface/5 rounded-full overflow-hidden shrink-0">
+                        <div className={`h-full ${isCritical ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                 </div>
             </td>
             <td className="px-6 py-3.5 text-center whitespace-nowrap">
-                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border whitespace-nowrap tracking-wide ${
-                    isCritical 
-                        ? 'bg-red-500/5 border-red-500/10 text-red-500' 
-                        : 'bg-primary/5 border-outline/30 text-on-surface-variant/80'
-                }`}>
-                    {isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
-                </span>
+                <CallChip
+                    label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
+                    variant={isCritical ? 'danger' : 'success'}
+                    pulse={isCritical}
+                />
             </td>
 
             <td className="px-6 py-3.5 text-right">
@@ -142,14 +159,15 @@ const SubjectRow: React.FC<{
                         >
                             <Edit2 size={14} strokeWidth={1.8} />
                         </button>
-                        <button
-                            onClick={() => handleDeleteSubject(subjectId, subject.name)}
-                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-red-500/20 hover:bg-red-500/5 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 transition-all cursor-pointer"
-                            title={`Delete ${subject.name}`}
-                            aria-label={`Delete ${subject.name}`}
+                        <HoldButton
+                            variant="danger"
+                            holdDuration={750}
+                            title={`Hold to delete ${subject.name}`}
+                            onComplete={() => handleDeleteSubject(subjectId, subject.name)}
+                            className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border border-transparent hover:border-red-500/20"
                         >
                             <Trash2 size={14} strokeWidth={1.8} />
-                        </button>
+                        </HoldButton>
                     </div>
                 </div>
             </td>
@@ -162,26 +180,13 @@ const Dashboard: React.FC = () => {
     const { user } = useAuth();
     const { currentSemester, setCurrentSemester } = useSemester();
     const { data: dashboardData, isLoading, refetch: loadDashboard } = useDashboard();
-    const [semDropOpen, setSemDropOpen] = useState(false);
-    const semRef = useRef<HTMLDivElement>(null);
-
-    // Close mobile semester dropdown on outside click
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (semRef.current && !semRef.current.contains(e.target as Node)) {
-                setSemDropOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
 
     const markAttendanceMutation = useMarkAttendance();
     const deleteSubjectMutation = useDeleteSubject();
 
     usePageMeta({
         title: 'Dashboard | Semester',
-        description: 'Your academic overview — attendance, upcoming classes, and performance at a glance.',
+        description: 'Your academic overview â€” attendance, upcoming classes, and performance at a glance.',
     });
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -199,6 +204,10 @@ const Dashboard: React.FC = () => {
     const [categoryFilter, setCategoryFilter] = useState<'Theory' | 'Practical' | 'All'>(() => {
         const saved = localStorage.getItem('semester_dashboard_subject_filter');
         return (saved === 'Theory' || saved === 'Practical' || saved === 'All') ? saved : 'All';
+    });
+    const [subjectViewMode, setSubjectViewMode] = useState<'gallery' | 'table'>(() => {
+        const saved = localStorage.getItem('semester_dashboard_subject_view');
+        return (saved === 'table' || saved === 'gallery') ? saved : 'gallery';
     });
     const targetThreshold = user?.attendance_threshold || 75;
 
@@ -245,7 +254,7 @@ const Dashboard: React.FC = () => {
             { subjectId, status },
             {
                 onSuccess: () => {
-                    showToast('success', status === 'present' ? '✓ Marked Present' : '✕ Marked Absent');
+                    showToast('success', status === 'present' ? 'âœ“ Marked Present' : 'âœ• Marked Absent');
                     if (status === 'present' && att >= 74.0) {
                         triggerCelebration();
                     }
@@ -278,12 +287,9 @@ const Dashboard: React.FC = () => {
         return totals;
     }, { attended: 0, eligibleClasses: 0, totalClasses: 0, medicalLeaveCount: 0 });
     const { attended: physicalAttended, eligibleClasses, totalClasses, medicalLeaveCount } = attendanceTotals;
-    const safeCount = subjects.filter(s => (s.attendance_percentage || 0) >= targetThreshold).length || 0;
     const riskCount = subjects.filter(s => (s.attendance_percentage || 0) < targetThreshold).length || 0;
-    const subjectCount = dashboardData?.total_subjects || subjects.length || 0;
     const att = eligibleClasses > 0 ? (physicalAttended / eligibleClasses) * 100 : 0;
     const attendanceWithoutMedical = totalClasses > 0 ? (physicalAttended / totalClasses) * 100 : 0;
-    const physicalAttendanceProgress = Math.max(0, Math.min(100, attendanceWithoutMedical));
     const safeBunks = dashboardData?.summary?.safe_bunks_remaining ?? 0;
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
@@ -330,7 +336,8 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="pb-24 w-full select-none">
+        <div className="pb-24 w-full select-none relative">
+            <AuroraGlow variant="multi" className="top-[-50px] left-1/2 -translate-x-1/2" intensity="subtle" />
             {/* Header Section */}
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -344,50 +351,65 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 self-start sm:self-auto">
-                    {/* Semester Selector */}
-                    <div ref={semRef} className="relative z-20">
-                        <button
-                            onClick={() => setSemDropOpen(!semDropOpen)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline bg-surface hover:bg-surface-container-high transition-colors text-xs font-semibold text-on-surface-variant hover:text-on-surface whitespace-nowrap cursor-pointer"
-                        >
-                            Sem {currentSemester}
-                            <ChevronsUpDown size={14} aria-hidden="true" />
-                        </button>
-                        <AnimatePresence>
-                            {semDropOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -4 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -4 }}
-                                    transition={{ duration: 0.1 }}
-                                    className="absolute left-0 top-full mt-2 w-32 bg-surface border border-outline rounded-lg p-1 shadow-lg z-50 text-on-surface"
-                                >
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                                        <button
-                                            key={s}
-                                            onClick={() => { setCurrentSemester(s); setSemDropOpen(false); }}
-                                            className={`w-full text-left px-2.5 py-1.5 rounded text-[11px] font-semibold transition-colors cursor-pointer flex justify-between items-center ${s === currentSemester
-                                                ? 'bg-on-surface text-surface font-bold'
-                                                : 'text-on-surface-variant hover:bg-surface-container'
-                                                }`}
-                                        >
-                                            <span>Sem {s}</span>
-                                            {s === currentSemester && <Check size={10} aria-hidden="true" />}
-                                        </button>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                    {/* GlideSelect Semester Dropdown */}
+                    <div className="w-28 shrink-0">
+                        <Select
+                            options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({
+                                value: s,
+                                label: `Sem ${s}`,
+                            }))}
+                            value={currentSemester}
+                            onChange={(e) => setCurrentSemester(parseInt(e.target.value) || 1)}
+                            className="py-1.5 px-3 text-xs"
+                        />
                     </div>
 
-                    <button
+                    <FuseButton
                         onClick={() => setIsAddModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-3 py-1.5 rounded bg-on-surface text-surface text-xs font-bold transition-all hover:bg-on-surface/90 cursor-pointer"
+                        className="py-1.5 px-3 text-xs"
                     >
-                        <Plus size={14} /> Add Subject
-                    </button>
+                        <Plus size={14} className="mr-1 inline-block" /> Add Subject
+                    </FuseButton>
                 </div>
             </div>
+
+            {isDevTestMode() && (
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 backdrop-blur-xl">
+                    <div className="flex items-center gap-2.5">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-xs font-bold tracking-wide">
+                            DEV TEST MODE ACTIVE — Interactive Mock Data Loaded
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                        <HoldButton
+                            label="Hold to Reset Data"
+                            completedLabel="Resetting..."
+                            holdTime={900}
+                            variant="primary"
+                            className="py-1 px-3 text-[11px]"
+                            onComplete={() => {
+                                resetDevTestData();
+                                loadDashboard();
+                                showToast('success', 'Dev test data reset to initial benchmark state');
+                            }}
+                        />
+                        <FuseButton
+                            onClick={() => {
+                                disableDevTestMode();
+                                window.location.href = '/login';
+                            }}
+                            variant="secondary"
+                            className="py-1 px-3 text-[11px]"
+                        >
+                            ✕ Exit Dev Mode
+                        </FuseButton>
+                    </div>
+                </div>
+            )}
 
             {isLoading && !dashboardData ? (
                 <div className="space-y-6">
@@ -414,193 +436,104 @@ const Dashboard: React.FC = () => {
                     {/* Bento Grid */}
                     <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3 md:items-stretch">
                         
-                        {/* Bento Card 1: Academic Health */}
-                        <div className="liquid-glass rounded-[24px] p-4 sm:p-6 flex flex-col justify-between md:h-full">
-                            <div className="flex items-center justify-between mb-6">
-                                <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Overall Academic Health</span>
-                                <Activity size={13} className="text-on-surface-variant/40" />
-                            </div>
-                            
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 my-2">
-                                <div className="flex-1">
-                                    <p className="text-5xl md:text-6xl font-black tracking-tighter text-on-surface leading-none">{att.toFixed(1)}%</p>
-                                    <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
-                                        <span>Medical excluded</span>
-                                        <span className="text-on-surface-variant/75">{physicalAttended} / {eligibleClasses}</span>
-                                    </div>
-                                    <div className="mt-3 rounded-lg border border-outline/40 bg-surface-container/40 px-3 py-2.5">
-                                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                                            <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Medical counted absent</span>
-                                            <span className="text-sm font-black text-on-surface">{attendanceWithoutMedical.toFixed(1)}%</span>
-                                        </div>
-                                        <p className="mt-0.5 text-[9px] font-semibold text-on-surface-variant/45">{physicalAttended} / {totalClasses} classes · {medicalLeaveCount} medical leaves</p>
-                                    </div>
-                                </div>
+                        {/* Bento Card 1: Full Card Gradient Liquid Fill Reservoir */}
+                        <FullCardLiquidFill
+                            percentage={att}
+                            attended={physicalAttended}
+                            total={eligibleClasses}
+                            safeBunks={safeBunks}
+                            deficitCount={riskCount}
+                            medicalLeaveCount={medicalLeaveCount}
+                            attendanceWithoutMedical={attendanceWithoutMedical}
+                            targetThreshold={targetThreshold}
+                            className="md:h-full min-h-[380px]"
+                        />
 
-                                <div className="shrink-0 flex items-center justify-center p-2">
-                                    <LiquidFillGauge percentage={att} size={120} targetThreshold={targetThreshold} />
-                                </div>
-                            </div>
-                                
-                                <div className="w-full space-y-4">
-                                    <div>
-                                        <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-                                            <span>Physical attendance progress</span>
-                                        </div>
-                                        <div
-                                            role="progressbar"
-                                            aria-label="Physical attendance across all conducted classes"
-                                            aria-valuemin={0}
-                                            aria-valuemax={100}
-                                            aria-valuenow={Math.round(physicalAttendanceProgress)}
-                                            className="w-full h-1 bg-on-surface/5 border border-outline/35 rounded-full overflow-hidden"
-                                        >
-                                            <div className="h-full bg-on-surface" style={{ width: `${physicalAttendanceProgress}%` }} />
-                                        </div>
-                                    </div>
-                                </div>
-
-                            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-outline/40 pt-4 mt-8">
-                                <div className="text-left">
-                                    <span className="block text-[8px] font-bold text-on-surface-variant/45 uppercase tracking-wider">Deficit Risk</span>
-                                    <span className={`text-sm md:text-base font-bold ${riskCount > 0 ? 'text-red-500' : 'text-on-surface'}`}>{riskCount} {riskCount === 1 ? 'Subject' : 'Subjects'}</span>
-                                </div>
-                                <div className="text-left">
-                                    <span className="block text-[8px] font-bold text-on-surface-variant/45 uppercase tracking-wider">Safe Bunks</span>
-                                    <span className="text-sm md:text-base font-bold text-on-surface">{safeBunks} Left</span>
-                                </div>
-                                <div className="text-left">
-                                    <span className="block text-[8px] font-bold text-on-surface-variant/45 uppercase tracking-wider">Total Tracked</span>
-                                    <span className="text-sm md:text-base font-bold text-on-surface">{safeCount}/{subjectCount}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Bento Card 2: Student Target */}
-                        <div className="liquid-glass rounded-[24px] p-5 sm:p-6 flex flex-col justify-between md:h-full">
+                        {/* Bento Card 2: Academic Profile & Target */}
+                        <FramerSpotlightCard glowColor="blue" className="p-5 sm:p-6 flex flex-col justify-between md:h-full">
                             <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Academic Target</span>
-                                    <Target size={13} className="text-on-surface-variant/40" />
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                                            <Target size={14} />
+                                        </span>
+                                        <span className="text-[10px] font-extrabold text-on-surface-variant/60 uppercase tracking-widest">
+                                            Academic Target
+                                        </span>
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400">
+                                        Sem {currentSemester}
+                                    </span>
                                 </div>
                                 
-                                <div className="rounded-lg border border-outline/50 bg-surface-container/25 p-4 mb-5">
-                                    <div className="flex items-end justify-between gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Minimum Goal</p>
-                                            <p className="text-2xl font-black tracking-tight text-on-surface">{targetThreshold}%</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Current</p>
-                                            <p className={`text-base font-bold ${hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-on-surface'}`}>
-                                                {hasAttendanceData ? `${att.toFixed(1)}%` : '—'}
-                                            </p>
+                                {/* Target Meter with Orbital CometDial */}
+                                <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d12]/80 backdrop-blur-xl p-4 mb-4 flex items-center justify-between gap-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
+                                    <div className="flex-1">
+                                        <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Minimum Goal</p>
+                                        <p className="text-3xl font-black tracking-tight text-white">{targetThreshold}%</p>
+                                        <div className="mt-2 text-[10px] font-bold">
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono ${
+                                                !hasAttendanceData
+                                                    ? 'text-on-surface-variant/50 bg-white/[0.04]'
+                                                    : targetDelta >= 0
+                                                        ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                                        : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
+                                            }`}>
+                                                {!hasAttendanceData
+                                                    ? 'No classes recorded'
+                                                    : targetDelta >= 0
+                                                        ? `+${targetDelta.toFixed(1)}% safe buffer`
+                                                        : `${Math.abs(targetDelta).toFixed(1)}% deficit`}
+                                            </span>
                                         </div>
                                     </div>
-                                    <div className="relative mt-3 h-1.5 rounded-full bg-on-surface/5">
-                                        <div
-                                            className={`h-full rounded-full ${hasAttendanceData && targetDelta < 0 ? 'bg-red-500' : 'bg-on-surface'}`}
-                                            style={{ width: `${hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}%` }}
+                                    <div className="shrink-0 flex items-center justify-center">
+                                        <CometDial
+                                            value={hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}
+                                            size={88}
+                                            strokeWidth={8}
+                                            color={targetDelta < 0 ? '#f43f5e' : '#00f0ff'}
+                                            label="Attended"
                                         />
-                                        <span
-                                            className="absolute top-1/2 h-3 w-0.5 -translate-y-1/2 rounded-full bg-primary ring-2 ring-surface"
-                                            style={{ left: `${Math.min(100, Math.max(0, targetThreshold))}%` }}
-                                            title={`${targetThreshold}% target`}
-                                        />
-                                    </div>
-                                    <div className="mt-2 flex items-center justify-between gap-3 text-[9px] font-semibold">
-                                        <span className="text-on-surface-variant/40">0%</span>
-                                        <span className={hasAttendanceData && targetDelta < 0 ? 'text-red-500' : 'text-on-surface-variant/60'}>
-                                            {!hasAttendanceData
-                                                ? 'No classes recorded yet'
-                                                : targetDelta >= 0
-                                                    ? `${targetDelta.toFixed(1)} points above target`
-                                                    : `${Math.abs(targetDelta).toFixed(1)} points below target`}
-                                        </span>
-                                        <span className="text-on-surface-variant/40">100%</span>
                                     </div>
                                 </div>
 
-                                <div className="space-y-4 my-2 border-t border-outline/30 pt-4">
-                                    <div>
-                                        <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Student Name</p>
-                                        <p className="text-sm font-bold text-on-surface">{user?.name || 'Student'}</p>
+                                {/* Clean Bento Tiles for Student Attributes */}
+                                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Student Name</p>
+                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">{user?.name || 'Alex Mercer'}</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40 font-mono">Enrollment</p>
-                                            <p className="text-xs font-semibold text-on-surface truncate font-mono">{user?.enrollment_number || '—'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Batch</p>
-                                            <p className="text-xs font-semibold text-on-surface truncate">{user?.batch || '—'}</p>
-                                        </div>
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40 font-mono">Enrollment</p>
+                                        <p className="text-xs font-bold text-on-surface truncate font-mono mt-0.5">{user?.enrollment_number || '04216403223'}</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Target Goal</p>
-                                            <p className="text-xs font-semibold text-on-surface">{targetThreshold}% Minimum</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Current Semester</p>
-                                            <p className="text-xs font-semibold text-on-surface">Semester {currentSemester}</p>
-                                        </div>
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Batch</p>
+                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">{user?.batch || '2023-2027'}</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
+                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Current Term</p>
+                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">Semester {currentSemester}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="border-t border-outline/40 pt-4 mt-6">
+                            <div className="border-t border-outline/30 pt-3 mt-4">
                                 <Link
                                     to="/settings"
-                                    className="w-full h-10 flex items-center justify-center gap-2 border border-outline hover:border-on-surface/20 hover:bg-surface-container rounded-md text-xs font-semibold text-on-surface transition-all cursor-pointer shadow-sm"
+                                    className="w-full h-9 flex items-center justify-center gap-2 border border-white/[0.08] hover:border-white/[0.18] hover:bg-surface-container/50 rounded-xl text-xs font-bold text-on-surface transition-all cursor-pointer shadow-sm"
                                 >
-                                    <SettingsIcon size={12} />
-                                    Configure Settings
+                                    <SettingsIcon size={13} />
+                                    Configure Settings & Targets
                                 </Link>
                             </div>
-                        </div>
+                        </FramerSpotlightCard>
 
-                        {/* Bento Card 3: Today's Schedule */}
-                        <div className="liquid-glass rounded-[24px] p-5 sm:p-6 flex flex-col md:h-full">
-                            <div className="flex min-h-0 flex-1 flex-col">
-                                <div className="flex items-center justify-between mb-6">
-                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Today's Schedule</span>
-                                    <Flame size={13} className="text-on-surface-variant/40" />
-                                </div>
-                                
-                                <div className="my-2 min-h-0 flex-1 max-h-[360px] overflow-y-auto custom-scrollbar pr-1 md:flex md:max-h-[430px] md:flex-col">
-                                    {todayClasses.length > 0 ? (
-                                        todayClasses.map((cls, idx) => {
-                                            const sub = findSubjectForSlot(subjects, cls);
-                                            return (
-                                                <div key={idx} className="flex min-h-11 items-center gap-3 py-2.5 border-b border-outline/30 last:border-b-0">
-                                                    <div className="text-center bg-surface-container border border-outline/40 rounded-md px-2 py-0.5 shrink-0 min-w-[55px]">
-                                                        <span className="block text-[8px] font-bold text-on-surface-variant/50 leading-none">{cls.start_time || cls.startTime || '—'}</span>
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-xs font-bold text-on-surface truncate leading-tight">{sub?.name || cls.subject_name || cls.subjectName || cls.label || cls.name || 'Break'}</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="py-8 text-center">
-                                            <p className="text-xs font-semibold text-on-surface-variant/30 italic">No classes today. Enjoy your day!</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="border-t border-outline/40 pt-4 mt-6 shrink-0">
-                                <Link
-                                    to="/timetable"
-                                    className="w-full h-10 flex items-center justify-center gap-1 border border-outline hover:border-on-surface/20 hover:bg-surface-container rounded-md text-xs font-semibold text-on-surface transition-all cursor-pointer shadow-sm"
-                                >
-                                    View Full Timetable
-                                    <ChevronRight size={12} />
-                                </Link>
-                            </div>
-                        </div>
+                        {/* Bento Card 3: Tasks & Todo Box */}
+                        <FramerSpotlightCard glowColor="purple" className="p-5 sm:p-6 flex flex-col md:h-full">
+                            <DashboardTodoWidget />
+                        </FramerSpotlightCard>
 
                         {/* Kinetic Interactive Section: Live Radar & What-If Simulator */}
                         <div className="md:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6 my-2">
@@ -617,39 +550,70 @@ const Dashboard: React.FC = () => {
                         </div>
 
                         {/* Bento Card 5: Courses Breakdown */}
-                        <div className="liquid-glass rounded-[24px] overflow-hidden md:col-span-3 mt-2">
-                            <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Courses Breakdown</span>
-                                {/* Category filter tabs */}
-                                <div className="flex items-center gap-1 p-0.5 bg-surface border border-outline/50 rounded-md self-start sm:self-auto">
-                                    {(['Theory', 'Practical', 'All'] as const).map(cat => {
-                                        const count = cat === 'All'
-                                            ? subjects.length
-                                            : subjects.filter((s) => {
-                                                const isPractical = s.categories?.includes('Practical') || 
-                                                                    s.type?.toLowerCase() === 'practical' || 
-                                                                    s.type?.toLowerCase() === 'lab' || 
-                                                                    s.name?.toLowerCase().includes('lab');
-                                                return cat === 'Theory' ? !isPractical : isPractical;
-                                            }).length;
-                                        return (
-                                            <button
-                                                key={cat}
-                                                onClick={() => {
-                                                    setCategoryFilter(cat);
-                                                    localStorage.setItem('semester_dashboard_subject_filter', cat);
-                                                }}
-                                                className={`flex items-center gap-1.5 px-3 py-1 rounded text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                    categoryFilter === cat
-                                                        ? 'bg-on-surface text-surface'
-                                                        : 'text-on-surface-variant/50 hover:text-on-surface'
-                                                }`}
-                                            >
-                                                {cat}
-                                                <span className={`text-[8px] ${categoryFilter === cat ? 'opacity-60' : 'opacity-40'}`}>{count}</span>
-                                            </button>
-                                        );
-                                    })}
+                        <FramerSpotlightCard glowColor="cyan" className="overflow-hidden md:col-span-3 mt-2">
+                            <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div>
+                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest block">
+                                        Courses Breakdown
+                                    </span>
+                                    <p className="text-xs text-white/50 mt-0.5">
+                                        Interactive liquid-filled subject cards with category aurora styling.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+                                    {/* View Mode Toggle */}
+                                    <RubberSegment<'gallery' | 'table'>
+                                        options={[
+                                            { id: 'gallery', label: '🎴 Gallery' },
+                                            { id: 'table', label: '☰ Table' },
+                                        ]}
+                                        value={subjectViewMode}
+                                        size="sm"
+                                        variant="white"
+                                        layoutId="subject-view-mode-rubber"
+                                        onChange={(mode) => {
+                                            setSubjectViewMode(mode);
+                                            localStorage.setItem('semester_dashboard_subject_view', mode);
+                                        }}
+                                    />
+
+                                    {/* Category filter tabs */}
+                                    <RubberSegment<'Theory' | 'Practical' | 'All'>
+                                        options={[
+                                            { id: 'All', label: 'All', count: subjects.length },
+                                            {
+                                                id: 'Theory',
+                                                label: 'Theory',
+                                                count: subjects.filter((s) => {
+                                                    const isPractical = s.categories?.includes('Practical') ||
+                                                                        s.type?.toLowerCase() === 'practical' ||
+                                                                        s.type?.toLowerCase() === 'lab' ||
+                                                                        s.name?.toLowerCase().includes('lab');
+                                                    return !isPractical;
+                                                }).length
+                                            },
+                                            {
+                                                id: 'Practical',
+                                                label: 'Practical',
+                                                count: subjects.filter((s) => {
+                                                    const isPractical = s.categories?.includes('Practical') ||
+                                                                        s.type?.toLowerCase() === 'practical' ||
+                                                                        s.type?.toLowerCase() === 'lab' ||
+                                                                        s.name?.toLowerCase().includes('lab');
+                                                    return isPractical;
+                                                }).length
+                                            },
+                                        ]}
+                                        value={categoryFilter}
+                                        size="sm"
+                                        variant="white"
+                                        layoutId="category-filter-rubber"
+                                        onChange={(val) => {
+                                            setCategoryFilter(val);
+                                            localStorage.setItem('semester_dashboard_subject_filter', val);
+                                        }}
+                                    />
                                 </div>
                             </div>
                             
@@ -668,6 +632,19 @@ const Dashboard: React.FC = () => {
                                     <Target size={24} className="text-on-surface-variant/20 mb-4" />
                                     <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-widest">No subjects tracked yet</p>
                                 </div>
+                                ) : subjectViewMode === 'gallery' ? (
+                                    /* Bespoke Liquid Fill Accordion Gallery View */
+                                    <div className="p-5 sm:p-6 bg-slate-950/40">
+                                        <SubjectAccordionGallery
+                                            subjects={sortSubs(filteredSubjects)}
+                                            targetThreshold={targetThreshold}
+                                            classesNeeded={classesNeeded}
+                                            classesCanSkip={classesCanSkip}
+                                            onQuickMark={handleQuickMark}
+                                            onEditSubject={setEditingSubject}
+                                            onDeleteSubject={handleDeleteSubject}
+                                        />
+                                    </div>
                                 ) : (
                                 <>
                                     {/* Desktop View */}
@@ -757,7 +734,7 @@ const Dashboard: React.FC = () => {
                                                         {medicalLeaveCount > 0 && (
                                                             <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-outline/20 pt-1.5 text-[9px]">
                                                                 <span className="font-semibold uppercase tracking-wide text-on-surface-variant/50">Medical counted absent</span>
-                                                                <span className="shrink-0 font-bold text-on-surface-variant/75">{Math.round(withMedicalAsAbsentPct)}% · {attended}/{totalWithMedical}</span>
+                                                                <span className="shrink-0 font-bold text-on-surface-variant/75">{Math.round(withMedicalAsAbsentPct)}% Â· {attended}/{totalWithMedical}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -767,13 +744,11 @@ const Dashboard: React.FC = () => {
                                                     </div>
 
                                                     <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-outline/10">
-                                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border tracking-wide whitespace-nowrap ${
-                                                            isCritical 
-                                                                ? 'bg-red-500/5 border-red-500/10 text-red-500' 
-                                                                : 'bg-primary/5 border-outline/30 text-on-surface-variant/80'
-                                                        }`}>
-                                                            {isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
-                                                        </span>
+                                                        <CallChip
+                                                            label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
+                                                            variant={isCritical ? 'danger' : 'success'}
+                                                            pulse={isCritical}
+                                                        />
 
                                                         <div className="flex items-center gap-1.5 shrink-0">
                                                             <TactileMarkButton
@@ -790,12 +765,14 @@ const Dashboard: React.FC = () => {
                                                             >
                                                                 Edit
                                                             </button>
-                                                            <button
-                                                                onClick={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
-                                                                className="h-7 px-2.5 border border-red-500/20 hover:bg-red-500/5 rounded-lg flex items-center justify-center text-[10px] font-semibold text-red-500 transition-all cursor-pointer whitespace-nowrap"
-                                                            >
-                                                                Delete
-                                                            </button>
+                                                            <HoldButton
+                                                                variant="danger"
+                                                                label="Hold Delete"
+                                                                completedLabel="Deleted"
+                                                                holdDuration={750}
+                                                                onComplete={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
+                                                                className="h-7 px-2.5 text-[10px] rounded-lg"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -805,7 +782,7 @@ const Dashboard: React.FC = () => {
                                 </>
                                 );
                             })()}
-                        </div>
+                        </FramerSpotlightCard>
                     </div>
                 </div>
             )}
@@ -862,17 +839,21 @@ const Dashboard: React.FC = () => {
                                             <Edit2 size={12} />
                                             Edit Details
                                         </button>
-                                        <button
-                                            onClick={() => {
+                                        <HoldButton
+                                            variant="danger"
+                                            label="Hold to Delete Course"
+                                            completedLabel="Deleted"
+                                            holdDuration={750}
+                                            onComplete={() => {
                                                 haptics.heavy();
                                                 handleDeleteSubject(targetSubId, targetSub.name);
                                                 setBubbleMenu(null);
                                             }}
-                                            className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/5 rounded-md transition-colors cursor-pointer"
+                                            className="w-full text-left px-2.5 py-1.5 text-xs font-semibold rounded-md mt-1"
                                         >
-                                            <Trash2 size={12} />
-                                            Delete Course
-                                        </button>
+                                            <Trash2 size={12} className="mr-1 inline-block" />
+                                            <span>Hold to Delete</span>
+                                        </HoldButton>
                                     </>
                                 );
                             })()}
@@ -889,6 +870,5 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-
 
 

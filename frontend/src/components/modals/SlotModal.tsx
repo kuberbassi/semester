@@ -4,6 +4,7 @@ import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
+import { HoldButton } from '@/components/react-bits';
 import { attendanceService } from '@/services/attendance.service';
 import type { GridPeriod, Subject, TimetableSlot } from '@/types';
 
@@ -131,9 +132,15 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
 
                 <div className="flex gap-3 pt-4 border-t border-outline">
                     {slot && (
-                        <Button variant="outlined" onClick={handleDelete} className="text-red-500 hover:bg-red-500/10 hover:text-red-600 px-3">
+                        <HoldButton
+                            variant="danger"
+                            holdDuration={750}
+                            title="Hold to delete slot"
+                            onComplete={handleDelete}
+                            className="h-9 px-3 flex items-center justify-center rounded-lg"
+                        >
                             <Trash2 size={16} />
-                        </Button>
+                        </HoldButton>
                     )}
                     <Button variant="text" onClick={onClose} className="flex-1">Cancel</Button>
                     <Button onClick={handleSave} isLoading={loading} className="flex-[2] shadow-sm">Save</Button>

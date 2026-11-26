@@ -1,278 +1,488 @@
 import React, { useState, useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
-import { Sun, Moon, ArrowRight, Calendar, Clock, Activity, CheckCircle2 } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import {
+    Sun, Moon, Download, Sparkles, Shield, Cpu,
+    Layers, CheckCircle2, ChevronRight, Terminal
+} from 'lucide-react';
+import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
+import { AuroraGlow } from '@/components/ui/AuroraGlow';
+import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
+import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
+import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
+import { enableDevTestMode } from '@/utils/devTestData';
+import { ClickSpark, FuseButton, SloshGauge } from '@/components/react-bits';
 
-// Premium Landing Page featuring interactive split layout and floating widgets in black & white theme
 const Landing: React.FC = () => {
     const { isAuthenticated } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [scrolled, setScrolled] = useState(false);
+    const navigate = useNavigate();
 
-    // Track scroll position to style navbar
+    // Interactive demo states
+    const [demoPct, setDemoPct] = useState(82.4);
+
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 8);
+        const onScroll = () => setScrolled(window.scrollY > 12);
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
     usePageMeta({
-        title: 'Semester | Academic Workspace',
-        description: 'Personal workspace for Kuber Bassi.',
-        indexable: false,
+        title: 'Semester | The Academic Superapp for College Students',
+        description: 'Offline-first, high-performance academic tracker with dynamic GSAP liquid physics, live period radar, IPU portal integration, and zero cloud subscription.',
     });
 
-    // Automatically navigate to dashboard if already logged in
     if (isAuthenticated) {
         return <Navigate to="/dashboard" replace />;
     }
 
-    // Floating animation configurations for Framer Motion
-    const floatVariants = (yOffset = 10, duration = 5, delay = 0) => ({
-        animate: {
-            y: [0, -yOffset, 0],
-            transition: {
-                duration: duration,
-                repeat: Infinity,
-                repeatType: "reverse" as const,
-                ease: "easeInOut" as const,
-                delay: delay
-            }
-        }
-    });
+    const handleEnterDevMode = () => {
+        enableDevTestMode();
+        navigate('/dashboard');
+    };
 
     return (
-        <div className="min-h-screen text-on-background select-none flex flex-col justify-between relative bg-background overflow-x-hidden transition-colors duration-300">
-            
-            {/* ── Navbar ── */}
-            <nav className={[
-                'sticky top-0 z-50 w-full transition-all duration-300 ease-in-out',
+        <div className="min-h-screen bg-[#070709] text-[#f2f2f5] font-sans selection:bg-cyan-500/30 selection:text-white relative overflow-x-hidden transition-colors duration-300">
+            {/* Top Atmospheric Aurora Glows */}
+            <AuroraGlow variant="cyan" className="top-[-100px] left-1/2 -translate-x-1/2" intensity="vibrant" />
+            <AuroraGlow variant="purple" className="top-[450px] right-[-150px]" intensity="vibrant" />
+            <AuroraGlow variant="amber" className="top-[1200px] left-[-150px]" intensity="subtle" />
+
+            {/* Subtle Grid Pattern Overlay */}
+            <div
+                className="pointer-events-none absolute inset-0 -z-10 opacity-[0.035]"
+                style={{
+                    backgroundImage: `linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)`,
+                    backgroundSize: '48px 48px',
+                }}
+            />
+
+            {/* ── Fixed Framer Navigation ── */}
+            <header className={[
+                'sticky top-0 z-50 w-full transition-all duration-300',
                 scrolled
-                    ? 'border-b border-outline bg-surface/80 backdrop-blur-md shadow-sm'
+                    ? 'border-b border-white/[0.08] bg-[#070709]/80 backdrop-blur-xl shadow-2xl'
                     : 'border-b border-transparent bg-transparent',
             ].join(' ')}>
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3 group">
-                        <div className="w-8 h-8 rounded bg-primary flex items-center justify-center border border-outline/10 shadow-sm transition-transform duration-300 group-hover:rotate-6">
-                            <img src="/Semester-logo-96.png" alt="Z" width="24" height="24" className="w-6 h-6 object-contain invert dark:invert-0" />
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-white/20 to-white/5 border border-white/20 flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
+                            <img src="/Semester-logo-96.png" alt="Semester Logo" className="w-5 h-5 object-contain invert dark:invert-0" />
                         </div>
-                        <span className="font-extrabold text-lg tracking-tight text-on-surface">Semester</span>
+                        <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
+                            Semester
+                            <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                                3.0 Core
+                            </span>
+                        </span>
                     </Link>
 
-                    <div className="flex items-center gap-4">
+                    {/* Nav Actions */}
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleEnterDevMode}
+                            className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-all shadow-lg active:scale-95 cursor-pointer"
+                        >
+                            <Sparkles size={13} className="text-emerald-400 animate-pulse" />
+                            <span>⚡ Dev Test Mode</span>
+                        </button>
+
                         <button
                             onClick={toggleTheme}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg border border-outline bg-surface hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+                            className="w-9 h-9 flex items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white transition-all cursor-pointer"
                             title="Toggle theme"
                         >
                             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
                         </button>
-                        
-                        <Link to="/login" className="no-fluid">
-                            <Button variant="outlined" size="sm" className="rounded-lg font-medium border border-outline hover:bg-surface-container">Sign In</Button>
+
+                        <Link to="/login">
+                            <button className="px-4 py-2 rounded-xl text-xs font-semibold border border-white/[0.12] bg-white/[0.06] hover:bg-white/[0.12] text-white transition-all cursor-pointer">
+                                Sign In
+                            </button>
                         </Link>
                     </div>
                 </div>
-            </nav>
+            </header>
 
-            {/* ── Hero Area ── */}
-            <main className="flex-1 w-full flex items-center relative z-10 py-6 md:py-10">
-                <div className="max-w-7xl mx-auto px-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+            {/* ── Main Hero Section ── */}
+            <main className="max-w-7xl mx-auto px-6 pt-16 pb-24 relative z-10">
+                <div className="flex flex-col items-center text-center max-w-4xl mx-auto mb-20">
                     
-                    {/* Left Column: Hero copy and actions */}
-                    <div className="col-span-1 lg:col-span-6 flex flex-col items-start text-left relative z-10">
-                        {/* Tag/Badge */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 15 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-outline bg-surface/50 text-xs text-on-surface font-semibold mb-6 backdrop-blur-md shadow-sm"
-                        >
-                            <span className="w-1.5 h-1.5 rounded-full bg-on-surface animate-pulse" />
-                            <span>Academic Hub &bull; Kuber Bassi</span>
-                        </motion.div>
+                    {/* Micro Pill Badge */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/[0.15] bg-white/[0.03] backdrop-blur-xl mb-8 shadow-[0_0_25px_rgba(6,182,212,0.15)]"
+                    >
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                        <span className="text-xs font-semibold text-white/90 tracking-wide">
+                            Shared Rust Core • Native Windows &amp; Android Apps
+                        </span>
+                        <ChevronRight size={13} className="text-white/40" />
+                    </motion.div>
 
-                        {/* Title */}
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                            className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.08] text-on-surface mb-6"
-                        >
-                            Your academic life, <br className="hidden sm:inline" />
-                            <span className="text-on-surface/90">beautifully structured.</span>
-                        </motion.h1>
+                    {/* Grand Headline */}
+                    <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.08] mb-6 text-white"
+                    >
+                        Attendance is your canvas.
+                        <br />
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400">
+                            College, automated.
+                        </span>
+                    </motion.h1>
 
-                        {/* Subtitle */}
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-                            className="text-sm sm:text-base md:text-lg text-on-surface-variant/80 max-w-xl leading-relaxed mb-8"
-                        >
-                            A highly integrated personal workspace designed to organize your semester workflow. Track course attendance, coordinate timetable schedules, manage lab practicals, and monitor academic progress with elegant ease.
-                        </motion.p>
+                    {/* Subtitle */}
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="text-base sm:text-lg md:text-xl text-white/60 max-w-2xl font-normal leading-relaxed mb-10"
+                    >
+                        Engineered with physical GSAP fluid dynamics, live timetable radar, direct IPU result scraping, and real-time BunkGuard trajectory simulation. 100% offline, zero cloud tax.
+                    </motion.p>
 
-                        {/* CTAs */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
-                            className="flex flex-wrap items-center gap-4 w-full sm:w-auto"
-                        >
-                            <Link to="/login" className="w-full sm:w-auto no-fluid">
-                                <Button 
-                                    variant="primary" 
-                                    size="lg" 
-                                    className="w-full sm:w-auto shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:shadow-xl rounded-xl font-semibold px-8 transition-all"
-                                    icon={<ArrowRight size={15} className="group-hover:translate-x-1 transition-transform" />}
-                                >
-                                    Access Dashboard
-                                </Button>
-                            </Link>
-                        </motion.div>
-                    </div>
-
-                    {/* Right Column: Interactive floating mock widgets */}
-                    <div className="col-span-1 lg:col-span-6 relative w-full h-[360px] sm:h-[420px] md:h-[440px] lg:h-[460px] flex items-center justify-center">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            
-                            {/* Widget 1: Timetable Schedule */}
-                            <motion.div
-                                variants={floatVariants(12, 6, 0)}
-                                animate="animate"
-                                whileHover={{ scale: 1.02, rotate: -1, y: -5, transition: { duration: 0.2 } }}
-                                className="absolute pointer-events-auto top-[5%] left-[2%] sm:left-[5%] md:left-[10%] w-[240px] sm:w-[280px] bg-surface/50 backdrop-blur-xl border border-outline/25 p-4 sm:p-5 rounded-2xl shadow-xl flex flex-col gap-3.5 select-none"
+                    {/* Primary Hero CTAs */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="flex flex-wrap items-center justify-center gap-4 w-full"
+                    >
+                        {/* Windows Installer Button */}
+                        <ClickSpark sparkColor="#ffffff" sparkCount={12} sparkRadius={30}>
+                            <a
+                                href="/dist-installers/Semester-Setup.exe"
+                                download="Semester-Setup.exe"
+                                className="group relative inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all duration-300 hover:shadow-[0_0_35px_rgba(255,255,255,0.4)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                             >
-                                <div className="flex items-center justify-between border-b border-outline/10 pb-2">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar size={14} className="text-on-surface" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">Today's Schedule</span>
-                                    </div>
-                                    <span className="w-2 h-2 rounded-full bg-on-surface animate-pulse" />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-start gap-3 p-2 rounded-lg bg-primary/5 border border-primary/10">
-                                        <Clock size={12} className="text-primary mt-0.5" />
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-on-surface">Software Engineering</span>
-                                            <span className="text-[9px] text-on-surface-variant/70">10:00 AM - 11:30 AM &bull; L-1</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container/30 transition-colors">
-                                        <Clock size={12} className="text-on-surface-variant/40 mt-0.5" />
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-semibold text-on-surface/80">Artificial Intelligence</span>
-                                            <span className="text-[9px] text-on-surface-variant/50">01:30 PM - 03:00 PM &bull; Lab 3</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
+                                <Download size={18} className="transition-transform group-hover:-translate-y-0.5" />
+                                <span>Download for Windows (.exe)</span>
+                                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-black/10 text-black/70">
+                                    64-bit
+                                </span>
+                            </a>
+                        </ClickSpark>
 
-                            {/* Widget 2: Attendance Tracker */}
-                            <motion.div
-                                variants={floatVariants(10, 5, 0.7)}
-                                animate="animate"
-                                whileHover={{ scale: 1.02, rotate: 1, y: -5, transition: { duration: 0.2 } }}
-                                className="absolute pointer-events-auto top-[25%] right-[2%] sm:right-[5%] md:right-[8%] w-[190px] sm:w-[210px] bg-surface/50 backdrop-blur-xl border border-outline/25 p-4 sm:p-5 rounded-2xl shadow-xl flex flex-col items-center gap-3.5 select-none"
+                        {/* Android APK Button */}
+                        <ClickSpark sparkColor="#22d3ee" sparkCount={12} sparkRadius={30}>
+                            <a
+                                href="https://github.com/kuberbassi/semester/releases"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl border border-white/[0.15] bg-white/[0.05] hover:bg-white/[0.1] text-white font-bold text-sm transition-all duration-300 backdrop-blur-xl hover:border-cyan-500/40 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                             >
-                                <div className="w-full flex items-center gap-2 border-b border-outline/10 pb-2">
-                                    <Activity size={14} className="text-on-surface" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">Attendance</span>
-                                </div>
-                                <div className="relative flex items-center justify-center w-24 h-24">
-                                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                                        <circle 
-                                            cx="50" 
-                                            cy="50" 
-                                            r="38" 
-                                            stroke="var(--md-sys-color-outline)" 
-                                            strokeOpacity={0.25} 
-                                            strokeWidth="6" 
-                                            fill="none" 
-                                        />
-                                        <motion.circle 
-                                            cx="50" 
-                                            cy="50" 
-                                            r="38" 
-                                            stroke="var(--md-sys-color-primary)" 
-                                            strokeWidth="6" 
-                                            strokeLinecap="round" 
-                                            fill="none" 
-                                            initial={{ pathLength: 0 }}
-                                            animate={{ pathLength: 0.79 }}
-                                            transition={{ duration: 1.5, ease: "easeOut" }}
-                                        />
-                                    </svg>
-                                    <div className="absolute flex flex-col items-center justify-center">
-                                        <span className="text-lg font-black text-on-surface">79.0%</span>
-                                        <span className="text-[8px] font-medium text-on-surface-variant/50">Overall Avg</span>
-                                    </div>
-                                </div>
-                                <div className="text-center">
-                                    <span className="text-[9px] font-bold text-on-surface bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-wide">Safe to bunk: 2 classes</span>
-                                </div>
-                            </motion.div>
+                                <Cpu size={18} className="text-cyan-400" />
+                                <span>Download Android APK</span>
+                                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                    $0 Free
+                                </span>
+                            </a>
+                        </ClickSpark>
 
-                            {/* Widget 3: Practical Checklist */}
-                            <motion.div
-                                variants={floatVariants(14, 7, 0.3)}
-                                animate="animate"
-                                whileHover={{ scale: 1.02, rotate: -0.5, y: -5, transition: { duration: 0.2 } }}
-                                className="absolute pointer-events-auto bottom-[8%] left-[8%] sm:left-[12%] md:left-[15%] w-[210px] sm:w-[230px] bg-surface/50 backdrop-blur-xl border border-outline/25 p-4 sm:p-5 rounded-2xl shadow-xl flex flex-col gap-3 select-none"
-                            >
-                                <div className="flex items-center gap-2 border-b border-outline/10 pb-2">
-                                    <CheckCircle2 size={14} className="text-on-surface" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">Practical Checklist</span>
-                                </div>
-                                <div className="flex flex-col gap-2.5">
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-on-surface" />
-                                        <span className="text-xs font-semibold text-on-surface/90">Compiler Design Lab</span>
-                                        <span className="ml-auto text-[9px] text-on-surface bg-primary/10 px-1.5 py-0.2 rounded font-medium">Done</span>
-                                    </div>
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-on-surface" />
-                                        <span className="text-xs font-semibold text-on-surface/90">Networks Assignment</span>
-                                        <span className="ml-auto text-[9px] text-on-surface bg-primary/10 px-1.5 py-0.2 rounded font-medium">Done</span>
-                                    </div>
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-on-surface/30 animate-pulse" />
-                                        <span className="text-xs font-semibold text-on-surface/70">AI Project Phase 1</span>
-                                        <span className="ml-auto text-[9px] text-on-surface-variant/60 border border-outline/30 px-1.5 py-0.2 rounded font-medium">Pending</span>
-                                    </div>
-                                </div>
-                            </motion.div>
+                        {/* Instant Dev Mode */}
+                        <FuseButton
+                            onClick={handleEnterDevMode}
+                            variant="primary"
+                            className="px-5 py-4 text-sm"
+                        >
+                            <Sparkles size={16} className="text-cyan-400 mr-2 inline-block animate-spin" style={{ animationDuration: '4s' }} />
+                            <span>⚡ Launch Dev Test Mode</span>
+                        </FuseButton>
+                    </motion.div>
 
+                    {/* Trust Indicators */}
+                    <div className="mt-10 flex flex-wrap items-center justify-center gap-8 text-xs font-medium text-white/40">
+                        <div className="flex items-center gap-2">
+                            <Shield size={14} className="text-emerald-400" />
+                            <span>100% Local SQLite Storage</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 size={14} className="text-cyan-400" />
+                            <span>Zero Subscription Fees Forever</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Terminal size={14} className="text-purple-400" />
+                            <span>Shared High-Performance Rust Core</span>
                         </div>
                     </div>
+                </div>
 
+                {/* ── Framer Showcase Bento Grid (The 6 Signature Cards) ── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    {/* Card 1: Full Card Gradient Liquid Fill Reservoir (Cyan/Emerald Aura) */}
+                    <FullCardLiquidFill
+                        percentage={demoPct}
+                        attended={183}
+                        total={224}
+                        safeBunks={20}
+                        deficitCount={1}
+                        targetThreshold={75}
+                        className="h-full min-h-[380px]"
+                        onSlosh={() => setDemoPct(p => (p >= 85 ? 81.7 : Math.round((p + 1.5) * 10) / 10))}
+                    />
+
+                    {/* Card 2: Live Period Radar (Cobalt Blue Aura) */}
+                    <FramerSpotlightCard glowColor="blue" className="p-8 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30">
+                                    Timetable Beacon
+                                </span>
+                                <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                                </span>
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                                Live Period Radar
+                            </h2>
+                            <p className="text-xs text-white/50 leading-relaxed mb-6">
+                                Real-time spatial tracking of ongoing periods. Displays animated countdown rings with instant 1-tap fast attendance marking.
+                            </p>
+                        </div>
+
+                        {/* Interactive Radar Component */}
+                        <div className="overflow-hidden rounded-2xl border border-white/[0.05] bg-black/40 p-4">
+                            <LivePeriodRadarWidget
+                                slots={[
+                                    {
+                                        id: 'demo-slot-1',
+                                        day: 'Monday',
+                                        start_time: '10:00',
+                                        end_time: '11:00',
+                                        subject_name: 'Design & Analysis of Algorithms',
+                                        classroom: 'Room 402',
+                                        type: 'class',
+                                    },
+                                ]}
+                                subjects={[
+                                    {
+                                        _id: 'sub-algo',
+                                        name: 'Design & Analysis of Algorithms',
+                                        code: 'CST-301',
+                                        credits: 4,
+                                        semester: 5,
+                                        attended: 38,
+                                        total: 42,
+                                    } as any,
+                                ]}
+                                onMarkAttendance={() => {}}
+                            />
+                        </div>
+                    </FramerSpotlightCard>
+
+                    {/* Card 3: What-If Bunk Simulator (Amber Aura) */}
+                    <FramerSpotlightCard glowColor="amber" className="p-8 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30">
+                                    Trajectory Engine
+                                </span>
+                                <Layers size={16} className="text-amber-400" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                                What-If Bunk Simulator
+                            </h2>
+                            <p className="text-xs text-white/50 leading-relaxed mb-6">
+                                Slide to project your exact attendance percentage weeks into the future. Know precisely how many classes you can afford to skip.
+                            </p>
+                        </div>
+
+                        {/* Interactive What-If Component */}
+                        <div className="overflow-hidden rounded-2xl border border-white/[0.05] bg-black/40 p-4">
+                            <WhatIfBunkSimulator
+                                overallAttended={38}
+                                overallTotal={42}
+                                targetThreshold={75}
+                            />
+                        </div>
+                    </FramerSpotlightCard>
+
+                    {/* Card 4: IPU Result Scraper & PDF Exporter (Purple Aura) */}
+                    <FramerSpotlightCard glowColor="purple" className="p-8 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30">
+                                    GGSIPU Integration
+                                </span>
+                                <Download size={16} className="text-purple-400" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                                Portal Scraper &amp; PDF Exporter
+                            </h2>
+                            <p className="text-xs text-white/50 leading-relaxed mb-6">
+                                Captcha-relay scraper connecting directly to IPU backend (`examweb.ggsipu.ac.in`). Formats results into official single-page vectorized academic PDF summaries.
+                            </p>
+                        </div>
+
+                        <div className="space-y-3 bg-black/40 p-5 rounded-2xl border border-white/[0.05]">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-white/80">Cumulative CGPA</span>
+                                <span className="text-sm font-black text-purple-400">8.98 / 10.0</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 w-[89.8%]" />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-white/40 pt-1 font-mono">
+                                <span>Sem 1: 8.85</span>
+                                <span>Sem 2: 9.12</span>
+                                <span>Sem 3: 8.65</span>
+                                <span>Sem 4: 9.30</span>
+                            </div>
+                        </div>
+                    </FramerSpotlightCard>
+
+                    {/* Card 5: Tiptap Rich Notes & Tasks (Emerald Aura) */}
+                    <FramerSpotlightCard glowColor="emerald" className="p-8 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+                                    Knowledge Base
+                                </span>
+                                <Sparkles size={16} className="text-emerald-400" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                                Notes &amp; Task Checklist
+                            </h2>
+                            <p className="text-xs text-white/50 leading-relaxed mb-6">
+                                Fully restored Tiptap rich-text editor with markdown formatting, exam checklists, color coding, and local SQLite persistence.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2 bg-black/40 p-5 rounded-2xl border border-white/[0.05]">
+                            <div className="flex items-center gap-2.5 text-xs text-white/80">
+                                <span className="w-4 h-4 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                <span className="line-through text-white/40">Dynamic Programming (Knapsack &amp; LCS)</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-xs text-white/80">
+                                <span className="w-4 h-4 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">✓</span>
+                                <span className="line-through text-white/40">MST Kruskal &amp; Prim Algorithms</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-xs text-white/90">
+                                <span className="w-4 h-4 rounded border border-white/20" />
+                                <span>Graph Reductions &amp; Dijkstra</span>
+                            </div>
+                        </div>
+                    </FramerSpotlightCard>
+
+                    {/* Card 6: Zero Cloud Tax & Rust Core (Silver/Default Aura) */}
+                    <FramerSpotlightCard glowColor="default" className="p-8 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-white/70 px-2.5 py-1 rounded-full bg-white/10 border border-white/20">
+                                    $0 Forever
+                                </span>
+                                <Shield size={16} className="text-white/70" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                                Zero Cloud Tax
+                            </h2>
+                            <p className="text-xs text-white/50 leading-relaxed mb-6">
+                                Zero subscriptions, no Apple tax, no server lock-in. Powered by embedded SQLite, native Kotlin bindings, and Tauri v2.
+                            </p>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-black/40 border border-white/[0.05] flex items-center justify-between gap-4">
+                            <div className="space-y-2 flex-1">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-white/60">Distribution</span>
+                                    <span className="font-bold text-white">Direct .apk &amp; .exe</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-white/60">Database</span>
+                                    <span className="font-bold text-white">Embedded SQLite (0ms)</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-white/60">Backup</span>
+                                    <span className="font-bold text-white">Google Drive</span>
+                                </div>
+                            </div>
+                            <div className="shrink-0">
+                                <SloshGauge
+                                    value={100}
+                                    size={80}
+                                    strokeWidth={6}
+                                    color="#10b981"
+                                    label="Offline"
+                                    sublabel="Native"
+                                />
+                            </div>
+                        </div>
+                    </FramerSpotlightCard>
+
+                </div>
+
+                {/* ── Web-to-App Data Migration Hub ── */}
+                <div className="mt-20 p-8 md:p-12 rounded-3xl bg-gradient-to-b from-white/[0.04] to-transparent border border-white/[0.08] backdrop-blur-2xl relative overflow-hidden">
+                    <AuroraGlow variant="cyan" className="bottom-[-100px] right-[-100px]" intensity="subtle" />
+                    
+                    <div className="max-w-3xl">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30">
+                            Data Migration
+                        </span>
+                        <h3 className="text-3xl font-extrabold text-white mt-4 mb-3 tracking-tight">
+                            Migrating from the legacy web app or Google Drive?
+                        </h3>
+                        <p className="text-sm text-white/60 leading-relaxed mb-8">
+                            If you already have attendance records saved in the old web app, your data is completely safe. Semester automatically restores your past records directly from Google Drive `appDataFolder` (`semester_backup_*.json`) or local snapshot files.
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-4">
+                            <button
+                                onClick={handleEnterDevMode}
+                                className="px-5 py-3 rounded-xl bg-white text-black font-bold text-xs hover:bg-white/90 transition-all cursor-pointer shadow-lg active:scale-95"
+                            >
+                                Test with Preloaded Data
+                            </button>
+                            <Link to="/login">
+                                <button className="px-5 py-3 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 text-white font-bold text-xs transition-all cursor-pointer">
+                                    Sign in to Restore Cloud Backup
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </main>
 
-            {/* ── Footer ── */}
-            <footer className="w-full max-w-7xl px-6 z-10 mx-auto pb-6">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-outline/10">
-                    <p className="text-[10px] text-on-surface-variant/40 font-medium">
-                        &copy; {getCopyrightYears(2025)} Semester &mdash; made something cool by{' '}
+            {/* ── Framer Footer ── */}
+            <footer className="border-t border-white/[0.08] py-12 px-6 bg-[#050507] relative z-10 text-xs text-white/40">
+                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+                    <div className="flex items-center gap-3">
+                        <img src="/Semester-logo-96.png" alt="Semester Logo" className="w-5 h-5 object-contain invert dark:invert-0 opacity-70" />
+                        <span className="font-semibold text-white/80">Semester</span>
+                        <span>•</span>
+                        <span>{getCopyrightYears()} Kuber Bassi</span>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <button
+                            onClick={handleEnterDevMode}
+                            className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors cursor-pointer"
+                        >
+                            Dev Test Mode
+                        </button>
+                        <Link to="/login" className="hover:text-white transition-colors">
+                            Portal Login
+                        </Link>
                         <a
-                            href="https://kuberbassi.com"
+                            href="https://github.com/kuberbassi/semester"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="glow-link font-semibold transition-all duration-300 hover:text-primary"
+                            className="hover:text-white transition-colors"
                         >
-                            Kuber Bassi
+                            GitHub
                         </a>
-                    </p>
-
-                    <div className="flex gap-4">
-                        <a href="/terms" className="text-[10px] text-on-surface-variant/45 hover:text-on-surface hover:underline transition-colors font-medium">Terms</a>
-                        <a href="/privacy" className="text-[10px] text-on-surface-variant/45 hover:text-on-surface hover:underline transition-colors font-medium">Privacy</a>
                     </div>
                 </div>
             </footer>

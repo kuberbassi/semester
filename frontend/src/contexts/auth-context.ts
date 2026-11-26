@@ -7,6 +7,7 @@ export interface AuthContextValue {
     loading: boolean;
     login: () => void;
     loginWithGoogle: (code: string) => Promise<void>;
+    loginAsDevTestUser?: () => void;
     logout: () => Promise<void>;
     setUser: (user: User | null) => void;
 }

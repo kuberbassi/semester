@@ -10,6 +10,7 @@ import {
     Image as ImageIcon, MoreHorizontal, RotateCcw, Sparkles
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast-context';
+import { HoldButton, RubberSegment } from '@/components/react-bits';
 import api from '@/services/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConfirm } from '@/contexts/confirm-context';
@@ -723,7 +724,15 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, onClo
                 {/* Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-outline mb-3">
                     <div className="flex items-center gap-1">
-                        <button onClick={onDelete} className="p-1.5 text-on-surface-variant/30 hover:text-red-500 rounded transition-colors cursor-pointer" title="Delete"><Trash2 size={14} /></button>
+                        <HoldButton
+                            variant="danger"
+                            holdDuration={750}
+                            title="Hold to delete note"
+                            onComplete={onDelete}
+                            className="p-1.5 rounded-lg flex items-center justify-center"
+                        >
+                            <Trash2 size={14} />
+                        </HoldButton>
                         <button onClick={onTogglePin} className={`p-1.5 rounded hover:bg-surface-container transition-colors cursor-pointer ${note.is_pinned ? 'text-primary' : 'text-on-surface-variant/30'}`} title="Pin">
                             <Pin size={14} className={note.is_pinned ? 'fill-current' : ''} />
                         </button>
@@ -855,7 +864,15 @@ const TodoPanel: React.FC<TodoPanelProps> = ({ note, onUpdate, onDelete, onClose
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-outline mb-4">
                 {!isInline && (
-                    <button onClick={onDelete} className="p-1.5 text-on-surface-variant/30 hover:text-red-500 rounded transition-colors cursor-pointer mr-1" title="Delete"><Trash2 size={14} /></button>
+                    <HoldButton
+                            variant="danger"
+                            holdDuration={750}
+                            title="Hold to delete checklist"
+                            onComplete={onDelete}
+                            className="p-1.5 rounded-lg flex items-center justify-center mr-1"
+                        >
+                            <Trash2 size={14} />
+                        </HoldButton>
                 )}
                 {isInline ? (
                     <span className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-widest ml-1">My Tasks Checklist</span>
@@ -1055,9 +1072,14 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, isActive, onSelect, onDelete,
                                     <Pin size={11} />{note.is_pinned ? 'Unpin' : 'Pin to top'}
                                 </button>
                                 <div className="h-px bg-outline my-1" />
-                                <button onClick={e => { e.stopPropagation(); onDelete(note.id); setMenuOpen(false); }} className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-500/5 rounded-md transition-colors cursor-pointer">
-                                    <Trash2 size={11} />Delete
-                                </button>
+                                <HoldButton
+                                    variant="danger"
+                                    label="Hold to Delete"
+                                    completedLabel="Deleted"
+                                    holdDuration={750}
+                                    onComplete={() => { onDelete(note.id); setMenuOpen(false); }}
+                                    className="w-full text-left px-2 py-1 text-xs font-semibold rounded-md"
+                                />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -1242,17 +1264,17 @@ const Notes: React.FC = () => {
                 <div className="w-full">
                     {/* Top bar with tabs only */}
                     <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-1 p-1 bg-surface-container border border-outline rounded-lg">
-                            {(['notes', 'todos'] as const).map(mode => (
-                                <button
-                                    key={mode}
-                                    onClick={() => handleViewModeChange(mode)}
-                                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${viewMode === mode ? 'bg-surface text-on-surface shadow-sm border border-outline' : 'text-on-surface-variant/50 hover:text-on-surface'}`}
-                                >
-                                    {mode === 'notes' ? <><StickyNote size={12} />Notes</> : <><ListTodo size={12} />Tasks</>}
-                                </button>
-                            ))}
-                        </div>
+                        <RubberSegment<'notes' | 'todos'>
+                            options={[
+                                { id: 'notes', label: 'Notes', icon: <StickyNote size={12} /> },
+                                { id: 'todos', label: 'Tasks', icon: <ListTodo size={12} /> },
+                            ]}
+                            value={viewMode}
+                            size="sm"
+                            variant="white"
+                            layoutId="notes-view-mode-rubber-1"
+                            onChange={handleViewModeChange}
+                        />
                     </div>
 
                     {loading ? (
@@ -1290,17 +1312,17 @@ const Notes: React.FC = () => {
                     <div className="flex-1 min-w-0">
                         {/* Top bar */}
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 mb-6">
-                            <div className="flex items-center gap-1 p-1 bg-surface-container border border-outline rounded-lg self-start">
-                                {(['notes', 'todos'] as const).map(mode => (
-                                    <button
-                                        key={mode}
-                                        onClick={() => handleViewModeChange(mode)}
-                                        className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all cursor-pointer ${viewMode === mode ? 'bg-surface text-on-surface shadow-sm border border-outline' : 'text-on-surface-variant/50 hover:text-on-surface'}`}
-                                    >
-                                        {mode === 'notes' ? <><StickyNote size={12} />Notes</> : <><ListTodo size={12} />Tasks</>}
-                                    </button>
-                                ))}
-                            </div>
+                            <RubberSegment<'notes' | 'todos'>
+                                options={[
+                                    { id: 'notes', label: 'Notes', icon: <StickyNote size={12} /> },
+                                    { id: 'todos', label: 'Tasks', icon: <ListTodo size={12} /> },
+                                ]}
+                                value={viewMode}
+                                size="sm"
+                                variant="white"
+                                layoutId="notes-view-mode-rubber-2"
+                                onChange={handleViewModeChange}
+                            />
 
                             <div className="flex items-center gap-2 flex-1 max-w-sm">
                                 <input

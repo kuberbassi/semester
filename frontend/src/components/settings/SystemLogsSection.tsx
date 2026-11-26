@@ -3,6 +3,7 @@ import { Activity, CheckCircle2, Clock, FileText, Settings as SettingsIcon, Tras
 import Loader from '@/components/ui/Loader';
 import type { SystemLog } from '@/types';
 import { attendanceService } from '@/services/attendance.service';
+import { AnimatedList } from '@/components/react-bits';
 
 const PAGE_SIZE = 7;
 
@@ -95,8 +96,12 @@ const SystemLogsSection: React.FC = () => {
                         <Clock size={14} className="text-on-surface-variant/50" />
                         <span className="text-xs font-semibold text-on-surface">{date}</span>
                     </div>
-                    <div className="divide-y divide-outline/30">
-                        {groupedLogs[date].map(log => (
+                    <AnimatedList
+                        items={groupedLogs[date]}
+                        keyExtractor={(log) => log.id}
+                        staggerDelay={0.03}
+                        className="divide-y divide-outline/30"
+                        renderItem={(log) => (
                             <div key={log.id} className="flex gap-3 sm:gap-4 p-4 sm:p-5 hover:bg-surface-container/10 transition-colors">
                                 <div className="w-9 h-9 rounded-lg bg-surface-container border border-outline/65 flex items-center justify-center shrink-0">{getLogIcon(log.action)}</div>
                                 <div className="flex-1 min-w-0">
@@ -108,8 +113,8 @@ const SystemLogsSection: React.FC = () => {
                                     <p className="mt-1.5 text-[9px] font-mono text-on-surface-variant/40 break-all" title={log.id}>Event {log.id}</p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    />
                 </div>
             ))}
             {hasMore && (

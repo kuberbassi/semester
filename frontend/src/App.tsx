@@ -15,6 +15,7 @@ import { ConfirmProvider } from './contexts/ConfirmContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { attendanceService } from './services/attendance.service';
+import { GlobalClickSpark } from './components/react-bits';
 import './index.css';
 
 // Hooks
@@ -230,6 +231,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
+      <GlobalClickSpark />
       <Suspense fallback={<LoadingSpinner fullScreen />}>
         <AppRoutes />
       </Suspense>

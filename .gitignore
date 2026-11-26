@@ -39,6 +39,7 @@ frontend/public/version.json
 # ── Build / dist artifacts ───────────────────────────────────
 dist/
 build/
+dist-installers/
 
 # ── Logs ─────────────────────────────────────────────────────
 logs/
