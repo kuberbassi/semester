@@ -36,6 +36,32 @@
     });
   }
 
+  // ── Mobile Navigation Drawer ───────────────────────────────────────────────
+  var mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  var mobileNav = document.getElementById('mobile-nav');
+
+  function setMobileMenu(open) {
+    if (!mobileMenuBtn || !mobileNav) return;
+    mobileNav.classList.toggle('open', open);
+    mobileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    mobileMenuBtn.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+  }
+
+  if (mobileMenuBtn && mobileNav) {
+    mobileMenuBtn.addEventListener('click', function () {
+      setMobileMenu(!mobileNav.classList.contains('open'));
+    });
+    var mobileLinks = mobileNav.querySelectorAll('a');
+    for (var m = 0; m < mobileLinks.length; m++) {
+      mobileLinks[m].addEventListener('click', function () {
+        setMobileMenu(false);
+      });
+    }
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 760) setMobileMenu(false);
+    });
+  }
+
   // ── OS Detection for Primary Hero CTA ──────────────────────────────────────
   function detectPlatform() {
     var ua = (navigator.userAgent || '').toLowerCase();
@@ -184,7 +210,7 @@
 
   if (openNotesBtn && modal) {
     openNotesBtn.addEventListener('click', function () {
-      if (modalTitle) modalTitle.textContent = 'Semester ' + releaseState.tag + ' — Release Notes';
+      if (modalTitle) modalTitle.textContent = 'Semester ' + releaseState.tag + ' | Release Notes';
       if (modalBody) modalBody.textContent = releaseState.notes;
       modal.classList.add('open');
     });
@@ -196,7 +222,10 @@
     });
   }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeModal();
+      setMobileMenu(false);
+    }
   });
 
   // ── Copy SHA-256 Verification Command ──────────────────────────────────────

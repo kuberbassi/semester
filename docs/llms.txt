@@ -1,0 +1,31 @@
+# Semester
+
+> Semester is a free, open-source, offline-first native academic workspace for Windows (x64) and Android built by Kuber Bassi. Powered by a shared Rust + SQLite core (`semester-core`), it tracks attendance, live timetables, IPU ExamWeb results, practicals, assignments, exam reminders, and notes with optional private two-way Google Drive `appDataFolder` sync.
+
+## Official Links
+- Website & Downloads: https://semester.kuberbassi.com/
+- Full LLM Documentation: https://semester.kuberbassi.com/llms-full.txt
+- GitHub Repository: https://github.com/kuberbassi/semester
+- Latest Release (Windows & Android): https://github.com/kuberbassi/semester/releases/latest
+- Creator Website: https://kuberbassi.com
+- Creator GitHub: https://github.com/kuberbassi
+
+## Core Capabilities
+- **Local-First Rust + SQLite Engine**: Sub-millisecond reads/writes in SQLite WAL mode across Windows (Tauri v2) and Android (Jetpack Compose + UniFFI). Zero mandatory account or backend server.
+- **Attendance & Bunk Guard**: Liquid attendance gauges, safe-skip and recovery math, medical leave adjustments, and slot-ordered Today's Classes with live period indicators.
+- **Timetable & Calendar**: Monday–Friday timetable builder, Monday–Sunday attendance calendar, linked subject substitutions, and offline two-way QR timetable sharing with built-in CameraX scanner on Android.
+- **IPU ExamWeb Results Vault**: Direct sync with `examweb.ggsipu.ac.in` using manual CAPTCHA verification, automatic profile linking, smart credit fallback (Theory = 3, Lab / Engineering Graphics = 1, NUES / HVPE = 2), CGPA/SGPA analytics, and printable PDF export.
+- **Academic Studio**: Notes & checklists with Exam Mode alerts, Practicals/Assignments & Hardcopy tracker, and Online Courses tracker.
+- **Private Google Drive Sync**: Two-way conflict-free sync into the user's hidden Google Drive `appDataFolder` with empty-device upload protection and automatic local safety backups.
+- **Local AI + Optional BYOK**: Built-in offline SQLite assistant plus optional user-provided Gemini or Groq API keys encrypted locally (Windows DPAPI / Android Keystore).
+
+## Downloads
+- Windows Installer (x64 NSIS): `Semester_1.0.0_x64-setup.exe` (Windows 10 / 11 64-bit, current-user install, no admin required)
+- Windows Portable: `Semester.exe`
+- Android APK: `Semester-v1.0.0-android.apk` (Android 8.0+ / API 26+, ARM64-v8a & x86_64)
+
+## About the Creator
+Semester is designed and engineered by **Kuber Bassi**, an independent software developer and B.Tech Computer Science student in India focused on fast, privacy-first local software, native Rust/Kotlin/TypeScript applications, and student productivity tools.
+- Portfolio: https://kuberbassi.com
+- Email: me@kuberbassi.com
+- License: MIT Open Source

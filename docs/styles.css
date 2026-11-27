@@ -197,6 +197,42 @@ button {
   gap: 8px;
 }
 
+.mobile-menu-btn {
+  display: none;
+}
+
+.mobile-nav {
+  display: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.mobile-nav.open {
+  display: block;
+}
+
+.mobile-nav-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px 14px;
+  gap: 4px;
+}
+
+.mobile-nav-inner a {
+  padding: 11px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mobile-nav-inner a:hover,
+.mobile-nav-inner a:active {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
 .icon-btn {
   width: 34px;
   height: 34px;
@@ -547,7 +583,7 @@ button {
 
 .preview-dashboard-grid {
   display: grid;
-  grid-template-columns: 1.15fr 1fr;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -556,6 +592,7 @@ button {
   padding: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border);
+  min-width: 0;
 }
 
 .hero-metric-card {
@@ -659,6 +696,7 @@ button {
 }
 
 .sub-meta {
+  flex: 1;
   min-width: 0;
 }
 
@@ -730,11 +768,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 9px 11px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--bg-subtle);
   font-size: 12px;
+}
+
+.radar-slot > div {
+  min-width: 0;
 }
 
 .radar-slot.live {
@@ -929,8 +972,9 @@ button {
 
 .spec-list li {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 12px;
   padding-top: 6px;
   border-top: 1px dashed var(--border);
 }
@@ -938,6 +982,8 @@ button {
 .spec-list strong {
   color: var(--text-secondary);
   font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .dl-actions {
@@ -1054,7 +1100,7 @@ button {
 /* ── Install & Verification Guide ─────────────────────────────────────────── */
 .install-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -1063,6 +1109,7 @@ button {
   padding: 24px;
   background: var(--bg-card);
   border: 1px solid var(--border);
+  min-width: 0;
 }
 
 .install-card h3 {
@@ -1115,14 +1162,19 @@ button {
   border-radius: 12px;
   background: var(--code-bg);
   border: 1px solid var(--border);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .code-box code {
+  flex: 1;
+  min-width: 0;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11.5px;
   color: var(--text-secondary);
   overflow-x: auto;
   white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
 }
 
 .copy-btn {
@@ -1224,23 +1276,125 @@ button {
   color: var(--text);
 }
 
-/* ── Responsive ───────────────────────────────────────────────────────────── */
+/* ── About Creator Section ────────────────────────────────────────────────── */
+.about-card {
+  border-radius: 20px;
+  padding: 28px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+}
+
+.about-main h2 {
+  margin: 0 0 10px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.028em;
+  line-height: 1.15;
+}
+
+.about-main p {
+  margin: 0 0 18px;
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-meta {
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
+.about-meta .spec-list li:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+/* ── Responsive (Tablet & Mobile Optimization) ───────────────────────────── */
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 20px;
+  }
+  .nav-links {
+    gap: 2px;
+  }
+  .nav-links a {
+    padding: 6px 10px;
+    font-size: 12.5px;
+  }
+  .app-body {
+    grid-template-columns: 158px minmax(0, 1fr);
+  }
+  .app-pane {
+    padding: 18px;
+  }
+  .security-row {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
 @media (max-width: 960px) {
   .downloads-grid,
   .bento-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .downloads-grid .dl-card:last-child {
+    grid-column: 1 / -1;
+  }
   .preview-dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .about-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
   }
 }
 
 @media (max-width: 760px) {
+  .site-header {
+    height: 60px;
+  }
   .nav-links {
     display: none;
   }
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+  .hero {
+    padding: 42px 0 38px;
+  }
+  .hero-head {
+    margin-bottom: 32px;
+  }
+  .hero-sub {
+    font-size: 15px;
+  }
+  .section {
+    padding: 54px 0;
+  }
+  .section-header {
+    margin-bottom: 28px;
+  }
+  .app-window {
+    border-radius: 16px;
+  }
   .app-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
   }
   .app-sidebar {
     border-right: none;
@@ -1250,21 +1404,149 @@ button {
   .app-nav {
     flex-direction: row;
     overflow-x: auto;
+    gap: 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+  .app-nav::-webkit-scrollbar {
+    display: none;
   }
   .app-nav-item {
     width: auto;
     white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    padding: 8px 12px;
   }
   .sidebar-sync-card {
     display: none;
   }
+  .app-pane {
+    padding: 16px 14px;
+  }
   .downloads-grid,
   .bento-grid,
   .install-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .downloads-grid .dl-card:last-child {
+    grid-column: auto;
   }
   .security-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 6px;
+    padding: 15px 16px;
+  }
+  .dl-card,
+  .install-card,
+  .bento-card,
+  .about-card {
+    padding: 20px;
+  }
+  .results-table {
+    min-width: 440px;
+  }
+  .site-footer {
+    padding: 28px 0 36px;
+  }
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .container {
+    padding: 0 16px;
+  }
+  .header-inner {
+    gap: 10px;
+  }
+  .header-dl-btn {
+    display: none;
+  }
+  .release-pill {
+    max-width: 100%;
+    font-size: 11.5px;
+    padding: 6px 12px;
+    line-height: 1.35;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 9.5vw, 2.55rem);
+  }
+  .hero-cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hero-cta-row .btn {
+    width: 100%;
+  }
+  .hero-meta-strip {
+    gap: 6px 12px;
+    font-size: 11.5px;
+  }
+  .meta-sep {
+    display: none;
+  }
+  .app-titlebar {
+    height: auto;
+    min-height: 40px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .window-sem {
+    display: none;
+  }
+  .sqlite-badge {
+    display: none;
+  }
+  .hero-metric-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .dial-wrap,
+  .dial-wrap svg {
+    width: 82px;
+    height: 82px;
+  }
+  .dial-value {
+    font-size: 18px;
+  }
+  .radar-slot {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .sub-row {
+    padding: 9px 10px;
+  }
+  .sub-pct {
+    min-width: 38px;
+  }
+  .mini-mark-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+  .modal-backdrop {
+    padding: 12px;
+  }
+  .modal-card {
+    max-height: 88vh;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 380px) {
+  .container {
+    padding: 0 14px;
+  }
+  .brand-tag {
+    display: none;
   }
 }

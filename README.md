@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://kuberbassi.github.io/semester/"><strong>Official Website &amp; Downloads</strong></a>
+  <a href="https://semester.kuberbassi.com/"><strong>Official Website &amp; Downloads</strong></a>
   &nbsp;&middot;&nbsp;
   <a href="https://github.com/kuberbassi/semester/releases/latest"><strong>Latest Release</strong></a>
   &nbsp;&middot;&nbsp;
@@ -21,7 +21,7 @@
 
 ## Downloads
 
-Get the latest installers directly from the [download site](https://kuberbassi.github.io/semester/) or [GitHub Releases](https://github.com/kuberbassi/semester/releases/latest):
+Get the latest installers directly from [semester.kuberbassi.com](https://semester.kuberbassi.com/) or [GitHub Releases](https://github.com/kuberbassi/semester/releases/latest):
 
 | Platform | Package | Requirements |
 | :--- | :--- | :--- |
@@ -51,7 +51,7 @@ semester/
 ├── src-tauri/           # Windows Desktop Tauri v2 backend (SQLite, DPAPI crypto, Drive sync, IPU)
 ├── frontend/            # React + TypeScript + Vite desktop UI
 ├── semester-android/    # Native Jetpack Compose Android app (UniFFI Rust bridge, Glance widget, CameraX QR)
-├── docs/                # GitHub Pages download & landing site (https://kuberbassi.github.io/semester/)
+├── docs/                # GitHub Pages download & landing site (https://semester.kuberbassi.com/)
 ├── scripts/             # Android build/deploy helper scripts
 ├── api-node/            # Legacy web API workspace & shared domain helpers
 └── tests/               # Unit quality tests

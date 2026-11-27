@@ -2,17 +2,116 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Semester — Native Academic Workspace for Windows &amp; Android</title>
-  <meta name="description" content="Download Semester for Windows (x64) and Android. Offline-first Rust + SQLite attendance engine, timetable radar, IPU ExamWeb result sync, and private Google Drive AppData backups." />
-  <meta name="theme-color" content="#07080d" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Semester | Native Academic Workspace for Windows &amp; Android</title>
+  <meta name="description" content="Download Semester for Windows (x64) and Android. Built by Kuber Bassi — offline-first Rust + SQLite attendance tracker, live timetable radar, IPU ExamWeb results vault, QR sync, and private Google Drive backups." />
+  <meta name="keywords" content="Semester app, attendance tracker, IPU results, GGSIPU ExamWeb, college timetable app, offline attendance app, Windows desktop academic workspace, Android attendance APK, Kuber Bassi" />
+  <meta name="author" content="Kuber Bassi" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <meta name="theme-color" content="#07080d" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+  <link rel="canonical" href="https://semester.kuberbassi.com/" />
+  <link rel="manifest" href="./site.webmanifest" />
+  <link rel="alternate" type="text/plain" title="LLMs Summary" href="https://semester.kuberbassi.com/llms.txt" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Semester — Native Academic Workspace" />
-  <meta property="og:description" content="Fast, local-first academic workspace for attendance, timetables, IPU results, and study notes. Built with Rust, SQLite, and Tauri v2." />
-  <meta property="og:image" content="./brand-logo.svg" />
+  <meta property="og:site_name" content="Semester" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:url" content="https://semester.kuberbassi.com/" />
+  <meta property="og:title" content="Semester | Native Academic Workspace for Windows &amp; Android" />
+  <meta property="og:description" content="Fast, offline-first academic workspace for attendance, live timetables, IPU ExamWeb results, practicals, and study notes. Built with Rust, SQLite, Tauri v2, and Kotlin by Kuber Bassi." />
+  <meta property="og:image" content="https://semester.kuberbassi.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Semester | Native Academic Workspace for Windows and Android by Kuber Bassi" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Semester | Native Academic Workspace for Windows &amp; Android" />
+  <meta name="twitter:description" content="Offline-first Rust + SQLite attendance tracker, live timetable radar, IPU ExamWeb results vault, and private Google Drive sync for Windows &amp; Android." />
+  <meta name="twitter:image" content="https://semester.kuberbassi.com/og-image.png" />
 
   <link rel="icon" type="image/svg+xml" href="./brand-logo.svg" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./favicon-64.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://semester.kuberbassi.com/#website",
+        "url": "https://semester.kuberbassi.com/",
+        "name": "Semester",
+        "description": "Official download and documentation site for Semester, a native offline-first academic workspace for Windows and Android.",
+        "publisher": { "@id": "https://kuberbassi.com/#person" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://kuberbassi.com/#person",
+        "name": "Kuber Bassi",
+        "url": "https://kuberbassi.com",
+        "email": "mailto:me@kuberbassi.com",
+        "jobTitle": "Software Developer & B.Tech CSE Student",
+        "sameAs": [
+          "https://kuberbassi.com",
+          "https://github.com/kuberbassi"
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://semester.kuberbassi.com/#app",
+        "name": "Semester",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Windows 10, Windows 11, Android 8.0+",
+        "softwareVersion": "1.0.0",
+        "url": "https://semester.kuberbassi.com/",
+        "downloadUrl": "https://github.com/kuberbassi/semester/releases/latest",
+        "installUrl": "https://semester.kuberbassi.com/#downloads",
+        "image": "https://semester.kuberbassi.com/og-image.png",
+        "screenshot": "https://semester.kuberbassi.com/og-image.png",
+        "license": "https://opensource.org/licenses/MIT",
+        "description": "Native, offline-first academic workspace built on Rust and local SQLite for attendance tracking, live timetables, IPU ExamWeb results, practicals, exam reminders, and private Google Drive AppData backups.",
+        "author": { "@id": "https://kuberbassi.com/#person" },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://semester.kuberbassi.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is Semester free and offline-first?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Semester is completely free, MIT open source, and stores all subjects, timetables, attendance logs, notes, and IPU results locally in SQLite with zero mandatory accounts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does Google Drive sync protect my privacy?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Semester uses OAuth 2.0 PKCE with the restricted drive.appdata scope, syncing snapshots only inside its own hidden application folder in your personal Google Drive without accessing any of your other files."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why does Windows SmartScreen prompt on the installer?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Independent open-source releases are not code-signed with an EV certificate yet. Click More info and Run anyway, and verify the SHA-256 checksum against the official GitHub Release."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Outfit:wght@700;800&display=swap" rel="stylesheet" />
@@ -37,6 +136,7 @@
         <a href="#architecture">Architecture</a>
         <a href="#security">Security</a>
         <a href="#install">Install Guide</a>
+        <a href="#about">About</a>
       </nav>
 
       <div class="header-actions">
@@ -56,9 +156,27 @@
           </svg>
         </a>
 
-        <a href="#downloads" class="btn btn-primary btn-sm">Download</a>
+        <a href="#downloads" class="btn btn-primary btn-sm header-dl-btn">Download</a>
+
+        <button type="button" class="icon-btn mobile-menu-btn" id="mobile-menu-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobile-nav">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <line x1="4" y1="7" x2="20" y2="7"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="17" x2="20" y2="17"></line>
+          </svg>
+        </button>
       </div>
     </div>
+
+    <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation">
+      <div class="container mobile-nav-inner">
+        <a href="#downloads">Downloads</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#security">Security</a>
+        <a href="#install">Install Guide</a>
+        <a href="#about">About Creator</a>
+      </div>
+    </nav>
   </header>
 
   <main id="top">
@@ -111,10 +229,10 @@
                 <i></i><i></i><i></i>
               </div>
               <div class="window-title">
-                <span>Semester — Native Desktop</span>
+                <span>Semester | Native Desktop</span>
                 <span class="sqlite-badge">SQLite WAL · 0.4ms</span>
               </div>
-              <div class="window-title mono" style="font-size:10.5px;">Sem 3</div>
+              <div class="window-title window-sem mono" style="font-size:10.5px;">Sem 3</div>
             </div>
 
             <div class="app-body">
@@ -581,6 +699,33 @@
             </ol>
           </div>
         </div>
+    <!-- About the Creator -->
+    <section class="section" id="about">
+      <div class="container">
+        <div class="about-card">
+          <div class="about-main">
+            <span class="eyebrow">About the Creator</span>
+            <h2>Built by Kuber Bassi</h2>
+            <p>
+              I&apos;m a Computer Science student and independent developer building fast, local-first desktop and mobile tools with Rust, Kotlin, and TypeScript. I built Semester to replace slow, ad-heavy student trackers with a clean native workspace where your attendance, timetable, practicals, and IPU results stay strictly on your own devices.
+            </p>
+            <div class="about-links">
+              <a href="https://kuberbassi.com" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">kuberbassi.com</a>
+              <a href="https://github.com/kuberbassi" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">GitHub</a>
+              <a href="mailto:me@kuberbassi.com" class="btn btn-ghost btn-sm">me@kuberbassi.com</a>
+              <a href="./llms.txt" class="btn btn-ghost btn-sm mono">llms.txt</a>
+            </div>
+          </div>
+
+          <div class="about-meta">
+            <ul class="spec-list tabular">
+              <li><span>Creator</span><strong>Kuber Bassi</strong></li>
+              <li><span>Domain</span><strong class="mono">semester.kuberbassi.com</strong></li>
+              <li><span>Stack</span><strong>Rust · Tauri v2 · Kotlin</strong></li>
+              <li><span>License</span><strong>MIT Open Source</strong></li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -608,6 +753,7 @@
       <div class="footer-links">
         <a href="https://github.com/kuberbassi/semester" target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href="https://github.com/kuberbassi/semester/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a href="./llms.txt">llms.txt</a>
         <a href="https://kuberbassi.com" target="_blank" rel="noopener noreferrer">kuberbassi.com</a>
         <a href="mailto:me@kuberbassi.com">me@kuberbassi.com</a>
       </div>

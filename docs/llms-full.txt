@@ -1,0 +1,89 @@
+# Semester | Complete Product, Architecture & Creator Reference
+
+> Official Website: https://semester.kuberbassi.com/
+> Source Code: https://github.com/kuberbassi/semester
+> Latest Release: https://github.com/kuberbassi/semester/releases/latest
+> Creator: Kuber Bassi (https://kuberbassi.com | me@kuberbassi.com)
+> License: MIT Open Source
+
+## 1. Overview
+Semester is a native, offline-first academic workspace for **Windows (x64)** and **Android** built for university and college students (with first-class support for Guru Gobind Singh Indraprastha University / GGSIPU students). Unlike web-based attendance trackers that rely on remote databases, ads, or third-party servers, Semester stores every subject, timetable slot, attendance log, practical count, note, and exam result directly in a local SQLite database powered by a shared Rust core (`semester-core`).
+
+Users can run Semester 100% offline with zero sign-in, or optionally connect their own Google account to sync snapshots privately across Windows and Android via Google Drive's hidden `appDataFolder`.
+
+## 2. Platforms & Download Artifacts
+All official installers are published on GitHub Releases at https://github.com/kuberbassi/semester/releases/latest and surfaced automatically on https://semester.kuberbassi.com/:
+
+- **Windows Desktop Installer (Recommended):** `Semester_1.0.0_x64-setup.exe`
+  - Built with Tauri v2 + Rust + React/TypeScript
+  - Windows 10 / 11 (64-bit)
+  - Per-user NSIS setup (no administrator elevation required)
+  - Approx. size: ~5.8 MB
+- **Windows Portable Executable:** `Semester.exe`
+  - Single standalone binary, ~20.1 MB
+- **Android Native APK:** `Semester-v1.0.0-android.apk`
+  - Built with native Jetpack Compose (Kotlin) + compiled Rust `.so` core via UniFFI (`arm64-v8a` & `x86_64`)
+  - Android 8.0 (API 26) or newer
+  - Approx. size: ~24.7 MB
+
+## 3. Feature Breakdown
+
+### Dashboard & Attendance Engine
+- Instant local SQLite updates (<1 ms) with live liquid progress gauges.
+- Real-time safe-bunk calculator (how many classes can be missed safely while staying above target percentage) and recovery calculator (exact consecutive classes needed to return to target).
+- Configurable global attendance target (default 75%) and warning buffer, synced seamlessly across devices.
+- **Today's Classes**: Automatically ordered chronologically by timetable slot with live period status dots (Red = completed, Green = currently in progress, Blue = upcoming) plus quick Present / Absent / Advanced marking controls.
+- Full support for **Present**, **Absent**, **Medical Leave**, **Substituted** (strictly linked to enrolled subjects), and **Cancelled** classes.
+
+### Timetable, Calendar & Offline QR Sync
+- Monday–Friday weekly timetable builder supporting multi-period lab blocks, room numbers, and linked enrolled subjects.
+- Monday–Sunday monthly attendance calendar with day-level bulk marking (`All Present`, `All Absent`, `Clear`) and per-slot overrides.
+- **Offline Two-Way QR Timetable Transfer**: Generate a compact QR code or share text on Desktop and scan it directly inside the Android app using the built-in offline CameraX + ZXing scanner (no internet or Google Play Services download required). Missing subjects are created and linked automatically.
+
+### IPU ExamWeb Results Vault
+- Authenticates directly from the user's device to `https://examweb.ggsipu.ac.in` using manual CAPTCHA entry and client-side salted password hashing.
+- Parses multi-semester result records locally, links student profile details (name, enrollment number, institution, programme, batch) automatically, and stores results offline.
+- Smart credit fallback when portal credits are omitted: Theory = 3 credits, Labs / Practicals / Workshop / Engineering Graphics = 1 credit, NUES / HVPE / Human Values = 2 credits.
+- Computes CGPA, SGPA, credit-weighted percentages, semester progression charts, and exports clean printable PDF transcripts.
+
+### Academic Studio (Notes, Exam Mode, Practicals & Courses)
+- **Notes & Checklists with Exam Mode**: Pin study notes, organize subject checklists, and schedule upcoming exam or practical viva dates with automated countdowns and pre-exam reminders (3 days before, eve, and exam morning).
+- **Practicals, Assignments & Hardcopy Tracking**: Manage practical files, completed counts, assignment totals, and hardcopy submission status — shown only for subjects with Practical or Assignment categories enabled, staying strictly synchronized between the Dashboard subject sheet and the Practicals hub.
+- **Online Courses**: Track self-paced courses (Coursera, Udemy, NPTEL, etc.), certificates, and completion progress.
+
+### Android Home Screen Widget & Schedule Alerts
+- Native Jetpack Glance home screen widget displaying live/next classes, date pill, and one-tap attendance marking.
+- Configurable pre-class schedule notifications (5, 10, or 15 minutes before class) plus Exam Mode reminders. Notification toggle reflects actual OS runtime permission state.
+
+### Built-In Local AI + Optional BYOK (Gemini / Groq)
+- Works offline out of the box by querying verified local SQLite attendance, schedule, and coursework data.
+- Users can optionally add their own free Gemini or Groq API key in Settings for cloud LLM reasoning. Keys are encrypted at rest and never exported or synced.
+
+## 4. Security, Privacy & Data Safety Architecture
+- **Zero Telemetry & Zero Third-Party Backend**: No analytics scripts, no tracking pixels, no crash beacons, and no central server storing user data.
+- **Private Google Drive AppData Sync**: Uses OAuth 2.0 with PKCE (S256) and `drive.appdata` scope so Semester can ONLY access its own hidden application folder inside the user's personal Google Drive.
+- **Empty-Device Protection**: A newly installed or empty device will never overwrite an existing non-empty cloud workspace on first link; it pulls and merges existing data first.
+- **Automatic Local Safety Backups**: Before any restore, import, or workspace reset, Semester writes an atomic local JSON safety snapshot on disk.
+- **Hardware-Backed Secret Encryption**: On Windows, OAuth tokens and optional AI API keys are encrypted via Windows DPAPI (`CryptProtectData`, CurrentUser scope). Exported JSON backups and Drive sync payloads strip all secrets and credentials.
+- **Database Hygiene**: Local SQLite uses WAL mode, `PRAGMA foreign_keys = ON`, `PRAGMA secure_delete = ON`, and 100% parameterized queries.
+- **Desktop WebView Hardening**: Strict Content Security Policy (`script-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`), `withGlobalTauri: false`, and zero `dangerouslySetInnerHTML` sinks.
+
+## 5. Technical Stack
+- **Shared Core (`semester-core`)**: Rust, SQLite (`rusqlite`), UniFFI bindings, CRDT/hash delta sync, attendance math, IPU parser, QR payload codec.
+- **Windows Desktop (`src-tauri` + `frontend`)**: Tauri v2, Tokio, React 19, TypeScript, Vite, Tailwind CSS.
+- **Android (`semester-android`)**: Kotlin, Jetpack Compose, CameraX + ZXing, Jetpack Glance widgets, WorkManager, OkHttp, native Rust JNI libraries (`arm64-v8a` & `x86_64`).
+- **Website (`docs/`)**: Static HTML, CSS, and vanilla JavaScript hosted via GitHub Pages at https://semester.kuberbassi.com/.
+
+## 6. Frequently Asked Questions
+- **Is Semester free?** Yes, Semester is 100% free and open source under the MIT License.
+- **Does Windows SmartScreen warn during installation?** Because independent open-source builds are not signed with an expensive EV code-signing certificate yet, Windows SmartScreen may show "Windows protected your PC" on first run. Click "More info" -> "Run anyway", and optionally verify the SHA-256 hash against the official GitHub Release.
+- **How do I install Semester on Android?** Download `Semester-v1.0.0-android.apk` from https://semester.kuberbassi.com/ or GitHub Releases, tap the file, allow "Install unknown apps" for your browser or file manager, and install.
+- **Can Semester see my other Google Drive files?** No. It strictly uses the `drive.appdata` scope, which only permits access to Semester's own hidden app folder.
+- **Does it work without internet?** Yes. Attendance, timetables, practicals, notes, offline results vault, QR transfer, and the local AI assistant all work completely offline.
+
+## 7. About Kuber Bassi
+**Kuber Bassi** is the creator and sole maintainer of Semester — a Computer Science undergraduate (B.Tech CSE) and full-stack / systems developer based in India. He builds fast, privacy-respecting native desktop and mobile applications using Rust, Kotlin, TypeScript, and React.
+- Personal Website: https://kuberbassi.com
+- Semester Website: https://semester.kuberbassi.com
+- GitHub: https://github.com/kuberbassi
+- Email: me@kuberbassi.com

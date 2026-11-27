@@ -1,0 +1,27 @@
+{
+  "name": "Semester | Native Academic Workspace",
+  "short_name": "Semester",
+  "description": "Offline-first Rust + SQLite academic workspace for Windows and Android. Track attendance, live timetables, IPU ExamWeb results, practicals, exam dates, and private Google Drive backups.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07080d",
+  "theme_color": "#07080d",
+  "icons": [
+    {
+      "src": "./favicon-64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./brand-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
