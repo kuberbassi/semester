@@ -30,6 +30,9 @@ frontend/public/version.json
 !**/.env.example
 *.jks
 *.keystore
+*.p12
+keystore.properties
+**/keystore.properties
 google-services.json
 
 # ── Local SQLite Databases & Backups ─────────────────────────

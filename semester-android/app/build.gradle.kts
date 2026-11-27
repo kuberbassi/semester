@@ -1,4 +1,5 @@
 import java.io.File
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -34,6 +35,31 @@ fun escapeBuildConfig(raw: String): String =
 val googleOAuthClientId = readDotEnvValue("GOOGLE_DESKTOP_CLIENT_ID")
 val googleOAuthClientSecret = readDotEnvValue("GOOGLE_DESKTOP_CLIENT_SECRET")
 
+// Dedicated production release keystore (credentials loaded from gitignored keystore.properties or CI env vars)
+val keystoreProps = Properties().apply {
+    val propsFile = File(rootDir, "keystore.properties")
+    if (propsFile.exists()) {
+        propsFile.inputStream().use { load(it) }
+    }
+}
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")?.trim()?.takeIf { it.isNotEmpty() }
+    ?: keystoreProps.getProperty("storeFile")?.trim().orEmpty()
+val releaseKeystoreFile = if (releaseKeystorePath.isNotEmpty()) {
+    val candidate = File(releaseKeystorePath)
+    if (candidate.isAbsolute) candidate else File(rootDir, releaseKeystorePath)
+} else null
+val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")?.trim()?.takeIf { it.isNotEmpty() }
+    ?: keystoreProps.getProperty("storePassword")?.trim().orEmpty()
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")?.trim()?.takeIf { it.isNotEmpty() }
+    ?: keystoreProps.getProperty("keyAlias")?.trim().orEmpty()
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")?.trim()?.takeIf { it.isNotEmpty() }
+    ?: keystoreProps.getProperty("keyPassword")?.trim().orEmpty()
+val hasReleaseSigning = releaseKeystoreFile != null &&
+    releaseKeystoreFile.exists() &&
+    releaseStorePassword.isNotEmpty() &&
+    releaseKeyAlias.isNotEmpty() &&
+    releaseKeyPassword.isNotEmpty()
+
 android {
     namespace = "com.semester.app"
     compileSdk = 36
@@ -54,10 +80,28 @@ android {
         buildConfigField("String", "GOOGLE_OAUTH_CLIENT_SECRET", "\"${escapeBuildConfig(googleOAuthClientSecret)}\"")
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseKeystoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Signed locally so AOT-compiled 120Hz release builds install straight over USB
-            signingConfig = signingConfigs.getByName("debug")
+            // Uses dedicated production release keystore when present; falls back to debug for external source builds
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isDebuggable = false
             isMinifyEnabled = false
             proguardFiles(
