@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { haptics } from '@/utils/haptics';
 
 export interface WakeSliderProps {
@@ -10,11 +9,14 @@ export interface WakeSliderProps {
   onChange: (val: number) => void;
   label?: string;
   unit?: string;
-  color?: 'cyan' | 'primary' | 'red' | 'emerald' | 'amber';
+  color?: 'indigo' | 'primary' | 'amber' | 'rose' | 'red' | 'emerald' | 'cyan';
   disabled?: boolean;
   className?: string;
 }
 
+/**
+ * Crisp Liquid-Gradient Slider with high-contrast track visibility in both Light & Dark mode.
+ */
 export const WakeSlider: React.FC<WakeSliderProps> = ({
   value,
   min = 0,
@@ -23,7 +25,7 @@ export const WakeSlider: React.FC<WakeSliderProps> = ({
   onChange,
   label,
   unit = '%',
-  color = 'cyan',
+  color = 'indigo',
   disabled = false,
   className = '',
 }) => {
@@ -35,51 +37,52 @@ export const WakeSlider: React.FC<WakeSliderProps> = ({
   const clampedVal = Math.min(max, Math.max(min, value));
   const percentage = range > 0 ? ((clampedVal - min) / range) * 100 : 0;
 
-  // Color configurations matching Framer aesthetic
   const colorThemes = {
-    cyan: {
-      fill: 'from-blue-600 via-cyan-500 to-emerald-400',
-      wake: 'rgba(34, 211, 238, 0.55)',
-      thumbBorder: 'border-cyan-400',
-      thumbDot: 'bg-cyan-500',
-      textBadge: 'text-cyan-400',
-      shadowGlow: '0 0 20px rgba(34, 211, 238, 0.8), 0 0 6px #ffffff',
+    indigo: {
+      fill: 'from-indigo-500 via-violet-500 to-cyan-400',
+      thumbBorder: 'border-indigo-500 dark:border-cyan-400',
+      thumbDot: 'bg-indigo-500 dark:bg-cyan-400',
+      textBadge: 'text-primary',
     },
     primary: {
-      fill: 'from-blue-600 via-indigo-500 to-purple-500',
-      wake: 'rgba(99, 102, 241, 0.55)',
-      thumbBorder: 'border-indigo-400',
-      thumbDot: 'bg-indigo-500',
-      textBadge: 'text-indigo-400',
-      shadowGlow: '0 0 20px rgba(99, 102, 241, 0.8), 0 0 6px #ffffff',
+      fill: 'from-indigo-500 via-violet-500 to-cyan-400',
+      thumbBorder: 'border-indigo-500 dark:border-cyan-400',
+      thumbDot: 'bg-indigo-500 dark:bg-cyan-400',
+      textBadge: 'text-primary',
     },
-    red: {
-      fill: 'from-amber-500 via-orange-500 to-rose-600',
-      wake: 'rgba(244, 63, 94, 0.55)',
-      thumbBorder: 'border-rose-400',
-      thumbDot: 'bg-rose-500',
-      textBadge: 'text-rose-400',
-      shadowGlow: '0 0 20px rgba(244, 63, 94, 0.8), 0 0 6px #ffffff',
-    },
-    emerald: {
-      fill: 'from-teal-500 via-emerald-400 to-green-500',
-      wake: 'rgba(16, 185, 129, 0.55)',
-      thumbBorder: 'border-emerald-400',
-      thumbDot: 'bg-emerald-500',
-      textBadge: 'text-emerald-400',
-      shadowGlow: '0 0 20px rgba(16, 185, 129, 0.8), 0 0 6px #ffffff',
+    cyan: {
+      fill: 'from-indigo-500 via-violet-500 to-cyan-400',
+      thumbBorder: 'border-cyan-500',
+      thumbDot: 'bg-cyan-500',
+      textBadge: 'text-cyan-600 dark:text-cyan-300',
     },
     amber: {
-      fill: 'from-yellow-500 via-amber-500 to-orange-500',
-      wake: 'rgba(245, 158, 11, 0.55)',
-      thumbBorder: 'border-amber-400',
+      fill: 'from-amber-500 to-orange-400',
+      thumbBorder: 'border-amber-500',
       thumbDot: 'bg-amber-500',
-      textBadge: 'text-amber-400',
-      shadowGlow: '0 0 20px rgba(245, 158, 11, 0.8), 0 0 6px #ffffff',
+      textBadge: 'text-amber-600 dark:text-amber-300',
+    },
+    rose: {
+      fill: 'from-rose-500 to-pink-400',
+      thumbBorder: 'border-rose-500',
+      thumbDot: 'bg-rose-500',
+      textBadge: 'text-rose-600 dark:text-rose-300',
+    },
+    red: {
+      fill: 'from-rose-500 to-pink-400',
+      thumbBorder: 'border-rose-500',
+      thumbDot: 'bg-rose-500',
+      textBadge: 'text-rose-600 dark:text-rose-300',
+    },
+    emerald: {
+      fill: 'from-indigo-500 to-cyan-400',
+      thumbBorder: 'border-indigo-500',
+      thumbDot: 'bg-indigo-500',
+      textBadge: 'text-primary',
     },
   };
 
-  const theme = colorThemes[color] || colorThemes.cyan;
+  const theme = colorThemes[color] || colorThemes.indigo;
 
   const updateFromPointer = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!trackRef.current || disabled) return;
@@ -88,7 +91,7 @@ export const WakeSlider: React.FC<WakeSliderProps> = ({
     const rawVal = min + pos * (max - min);
     const steppedVal = Math.round(rawVal / step) * step;
     const finalVal = Math.min(max, Math.max(min, Number(steppedVal.toFixed(2))));
-    
+
     if (finalVal !== lastValRef.current) {
       lastValRef.current = finalVal;
       haptics.selection();
@@ -146,9 +149,9 @@ export const WakeSlider: React.FC<WakeSliderProps> = ({
   return (
     <div className={`flex flex-col gap-2 select-none ${disabled ? 'opacity-40 pointer-events-none' : ''} ${className}`}>
       {label && (
-        <div className="flex items-center justify-between text-xs font-semibold text-on-surface-variant/80">
-          <span className="tracking-wide uppercase text-[11px]">{label}</span>
-          <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] ${theme.textBadge}`}>
+        <div className="flex items-center justify-between text-xs font-semibold text-on-surface-variant">
+          <span>{label}</span>
+          <span className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 tabular-nums ${theme.textBadge}`}>
             {clampedVal}{unit}
           </span>
         </div>
@@ -165,49 +168,29 @@ export const WakeSlider: React.FC<WakeSliderProps> = ({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="relative h-7 flex items-center cursor-pointer group focus:outline-none"
+        className="relative h-7 flex items-center cursor-pointer group focus:outline-none px-0.5"
       >
-        {/* Track background */}
-        <div className="w-full h-2 rounded-full bg-surface-container-high/60 dark:bg-white/[0.08] light:bg-black/[0.08] border border-white/[0.06] relative overflow-hidden">
-          {/* Active fill */}
+        {/* High-contrast theme-aware track */}
+        <div className="w-full h-2 rounded-full bg-on-surface/[0.13] border border-on-surface/[0.08] relative overflow-hidden">
           <div
-            className={`absolute left-0 top-0 bottom-0 bg-gradient-to-r ${theme.fill} rounded-full transition-all duration-75`}
+            className={`absolute left-0 top-0 bottom-0 bg-gradient-to-r ${theme.fill} rounded-full`}
             style={{ width: `${percentage}%` }}
           />
         </div>
 
-        {/* Luminous Wake trailing behind thumb */}
+        {/* Crisp Tactile Thumb */}
         <div
-          className="absolute pointer-events-none transition-all duration-75"
-          style={{
-            left: `calc(${percentage}% - 32px)`,
-            width: '64px',
-            height: '24px',
-            background: `radial-gradient(ellipse at center, ${theme.wake} 0%, rgba(0,0,0,0) 70%)`,
-            filter: 'blur(5px)',
-            opacity: isDragging ? 1 : 0.45,
-          }}
-        />
-
-        {/* Tactile Thumb */}
-        <motion.div
-          animate={{
-            scale: isDragging ? 1.25 : 1,
-            boxShadow: isDragging
-              ? theme.shadowGlow
-              : `0 0 10px ${theme.wake}`,
-          }}
-          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-          className={`absolute w-5 h-5 -ml-2.5 rounded-full bg-white border-2 ${theme.thumbBorder} transition-colors pointer-events-none flex items-center justify-center`}
+          className={`absolute w-5 h-5 -ml-2.5 rounded-full bg-white border-2 ${theme.thumbBorder} shadow-[0_2px_10px_rgba(15,23,42,0.28)] pointer-events-none flex items-center justify-center transition-transform duration-100 ${
+            isDragging ? 'scale-115' : 'group-hover:scale-105'
+          }`}
           style={{ left: `${percentage}%` }}
         >
           <div className={`w-1.5 h-1.5 rounded-full ${theme.thumbDot}`} />
-        </motion.div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between text-[9px] font-mono text-on-surface-variant/30 px-0.5">
+      <div className="flex items-center justify-between text-[10px] font-semibold text-on-surface-variant/65 tabular-nums px-0.5">
         <span>{min}{unit}</span>
-        <span className="text-[8px] opacity-60 tracking-wider uppercase">↔ Drag to scrub</span>
         <span>{max}{unit}</span>
       </div>
     </div>

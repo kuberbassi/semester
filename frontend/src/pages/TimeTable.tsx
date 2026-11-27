@@ -1,26 +1,70 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import {
-    LayoutGrid, List, Plus, Edit3
+    LayoutGrid, List, Plus, Edit3, CalendarClock, MapPin, Clock, QrCode
 } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { attendanceService } from '@/services/attendance.service';
 import api from '@/services/api';
 import { useSemester } from '@/contexts/semester-context';
 import { useToast } from '@/components/ui/toast-context';
+import PageHeader from '@/components/ui/PageHeader';
+import { RubberSegment } from '@/components/react-bits';
 import SlotModal from '@/components/modals/SlotModal';
 import StructureModal from '@/components/modals/StructureModal';
-import { motion, AnimatePresence } from 'framer-motion';
+import TimetableQrModal from '@/components/modals/TimetableQrModal';
+import { AnimatePresence } from 'framer-motion';
 import type { GridPeriod, Subject, TimetableSchedule, TimetableSlot } from '@/types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+const SLOT_PALETTES = [
+    {
+        card: 'bg-gradient-to-br from-indigo-500/14 via-indigo-500/8 to-cyan-500/10 border-indigo-500/28 hover:border-indigo-500/50',
+        bar: 'bg-gradient-to-b from-indigo-500 to-cyan-400',
+        pill: 'text-indigo-600 dark:text-indigo-300',
+    },
+    {
+        card: 'bg-gradient-to-br from-cyan-500/14 via-sky-500/8 to-teal-500/10 border-cyan-500/28 hover:border-cyan-500/50',
+        bar: 'bg-gradient-to-b from-cyan-500 to-teal-400',
+        pill: 'text-cyan-700 dark:text-cyan-300',
+    },
+    {
+        card: 'bg-gradient-to-br from-violet-500/14 via-purple-500/8 to-fuchsia-500/10 border-violet-500/28 hover:border-violet-500/50',
+        bar: 'bg-gradient-to-b from-violet-500 to-fuchsia-400',
+        pill: 'text-violet-600 dark:text-violet-300',
+    },
+    {
+        card: 'bg-gradient-to-br from-rose-500/13 via-pink-500/8 to-orange-500/10 border-rose-500/26 hover:border-rose-500/50',
+        bar: 'bg-gradient-to-b from-rose-500 to-orange-400',
+        pill: 'text-rose-600 dark:text-rose-300',
+    },
+    {
+        card: 'bg-gradient-to-br from-amber-500/14 via-orange-500/8 to-yellow-500/10 border-amber-500/28 hover:border-amber-500/50',
+        bar: 'bg-gradient-to-b from-amber-500 to-orange-400',
+        pill: 'text-amber-700 dark:text-amber-300',
+    },
+    {
+        card: 'bg-gradient-to-br from-emerald-500/14 via-teal-500/8 to-cyan-500/10 border-emerald-500/28 hover:border-emerald-500/50',
+        bar: 'bg-gradient-to-b from-emerald-500 to-cyan-400',
+        pill: 'text-emerald-700 dark:text-emerald-300',
+    },
+];
+
+function getSlotPalette(seed: string) {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return SLOT_PALETTES[Math.abs(hash) % SLOT_PALETTES.length];
+}
 
 const normalizeId = (value: unknown) => (value === null || value === undefined ? '' : String(value).trim());
 
 const findSubjectForSlot = (subjects: Subject[], slot: TimetableSlot): Subject | undefined => {
     const explicitType = String(slot?.type || '').trim().toLowerCase();
     const subjectObject = typeof slot.subject === 'object' && slot.subject !== null ? slot.subject : undefined;
-    
+
     if (['break', 'lunch', 'gap', 'free', 'custom'].includes(explicitType)) return undefined;
 
     const slotSubjectId = normalizeId(slot.subject_id || slot.subjectId || subjectObject?._id || subjectObject?.id);
@@ -36,44 +80,15 @@ const findSubjectForSlot = (subjects: Subject[], slot: TimetableSlot): Subject |
         if (matchedByName) return matchedByName;
     }
 
-    if (subjectField && typeof subjectField === 'object') {
-        const subObj = subjectField as Record<string, unknown>;
-        const objId = normalizeId(subObj._id || subObj.id);
-        if (objId) {
-            const matchedByObjId = subjects.find((sub) => normalizeId(sub._id || sub.id) === objId);
-            if (matchedByObjId) return matchedByObjId;
-        }
-        const objName = String(subObj.name || '').trim().toLowerCase();
-        if (objName) {
-            const matchedByObjName = subjects.find((sub) => String(sub?.name || '').trim().toLowerCase() === objName);
-            if (matchedByObjName) return matchedByObjName;
-        }
-    }
-
     const slotLabel = String(
-        slot?.label
-        || slot?.subject_name
-        || slot?.subjectName
-        || slot?.name
-        || subjectObject?.name
-        || subjectObject?.code
-        || ''
+        slot?.label || slot?.subject_name || slot?.subjectName || slot?.name || subjectObject?.name || subjectObject?.code || ''
     ).trim().toLowerCase();
     if (!slotLabel || slotLabel === 'break' || slotLabel === 'lunch' || slotLabel === 'gap') return undefined;
 
     return subjects.find((sub) => {
         const subName = String(sub?.name || '').trim().toLowerCase();
         const subCode = String(sub?.code || '').trim().toLowerCase();
-        
-        if (subName === slotLabel || subCode === slotLabel) return true;
-        
-        const acronym = subName.split(/\s+/).map(w => w[0]).join('');
-        if (acronym === slotLabel) return true;
-        
-        if (subName.includes(slotLabel)) return true;
-        if (subCode && (subCode.includes(slotLabel) || slotLabel.includes(subCode))) return true;
-
-        return false;
+        return subName === slotLabel || subCode === slotLabel || subName.includes(slotLabel);
     });
 };
 
@@ -117,25 +132,17 @@ const getSlotStatus = (day: string, startTime: string, endTime: string) => {
     try {
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const now = new Date();
-        const currentDay = daysOfWeek[now.getDay()];
-        if (currentDay !== day) return 'other-day';
-
+        if (daysOfWeek[now.getDay()] !== day) return 'other-day';
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
         const startMinutes = parseTimeForSort(startTime);
         const endMinutes = parseTimeForSort(endTime);
-
-        if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
-            return 'active';
-        } else if (currentMinutes > endMinutes) {
-            return 'passed';
-        } else {
-            return 'upcoming';
-        }
+        if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) return 'active';
+        if (currentMinutes > endMinutes) return 'passed';
+        return 'upcoming';
     } catch {
         return 'other-day';
     }
 };
-
 
 const TimeTable: React.FC = () => {
     const { currentSemester } = useSemester();
@@ -145,6 +152,7 @@ const TimeTable: React.FC = () => {
     const [periods, setPeriods] = useState<GridPeriod[]>([]);
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'grid' | 'list'>(() => (localStorage.getItem('Semester_timetable_view') as 'grid' | 'list') || 'grid');
+    const [timelineDayFilter, setTimelineDayFilter] = useState<string>('All');
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -155,8 +163,11 @@ const TimeTable: React.FC = () => {
     }, []);
 
     const activeView = isMobile ? 'list' : view;
-
-    const handleSetView = (v: 'grid' | 'list') => { setView(v); localStorage.setItem('Semester_timetable_view', v); api.post('/api/profile/preferences', { timetable_view: v }).catch(() => {}); };
+    const handleSetView = (v: 'grid' | 'list') => {
+        setView(v);
+        localStorage.setItem('Semester_timetable_view', v);
+        api.post('/api/profile/preferences', { timetable_view: v }).catch(() => {});
+    };
 
     usePageMeta({
         title: 'Timetable | Semester',
@@ -165,6 +176,7 @@ const TimeTable: React.FC = () => {
 
     const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
     const [isStructureModalOpen, setIsStructureModalOpen] = useState(false);
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<TimetableSlot | null>(null);
     const [selectedDay, setSelectedDay] = useState<string | null>(null);
     const [selectedPeriod, setSelectedPeriod] = useState<GridPeriod | null>(null);
@@ -187,9 +199,7 @@ const TimeTable: React.FC = () => {
         }
     }, [currentSemester, showToast]);
 
-    useEffect(() => {
-        void fetchData();
-    }, [fetchData]);
+    useEffect(() => { void fetchData(); }, [fetchData]);
 
     const handleAddSlot = (day: string, period: GridPeriod) => {
         setSelectedSlot(null);
@@ -205,160 +215,309 @@ const TimeTable: React.FC = () => {
         setIsSlotModalOpen(true);
     };
 
+    const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+
     return (
-        <div className="pb-32 sm:pb-24 max-w-[1400px] mx-auto">
-            {/* Page Header */}
-            <div className="mb-8">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-2">
-                    Schedule / Timetable
-                </p>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-on-surface tracking-tight">Timetable</h1>
-                        <p className="text-xs text-on-surface-variant/40 mt-0.5">Semester {currentSemester}</p>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
-                        {/* View toggle */}
-                        <div className="hidden sm:flex border border-outline rounded-lg overflow-hidden">
-                            <button
-                                onClick={() => handleSetView('grid')}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${view === 'grid' ? 'bg-on-surface text-surface' : 'text-on-surface-variant/50 hover:bg-surface-container hover:text-on-surface'}`}
-                            >
-                                <LayoutGrid size={13} /> Grid
-                            </button>
-                            <button
-                                onClick={() => handleSetView('list')}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all border-l border-outline cursor-pointer ${view === 'list' ? 'bg-on-surface text-surface' : 'text-on-surface-variant/50 hover:bg-surface-container hover:text-on-surface'}`}
-                            >
-                                <List size={13} /> List
-                            </button>
+        <div className="w-full pb-12 select-none">
+            <PageHeader
+                title="Timetable"
+                icon={CalendarClock}
+                badge={`Sem ${currentSemester} · ${periods.length} slots`}
+                actions={
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                        <div className="hidden sm:block">
+                            <RubberSegment<'grid' | 'list'>
+                                options={[
+                                    { id: 'grid', label: 'Board', icon: <LayoutGrid size={12} /> },
+                                    { id: 'list', label: 'Timeline', icon: <List size={12} /> },
+                                ]}
+                                value={view}
+                                size="sm"
+                                layoutId="timetable-view-segment"
+                                onChange={handleSetView}
+                            />
                         </div>
                         <button
+                            onClick={() => setIsQrModalOpen(true)}
+                            data-tooltip="Share your timetable QR or import a code from phone/classmate"
+                            className="no-fluid h-8 px-3.5 text-xs font-bold rounded-full bg-on-surface/[0.06] border border-primary/20 text-on-surface hover:border-primary/45 hover:text-primary inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                        >
+                            <QrCode size={13} />
+                            QR Share
+                        </button>
+                        <button
                             onClick={() => setIsStructureModalOpen(true)}
-                            className="h-8 px-3 text-xs font-semibold rounded-lg border border-outline bg-surface text-on-surface hover:bg-surface-container transition-all cursor-pointer"
+                            data-tooltip="Customize period timings & break rows for this semester"
+                            className="no-fluid h-8 px-4 text-xs font-bold rounded-full btn-gradient cursor-pointer"
                         >
                             Edit Periods
                         </button>
                     </div>
-                </div>
-                <div className="mt-4 h-px bg-outline" />
-            </div>
+                }
+            />
 
             {loading ? (
                 <div className="flex justify-center py-40"><LoadingSpinner /></div>
             ) : activeView === 'grid' ? (
-                <div className="pb-10">
-                    <div className="overflow-x-auto w-full">
-                        <div className="min-w-[750px] bg-surface border border-outline rounded-xl overflow-hidden">
-                            <div className="grid grid-cols-[80px_repeat(5,_1fr)]">
-                                <div className="h-12 flex items-center justify-center text-xs font-bold text-on-surface-variant/30 border-b border-r border-outline bg-surface-container"></div>
-                                {DAYS.map(day => (
-                                    <div key={day} className="h-12 flex items-center justify-center text-xs font-bold text-on-surface-variant/70 border-b border-r border-outline bg-surface-container last:border-r-0">{day.slice(0, 3)}</div>
-                                ))}
-
-                                {periods.map((period) => (
-                                    <React.Fragment key={period.id}>
-                                        <div className="flex flex-col justify-center items-center px-2 py-3 border-b border-r border-outline bg-surface-container-low text-center">
-                                            <span className="text-on-surface font-bold text-[10px] leading-tight">{getPeriodName(period)}</span>
-                                            <span className="text-[9px] font-medium text-on-surface-variant/50 mt-1 leading-none">{getPeriodStartTime(period)}</span>
-                                        </div>
-                                        {DAYS.map(day => {
-                                            const daySlots = timetable[day] || [];
-                                            const slot = daySlots.find((s) => normalizeTimeMatch(getSlotStartTime(s)) === normalizeTimeMatch(getPeriodStartTime(period)));
-                                            const subject = slot ? findSubjectForSlot(subjects, slot) : undefined;
-                                            const isBreak = slot?.type?.toLowerCase() === 'break';
-
-                                            return (
-                                                <div key={`${day}-${period.id}`} className="min-h-[80px] border-b border-r border-outline last:border-r-0 p-1 flex">
-                                                    {slot ? (
-                                                        <motion.div onClick={() => handleEditSlot(slot)} whileHover={{ scale: 1.01 }} className={`h-full w-full rounded-lg p-1.5 sm:p-2.5 flex flex-col justify-center items-center text-center cursor-pointer transition-all border ${isBreak ? 'bg-surface-container-low border-outline opacity-60 hover:opacity-100' : 'bg-surface hover:bg-surface-container border-outline'}`}>
-                                                            <span className="text-[8px] font-semibold uppercase tracking-wider text-on-surface-variant/60">{slot.type}</span>
-                                                            <span className="text-xs font-bold text-on-surface leading-tight mt-1">{subject?.name || slot.subject_name || slot.subjectName || slot.label || slot.name || (isBreak ? 'Break' : '—')}</span>
-                                                            {slot.classroom && <span className="text-[9px] font-medium text-on-surface-variant/40 mt-1 leading-none">{slot.classroom}</span>}
-                                                        </motion.div>
-                                                    ) : (
-                                                        <button onClick={() => handleAddSlot(day, period)} className="h-full w-full rounded-lg hover:bg-surface-container transition-all flex items-center justify-center group border border-dashed border-transparent hover:border-outline">
-                                                            <Plus size={16} className="text-on-surface-variant/10 group-hover:text-on-surface-variant/40 transition-colors" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </React.Fragment>
-                                ))}
+                <div className="overflow-x-auto pb-6">
+                    <div className="min-w-[820px] liquid-glass rounded-[28px] overflow-hidden">
+                        <div className="grid grid-cols-[96px_repeat(5,_1fr)]">
+                            {/* Top-left header */}
+                            <div className="h-13 flex items-center justify-center gap-1 text-[11px] font-bold text-on-surface-variant/65 border-b border-r border-primary/12 bg-primary/[0.03]">
+                                <Clock size={12} className="text-primary" />
+                                Time
                             </div>
+                            {DAYS.map(day => {
+                                const isTodayCol = todayName === day;
+                                return (
+                                    <div
+                                        key={day}
+                                        className={`h-13 flex items-center justify-center gap-2 text-xs font-extrabold border-b border-r border-primary/12 last:border-r-0 ${
+                                            isTodayCol
+                                                ? 'bg-gradient-to-r from-indigo-500/18 via-violet-500/14 to-cyan-500/18 text-primary'
+                                                : 'bg-primary/[0.025] text-on-surface-variant'
+                                        }`}
+                                    >
+                                        {isTodayCol && <span className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 shadow-sm" />}
+                                        <span className="font-display tracking-tight text-[13px]">{day}</span>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Period rows */}
+                            {periods.map((period) => (
+                                <React.Fragment key={period.id}>
+                                    <div className="flex flex-col justify-center items-center px-2 py-3.5 border-b border-r border-primary/10 bg-primary/[0.02] text-center">
+                                        <span className="text-on-surface font-bold text-[11px] leading-tight">{getPeriodName(period)}</span>
+                                        <span className="text-[10px] font-semibold text-primary/80 mt-1 leading-none tabular-nums">
+                                            {getPeriodStartTime(period)}
+                                        </span>
+                                    </div>
+                                    {DAYS.map(day => {
+                                        const isTodayCol = todayName === day;
+                                        const daySlots = timetable[day] || [];
+                                        const slot = daySlots.find((s) => normalizeTimeMatch(getSlotStartTime(s)) === normalizeTimeMatch(getPeriodStartTime(period)));
+                                        const subject = slot ? findSubjectForSlot(subjects, slot) : undefined;
+                                        const isBreak = slot?.type?.toLowerCase() === 'break';
+                                        const title = subject?.name || slot?.subject_name || slot?.subjectName || slot?.label || slot?.name || (isBreak ? 'Break' : '—');
+                                        const palette = getSlotPalette(title);
+
+                                        return (
+                                            <div
+                                                key={`${day}-${period.id}`}
+                                                className={`min-h-[92px] border-b border-r border-primary/10 last:border-r-0 p-2 flex ${
+                                                    isTodayCol ? 'bg-primary/[0.025]' : ''
+                                                }`}
+                                            >
+                                                {slot ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditSlot(slot)}
+                                                        data-tooltip={`${title} (${getSlotStartTime(slot)} – ${getSlotEndTime(slot)})${slot.classroom ? ` · Room ${slot.classroom.replace(/^room\s+/i, '')}` : ''} — Click to edit`}
+                                                        className={`no-fluid relative overflow-hidden h-full w-full rounded-2xl p-2.5 pl-3.5 flex flex-col justify-center items-start text-left cursor-pointer transition-all border ${
+                                                            isBreak
+                                                                ? 'bg-on-surface/[0.03] border-on-surface/[0.08] opacity-65 hover:opacity-100'
+                                                                : palette.card
+                                                        }`}
+                                                    >
+                                                        {!isBreak && (
+                                                            <span className={`absolute left-0 top-2 bottom-2 w-[3.5px] rounded-r-full ${palette.bar}`} />
+                                                        )}
+                                                        <span className="text-xs font-bold text-on-surface leading-snug line-clamp-2">
+                                                            {title}
+                                                        </span>
+                                                        {slot.classroom && (
+                                                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold mt-1.5 truncate max-w-full ${palette.pill}`}>
+                                                                <MapPin size={9} />
+                                                                {slot.classroom.replace(/^room\s+/i, '')}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAddSlot(day, period)}
+                                                        className="no-fluid h-full w-full rounded-2xl hover:bg-primary/[0.06] transition-colors flex items-center justify-center group border border-dashed border-transparent hover:border-primary/25 cursor-pointer"
+                                                        title={`Add class on ${day}`}
+                                                    >
+                                                        <Plus size={15} className="text-on-surface-variant/20 group-hover:text-primary transition-colors" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </React.Fragment>
+                            ))}
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className="space-y-12">
-                    {DAYS.map(day => (
-                        <div key={day} className="space-y-6">
-                            <div className="flex items-center gap-4 px-2">
-                                <h2 className="text-lg font-bold text-on-surface">{day}</h2>
-                                <div className="h-px flex-1 bg-outline-variant" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {([...(timetable[day] || [])]).sort((a, b) => parseTimeForSort(getSlotStartTime(a)) - parseTimeForSort(getSlotStartTime(b))).map((slot, idx) => {
-                                    const subject = findSubjectForSlot(subjects, slot);
-                                    const status = getSlotStatus(day, getSlotStartTime(slot), getSlotEndTime(slot));
-                                    let dotElement = null;
+                <div className="space-y-6">
+                    {/* Day Focus Filter Strip */}
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                        {(['All', ...DAYS] as const).map((dayOption) => {
+                            const active = timelineDayFilter === dayOption;
+                            const isTodayPill = dayOption === todayName;
+                            const count = dayOption === 'All'
+                                ? DAYS.reduce((sum, d) => sum + (timetable[d]?.length || 0), 0)
+                                : (timetable[dayOption]?.length || 0);
+                            return (
+                                <button
+                                    key={dayOption}
+                                    type="button"
+                                    onClick={() => setTimelineDayFilter(dayOption)}
+                                    className={`no-fluid h-9 px-4 rounded-full text-xs font-bold inline-flex items-center gap-2 shrink-0 transition-all cursor-pointer border ${
+                                        active
+                                            ? 'btn-gradient border-transparent'
+                                            : 'bg-surface/80 dark:bg-white/[0.04] border-on-surface/[0.09] text-on-surface-variant hover:text-on-surface hover:border-primary/35'
+                                    }`}
+                                >
+                                    {isTodayPill && !active && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" />
+                                    )}
+                                    <span>{dayOption === 'All' ? 'Full Week' : dayOption}</span>
+                                    <span className={`text-[10px] tabular-nums px-1.5 py-0.5 rounded-full ${
+                                        active ? 'bg-white/20 text-white' : 'bg-on-surface/[0.07] text-on-surface-variant'
+                                    }`}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                                    if (status === 'active') {
-                                        dotElement = (
-                                            <span className="relative flex h-2 w-2" title="Active Now">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                            </span>
-                                        );
-                                    } else if (status === 'upcoming') {
-                                        dotElement = (
-                                            <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" title="Upcoming Today" />
-                                        );
-                                    } else if (status === 'passed') {
-                                        dotElement = (
-                                            <span className="h-2 w-2 rounded-full bg-on-surface-variant/40 flex-shrink-0" title="Completed Today" />
-                                        );
-                                    } else {
-                                        dotElement = (
-                                            <span className="h-1.5 w-1.5 rounded-full bg-outline-variant flex-shrink-0" />
-                                        );
-                                    }
-
-                                    return (
-                                        <motion.div key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.02 }} onClick={() => handleEditSlot(slot)} className="p-3.5 rounded-xl border border-outline bg-surface flex items-center justify-between group hover:border-on-surface/20 transition-all cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-14 h-12 rounded-lg bg-surface-variant/60 border border-outline flex flex-col items-center justify-center shrink-0">
-                                                    <span className="text-[9px] font-bold text-on-surface-variant/60 leading-none">{getSlotStartTime(slot)}</span>
-                                                    <div className="w-3 h-px bg-outline-variant my-1" />
-                                                    <span className="text-[9px] font-bold text-on-surface-variant/60 leading-none">{getSlotEndTime(slot)}</span>
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                                        {dotElement}
-                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/60">{slot.type}</span>
-                                                        {slot.classroom && (
-                                                            <>
-                                                                <span className="h-1 w-1 rounded-full bg-outline-variant" />
-                                                                <span className="text-[9px] font-semibold text-on-surface-variant/50">{slot.classroom}</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    <h3 className="text-xs font-bold text-on-surface transition-colors">{subject?.name || slot.subject_name || slot.subjectName || slot.label || slot.name || (slot.type?.toLowerCase() === 'break' ? 'Break' : 'Class')}</h3>
-                                                </div>
-                                            </div>
-                                            <Edit3 size={13} className="text-on-surface-variant/30 group-hover:text-on-surface transition-colors shrink-0" />
-                                        </motion.div>
-                                    );
-                                })}
-                                {(!timetable[day] || timetable[day].length === 0) && (
-                                    <div className="col-span-full py-8 text-center rounded-xl border border-dashed border-outline bg-surface-container/30">
-                                        <p className="text-xs font-semibold text-on-surface-variant/30">No classes scheduled</p>
+                    {/* True Vertical Chronological Timeline Sections */}
+                    <div className="space-y-5">
+                        {(timelineDayFilter === 'All' ? DAYS : [timelineDayFilter]).map(day => {
+                            const isTodayDay = todayName === day;
+                            const dayList = [...(timetable[day] || [])].sort(
+                                (a, b) => parseTimeForSort(getSlotStartTime(a)) - parseTimeForSort(getSlotStartTime(b))
+                            );
+                            return (
+                                <section key={day} className="liquid-glass rounded-[24px] overflow-hidden">
+                                    {/* Day Section Header */}
+                                    <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-on-surface/[0.07] bg-on-surface/[0.015]">
+                                        <div className="flex items-center gap-2.5">
+                                            <h2 className={`font-display text-base font-extrabold tracking-tight ${isTodayDay ? 'gradient-text' : 'text-on-surface'}`}>
+                                                {day}
+                                            </h2>
+                                            {isTodayDay && (
+                                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-indigo-500 to-cyan-500 text-white">
+                                                    Today
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-[11px] font-semibold text-on-surface-variant tabular-nums">
+                                            {dayList.length} {dayList.length === 1 ? 'session' : 'sessions'}
+                                        </span>
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+
+                                    {/* Chronological Vertical Track */}
+                                    {dayList.length === 0 ? (
+                                        <div className="py-10 px-6 text-center">
+                                            <p className="text-xs font-medium text-on-surface-variant/65">No classes scheduled for {day}.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="relative px-6 py-5 space-y-3">
+                                            {/* Vertical Spine */}
+                                            <div
+                                                className="pointer-events-none absolute left-[138px] sm:left-[154px] top-7 bottom-7 w-[2px] bg-gradient-to-b from-indigo-500/40 via-cyan-400/35 to-on-surface/10 rounded-full hidden sm:block"
+                                                aria-hidden="true"
+                                            />
+
+                                            {dayList.map((slot, idx) => {
+                                                const subject = findSubjectForSlot(subjects, slot);
+                                                const startStr = getSlotStartTime(slot);
+                                                const endStr = getSlotEndTime(slot);
+                                                const status = getSlotStatus(day, startStr, endStr);
+                                                const isBreak = slot.type?.toLowerCase() === 'break';
+                                                const title = subject?.name || slot.subject_name || slot.subjectName || slot.label || slot.name || (isBreak ? 'Break' : 'Class');
+                                                const palette = getSlotPalette(title);
+                                                const durationMins = Math.max(0, parseTimeForSort(endStr) - parseTimeForSort(startStr));
+
+                                                return (
+                                                    <div
+                                                        key={slot.id || slot._id || idx}
+                                                        onClick={() => handleEditSlot(slot)}
+                                                        className="group flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-5 cursor-pointer"
+                                                    >
+                                                        {/* Left Time Column */}
+                                                        <div className="sm:w-[116px] shrink-0 flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-center gap-1 tabular-nums">
+                                                            <span className={`text-xs font-extrabold leading-none ${status === 'active' ? 'text-primary' : 'text-on-surface'}`}>
+                                                                {startStr}
+                                                            </span>
+                                                            <span className="text-[11px] font-medium text-on-surface-variant leading-none">
+                                                                {endStr}{durationMins > 0 ? ` · ${durationMins}m` : ''}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Center Timeline Node */}
+                                                        <div className="hidden sm:flex items-center justify-center w-5 shrink-0 relative z-10">
+                                                            <span className={`w-3 h-3 rounded-full ring-4 ring-surface transition-transform group-hover:scale-125 ${
+                                                                status === 'active'
+                                                                    ? 'bg-gradient-to-r from-indigo-500 to-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.85)]'
+                                                                    : isBreak
+                                                                    ? 'bg-on-surface-variant/40'
+                                                                    : palette.bar
+                                                            }`} />
+                                                        </div>
+
+                                                        {/* Right Chronological Session Row */}
+                                                        <div
+                                                            className={`relative flex-1 overflow-hidden rounded-2xl border px-4 py-3.5 pl-5 flex items-center justify-between gap-4 transition-all duration-150 ${
+                                                                status === 'active'
+                                                                    ? 'bg-gradient-to-r from-indigo-500/[0.14] via-violet-500/[0.08] to-cyan-500/[0.12] border-primary/40 shadow-sm'
+                                                                    : isBreak
+                                                                    ? 'bg-on-surface/[0.025] border-on-surface/[0.07] opacity-70 hover:opacity-100'
+                                                                    : 'bg-on-surface/[0.025] dark:bg-white/[0.03] border-on-surface/[0.08] hover:border-primary/35 hover:bg-on-surface/[0.045]'
+                                                            }`}
+                                                        >
+                                                            <span className={`absolute left-0 top-2.5 bottom-2.5 w-[3.5px] rounded-r-full ${isBreak ? 'bg-on-surface-variant/35' : palette.bar}`} />
+
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <h3 className="font-display text-sm font-bold text-on-surface truncate">
+                                                                        {title}
+                                                                    </h3>
+                                                                    {subject?.code && (
+                                                                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-on-surface/[0.06] text-on-surface-variant">
+                                                                            {subject.code}
+                                                                        </span>
+                                                                    )}
+                                                                    {status === 'active' && (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-indigo-500 to-cyan-500 text-white">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                                                            Live
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-2.5 mt-1 text-[11px] font-medium text-on-surface-variant">
+                                                                    <span className="capitalize">{slot.type || 'Class'}</span>
+                                                                    {slot.classroom && (
+                                                                        <>
+                                                                            <span className="opacity-35">·</span>
+                                                                            <span className={`inline-flex items-center gap-1 font-semibold ${isBreak ? '' : palette.pill}`}>
+                                                                                <MapPin size={10} />
+                                                                                {slot.classroom.replace(/^room\s+/i, '')}
+                                                                            </span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <span className="w-8 h-8 rounded-full bg-on-surface/[0.04] group-hover:bg-primary/14 text-on-surface-variant/50 group-hover:text-primary flex items-center justify-center transition-colors shrink-0">
+                                                                <Edit3 size={13} />
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </section>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
@@ -388,9 +547,22 @@ const TimeTable: React.FC = () => {
                     />
                 )}
             </AnimatePresence>
+
+            <AnimatePresence>
+                {isQrModalOpen && (
+                    <TimetableQrModal
+                        isOpen={isQrModalOpen}
+                        onClose={() => setIsQrModalOpen(false)}
+                        onImported={fetchData}
+                        semester={currentSemester}
+                        periods={periods}
+                        schedule={timetable}
+                        subjects={subjects}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };
 
 export default TimeTable;
-

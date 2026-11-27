@@ -165,7 +165,21 @@ const BottomNav: React.FC = () => {
     const isRouteInDock = matchedDockIdx >= 0;
     const lens = useStretchingLens(activeDockIdx, dockTabs.length);
 
-    // Digital Crown Radial Bubble Menu State (Semester's signature interaction)
+    // Reserve the radial bubble fan menu strictly for mobile / touch viewports
+    const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
+    });
+
+    useEffect(() => {
+        const mq = window.matchMedia('(max-width: 767px), (pointer: coarse)');
+        const update = () => setIsMobileViewport(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
+
+    // Digital Crown Radial Bubble Menu State (Mobile-only)
     const [isHolding, setIsHolding] = useState(false);
     const [pointerDownTime, setPointerDownTime] = useState(0);
     const [center, setCenter] = useState({ x: 0, y: 0 });
@@ -180,6 +194,7 @@ const BottomNav: React.FC = () => {
     const prevActiveIdxRef = useRef<number | null>(null);
 
     const handlePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+        if (!isMobileViewport) return;
         e.preventDefault();
         e.currentTarget.setPointerCapture(e.pointerId);
         haptics.light();
@@ -201,7 +216,7 @@ const BottomNav: React.FC = () => {
         }, 200);
 
         setPointerDownTime(Date.now());
-    }, []);
+    }, [isMobileViewport]);
 
     useEffect(() => {
         if (!pointerDownTime) return;
@@ -312,12 +327,12 @@ const BottomNav: React.FC = () => {
             return { type: 'icon', element: radialItems[activeIdx].icon, key: `hovered-${activeIdx}` };
         }
         if (isHolding) {
-            return { type: 'logo', element: '/Semester-logo-96.png', key: 'logo' };
+            return { type: 'logo', element: '/brand-logo.svg', key: 'logo' };
         }
         if (currentNavItem) {
             return { type: 'icon', element: currentNavItem.icon, key: `current-${location.pathname}` };
         }
-        return { type: 'logo', element: '/Semester-logo-96.png', key: 'logo' };
+        return { type: 'logo', element: '/brand-logo.svg', key: 'logo' };
     };
 
     const centerIconInfo = getCenterIcon();
@@ -431,6 +446,7 @@ const BottomNav: React.FC = () => {
                 <motion.button
                     layout
                     onPointerDown={handlePointerDown}
+                    onClick={!isMobileViewport ? () => { haptics.light(); setProfileOpen(prev => !prev); } : undefined}
                     transition={{ type: 'spring', stiffness: 340, damping: 28 }}
                     className={`no-fluid relative rounded-full flex items-center justify-center select-none cursor-pointer touch-none ${
                         dockInline ? 'w-[54px] h-[54px]' : 'w-[62px] h-[62px]'
@@ -439,7 +455,7 @@ const BottomNav: React.FC = () => {
                             ? 'bg-primary text-on-primary scale-95 shadow-[0_0_30px_rgba(16,185,129,0.5)] border border-primary'
                             : 'liquid-glass-pill text-on-surface hover:scale-105 active:scale-90'
                     }`}
-                    title="Click for Profile & Theme • Hold & Drag for Radial Crown Menu"
+                    title={isMobileViewport ? 'Tap for Profile • Hold & Drag for Radial Menu' : 'Menu, Theme & Account'}
                 >
                     {isHolding && (
                         <span className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-60 pointer-events-none" />
@@ -480,9 +496,9 @@ const BottomNav: React.FC = () => {
                 </motion.button>
             </div>
 
-            {/* Radial Menu Fan Overlay */}
+            {/* Radial Menu Fan Overlay (Mobile Only) */}
             <AnimatePresence>
-                {isHolding && (
+                {isMobileViewport && isHolding && (
                     <div className="fixed inset-0 z-[998] pointer-events-none select-none bg-black/25 backdrop-blur-[3px]">
                         <AnimatePresence mode="wait">
                             {focusedNavItem && (
@@ -560,11 +576,11 @@ const BottomNav: React.FC = () => {
                         />
 
                         <motion.div
-                            initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
-                            exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 360 }}
-                            className="fixed bottom-4 left-4 right-4 md:max-w-md md:mx-auto liquid-glass rounded-[28px] z-[9999] max-h-[65vh] overflow-y-auto text-on-surface p-6"
+                            initial={{ opacity: 0, y: 18, scale: 0.96, x: '-50%' }}
+                            animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }}
+                            exit={{ opacity: 0, y: 14, scale: 0.96, x: '-50%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+                            className="fixed bottom-24 left-1/2 w-[min(360px,calc(100vw-28px))] liquid-glass rounded-[28px] z-[9999] max-h-[68vh] overflow-y-auto text-on-surface p-5"
                         >
                             <div className="w-12 h-1 bg-on-surface/20 rounded-full mx-auto mb-5" />
 
@@ -579,6 +595,41 @@ const BottomNav: React.FC = () => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-3 mb-2">
+                                {/* Calendar & Practicals Quick Links (for desktop dock parity) */}
+                                <Link
+                                    to="/calendar"
+                                    onClick={() => {
+                                        haptics.light();
+                                        setProfileOpen(false);
+                                    }}
+                                    className="flex flex-col items-start justify-between p-4 h-24 rounded-2xl border border-outline/40 bg-surface-container/50 hover:bg-surface-container-high transition-all text-left"
+                                >
+                                    <div className="p-2 rounded-xl bg-on-surface/10 text-on-surface">
+                                        <CalendarDays size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-on-surface">Calendar</p>
+                                        <span className="text-[11px] text-on-surface-variant">Monthly log</span>
+                                    </div>
+                                </Link>
+
+                                <Link
+                                    to="/practicals"
+                                    onClick={() => {
+                                        haptics.light();
+                                        setProfileOpen(false);
+                                    }}
+                                    className="flex flex-col items-start justify-between p-4 h-24 rounded-2xl border border-outline/40 bg-surface-container/50 hover:bg-surface-container-high transition-all text-left"
+                                >
+                                    <div className="p-2 rounded-xl bg-on-surface/10 text-on-surface">
+                                        <Beaker size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-on-surface">Practicals</p>
+                                        <span className="text-[11px] text-on-surface-variant">Labs & tasks</span>
+                                    </div>
+                                </Link>
+
                                 <button
                                     onClick={() => {
                                         haptics.light();

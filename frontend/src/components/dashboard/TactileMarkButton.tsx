@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import { haptics } from '@/utils/haptics';
-import { ClickSpark } from '@/components/react-bits/ClickSpark';
 
 interface TactileMarkButtonProps {
     status: 'present' | 'absent';
@@ -11,62 +10,39 @@ interface TactileMarkButtonProps {
     disabled?: boolean;
 }
 
+/**
+ * Clean, glitch-free tactile attendance button aligned with the Silver-Iris / Rose palette.
+ */
 export const TactileMarkButton: React.FC<TactileMarkButtonProps> = ({
     status,
     onMark,
     label,
     disabled = false,
 }) => {
-    const [isPopping, setIsPopping] = useState(false);
     const isPresent = status === 'present';
-    const sparkColor = isPresent ? '#34d399' : '#f87171';
 
     const handleClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (disabled) return;
-
-        setIsPopping(true);
-        if (isPresent) {
-            haptics.tick();
-        } else {
-            haptics.selection();
-        }
-
+        if (isPresent) haptics.crownTick();
+        else haptics.selection();
         onMark();
-        setTimeout(() => setIsPopping(false), 500);
     };
 
     return (
-        <ClickSpark sparkColor={sparkColor} sparkCount={10} sparkRadius={28}>
-            <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.88 }}
-                onClick={handleClick}
-                disabled={disabled}
-                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
-                    isPresent
-                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/25 active:bg-emerald-500/30'
-                        : 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/25 active:bg-red-500/30'
-                }`}
-            >
-                {/* Ripple Pulse Halo */}
-                <AnimatePresence>
-                    {isPopping && (
-                        <motion.span
-                            initial={{ scale: 0.8, opacity: 0.8 }}
-                            animate={{ scale: 2.2, opacity: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.45, ease: 'easeOut' }}
-                            className={`absolute inset-0 rounded-lg pointer-events-none ${
-                                isPresent ? 'bg-emerald-400' : 'bg-red-400'
-                            }`}
-                        />
-                    )}
-                </AnimatePresence>
-
-                {isPresent ? <Check size={14} /> : <X size={14} />}
-                {label && <span>{label}</span>}
-            </motion.button>
-        </ClickSpark>
+        <motion.button
+            type="button"
+            whileTap={{ scale: 0.92 }}
+            onClick={handleClick}
+            disabled={disabled}
+            className={`no-fluid relative inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer select-none disabled:opacity-40 ${
+                isPresent
+                    ? 'bg-indigo-500/14 hover:bg-indigo-500/24 text-indigo-300 border-indigo-400/25'
+                    : 'bg-rose-500/12 hover:bg-rose-500/22 text-rose-400 border-rose-500/25'
+            }`}
+        >
+            {isPresent ? <Check size={13} strokeWidth={2.5} /> : <X size={13} strokeWidth={2.5} />}
+            {label && <span>{label}</span>}
+        </motion.button>
     );
 };

@@ -8,57 +8,68 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Material 3 System Colors
+        // RGB-channel Material 3 System Colors — full Tailwind opacity modifier support (/5, /10, /[0.08], etc.)
         primary: {
-          DEFAULT: 'var(--md-sys-color-primary)',
-          container: 'var(--md-sys-color-primary-container)',
-          'on-container': 'var(--md-sys-color-on-primary-container)',
+          DEFAULT: 'rgb(var(--rgb-primary) / <alpha-value>)',
+          container: 'rgb(var(--rgb-primary-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--rgb-on-primary-container) / <alpha-value>)',
         },
-        'on-primary': 'var(--md-sys-color-on-primary)',
+        'on-primary': 'rgb(var(--rgb-on-primary) / <alpha-value>)',
 
         secondary: {
-          DEFAULT: 'var(--md-sys-color-secondary)',
-          container: 'var(--md-sys-color-secondary-container)',
-          'on-container': 'var(--md-sys-color-on-secondary-container)',
+          DEFAULT: 'rgb(var(--rgb-secondary) / <alpha-value>)',
+          container: 'rgb(var(--rgb-secondary-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--rgb-on-secondary-container) / <alpha-value>)',
         },
-        'on-secondary': 'var(--md-sys-color-on-secondary)',
+        'on-secondary': 'rgb(var(--rgb-on-secondary) / <alpha-value>)',
 
         tertiary: {
-          DEFAULT: 'var(--md-sys-color-tertiary)',
-          container: 'var(--md-sys-color-tertiary-container)',
-          'on-container': 'var(--md-sys-color-on-tertiary-container)',
+          DEFAULT: 'rgb(var(--rgb-tertiary) / <alpha-value>)',
+          container: 'rgb(var(--rgb-tertiary-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--rgb-on-tertiary-container) / <alpha-value>)',
         },
-        'on-tertiary': 'var(--md-sys-color-on-tertiary)',
+        'on-tertiary': 'rgb(var(--rgb-on-tertiary) / <alpha-value>)',
 
         error: {
-          DEFAULT: 'var(--md-sys-color-error)',
-          container: 'var(--md-sys-color-error-container)',
-          'on-container': 'var(--md-sys-color-on-error-container)',
+          DEFAULT: 'rgb(var(--rgb-error) / <alpha-value>)',
+          container: 'rgb(var(--rgb-error-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--rgb-on-error-container) / <alpha-value>)',
         },
-        'on-error': 'var(--md-sys-color-on-error)',
+        'on-error': 'rgb(var(--rgb-on-error) / <alpha-value>)',
 
-        background: 'var(--md-sys-color-background)',
-        'on-background': 'var(--md-sys-color-on-background)',
+        background: 'rgb(var(--rgb-background) / <alpha-value>)',
+        'on-background': 'rgb(var(--rgb-on-background) / <alpha-value>)',
 
         surface: {
-          DEFAULT: 'var(--md-sys-color-surface)',
-          variant: 'var(--md-sys-color-surface-variant)',
-          container: 'var(--md-sys-color-surface-container)',
-          'container-low': 'var(--md-sys-color-surface-container-low)',
-          'container-high': 'var(--md-sys-color-surface-container-high)',
-          'container-highest': 'var(--md-sys-color-surface-container-highest)',
-          dim: 'var(--md-sys-color-surface-dim)',
+          DEFAULT: 'rgb(var(--rgb-surface) / <alpha-value>)',
+          variant: 'rgb(var(--rgb-surface-variant) / <alpha-value>)',
+          container: 'rgb(var(--rgb-surface-container) / <alpha-value>)',
+          'container-low': 'rgb(var(--rgb-surface-container-low) / <alpha-value>)',
+          'container-high': 'rgb(var(--rgb-surface-container-high) / <alpha-value>)',
+          'container-highest': 'rgb(var(--rgb-surface-container-highest) / <alpha-value>)',
+          dim: 'rgb(var(--rgb-surface-dim) / <alpha-value>)',
         },
-        'on-surface': 'var(--md-sys-color-on-surface)',
-        'on-surface-variant': 'var(--md-sys-color-on-surface-variant)',
+        'on-surface': 'rgb(var(--rgb-on-surface) / <alpha-value>)',
+        'on-surface-variant': 'rgb(var(--rgb-on-surface-variant) / <alpha-value>)',
 
-        outline: 'var(--md-sys-color-outline)',
-        'outline-variant': 'var(--md-sys-color-outline-variant)',
+        outline: 'rgb(var(--rgb-outline) / <alpha-value>)',
+        'outline-variant': 'rgb(var(--rgb-outline-variant) / <alpha-value>)',
       },
 
       fontFamily: {
-        sans: ['Outfit', 'Inter', 'sans-serif'],
-        display: ['Outfit', 'Inter', 'sans-serif'],
+        sans: ['Outfit', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', 'Outfit', 'system-ui', 'sans-serif'],
+      },
+
+      opacity: {
+        '12': '0.12',
+        '14': '0.14',
+        '16': '0.16',
+        '18': '0.18',
+        '22': '0.22',
+        '28': '0.28',
+        '88': '0.88',
+        '92': '0.92',
       },
 
       borderRadius: {
@@ -79,41 +90,35 @@ export default {
         'DEFAULT': '8px',
       },
 
-      dropShadow: {
-        'glow-primary': '0 0 10px rgba(59, 130, 246, 0.5)',
-        'glow-success': '0 0 10px rgba(34, 197, 94, 0.5)',
-        'glow-secondary': '0 0 10px rgba(168, 85, 247, 0.5)',
-      },
-
       animation: {
         'float': 'float 3s ease-in-out infinite',
-        'fade-in': 'fadeIn 0.4s ease-out',
-        'slide-up': 'slideUp 0.4s ease-out',
-        'scale-in': 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'fade-in': 'fadeIn 0.25s ease-out',
+        'slide-up': 'slideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+        'scale-in': 'scaleIn 0.24s cubic-bezier(0.22, 1, 0.36, 1)',
       },
 
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
+          '50%': { transform: 'translateY(-8px)' },
         },
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '0%': { transform: 'translateY(12px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         scaleIn: {
-          '0%': { transform: 'scale(0.9)', opacity: '0' },
+          '0%': { transform: 'scale(0.95)', opacity: '0' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
       },
 
       transitionTimingFunction: {
         'bounce': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-        'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',
+        'smooth': 'cubic-bezier(0.22, 1, 0.36, 1)',
       },
     },
   },

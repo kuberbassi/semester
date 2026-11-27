@@ -1,14 +1,17 @@
 [package]
-name = "app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
+name = "semester"
+version = "1.0.0"
+description = "Semester — Native Academic Workspace by Kuber Bassi"
+authors = ["Kuber Bassi <me@kuberbassi.com>"]
+homepage = "https://kuberbassi.com"
+license = "MIT"
 repository = ""
 edition = "2024"
 rust-version = "1.90"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "Semester"
+path = "src/main.rs"
 
 [lib]
 name = "app_lib"
@@ -24,3 +27,13 @@ log = "0.4"
 tauri = { version = "2.12.7", features = [] }
 tauri-plugin-log = "2"
 semester-core = { path = "../semester-core" }
+rusqlite = { version = "0.32", features = ["bundled"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "net", "macros", "io-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "cookies", "json", "gzip", "deflate"] }
+base64 = "0.22"
+sha2 = "0.10"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+urlencoding = "2"
+rand = "0.8"

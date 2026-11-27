@@ -7,13 +7,22 @@ import {
     CheckCircle2, Circle, X, GripVertical, Pencil,
     Check, Eye, Bold, Italic, Underline as UnderlineIcon,
     AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
-    Image as ImageIcon, MoreHorizontal, RotateCcw, Sparkles
+    Image as ImageIcon, MoreHorizontal, RotateCcw, PenTool, Bot,
+    GraduationCap, CalendarClock, BellRing
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast-context';
-import { HoldButton, RubberSegment } from '@/components/react-bits';
+import { HoldButton, RubberSegment, CometDial } from '@/components/react-bits';
+import PageHeader from '@/components/ui/PageHeader';
 import api from '@/services/api';
+import { notesHttp } from '@/services/notesHttp';
+import { attendanceService } from '@/services/attendance.service';
+import { useSemester } from '@/contexts/semester-context';
+import type { Subject } from '@/types';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConfirm } from '@/contexts/confirm-context';
+import { isDevTestMode, loadDevNotes, saveDevNotes } from '@/utils/devTestData';
+import { isTauriDesktop } from '@/utils/platform';
+import { desktopDb } from '@/services/desktopDb';
 
 // ── dnd-kit ──────────────────────────────────────────────────────────────────
 import {
@@ -45,6 +54,39 @@ interface TodoItem {
     id: string;
     text: string;
     completed: boolean;
+    subject?: string;
+    exam_date?: string;
+}
+
+interface ExamCountdown {
+    daysLeft: number;
+    label: string;
+    formatted: string;
+    pillClass: string;
+}
+
+function getExamCountdown(isoDate?: string): ExamCountdown | null {
+    if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate.trim())) return null;
+    const [y, m, d] = isoDate.trim().split('-').map(Number);
+    const examDay = new Date(y, m - 1, d);
+    if (Number.isNaN(examDay.getTime())) return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysLeft = Math.round((examDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+    const formatted = examDay.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    if (daysLeft < 0) {
+        return { daysLeft, label: 'Passed', formatted, pillClass: 'bg-on-surface/10 text-on-surface-variant' };
+    }
+    if (daysLeft === 0) {
+        return { daysLeft, label: 'Today!', formatted, pillClass: 'bg-rose-500/20 text-rose-500 border border-rose-500/35' };
+    }
+    if (daysLeft === 1) {
+        return { daysLeft, label: 'Tomorrow', formatted, pillClass: 'bg-amber-500/20 text-amber-500 border border-amber-500/35' };
+    }
+    if (daysLeft <= 3) {
+        return { daysLeft, label: `In ${daysLeft}d`, formatted, pillClass: 'bg-amber-500/15 text-amber-500 border border-amber-500/25' };
+    }
+    return { daysLeft, label: `In ${daysLeft}d`, formatted, pillClass: 'bg-primary/15 text-primary border border-primary/25' };
 }
 
 interface Note {
@@ -98,14 +140,16 @@ const SortableTodoRow: React.FC<SortableTodoProps> = ({ todo, editMode, onToggle
         if (editing) inputRef.current?.focus();
     }, [editing]);
 
+    const examInfo = getExamCountdown(todo.exam_date);
+
     return (
-        <div ref={setNodeRef} style={style} className="flex items-center gap-2 group/row py-1.5 px-1 rounded-lg hover:bg-surface-container/30 transition-colors">
+        <div ref={setNodeRef} style={style} className="flex items-center gap-2.5 group/row py-2 px-2.5 rounded-xl hover:bg-surface-container/35 transition-colors">
             {/* Drag handle — only in edit mode */}
             {editMode && (
                 <span
                     {...attributes}
                     {...listeners}
-                    className="text-on-surface-variant/20 hover:text-on-surface-variant/60 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+                    className="text-on-surface-variant/25 hover:text-on-surface-variant/70 cursor-grab active:cursor-grabbing shrink-0 touch-none"
                 >
                     <GripVertical size={14} />
                 </span>
@@ -114,7 +158,7 @@ const SortableTodoRow: React.FC<SortableTodoProps> = ({ todo, editMode, onToggle
             {/* Checkbox */}
             <button
                 onClick={() => !editMode && onToggle(todo.id)}
-                className={`shrink-0 transition-colors ${todo.completed ? 'text-primary' : 'text-on-surface-variant/30 hover:text-on-surface-variant/70'} ${editMode ? 'pointer-events-none' : 'cursor-pointer'}`}
+                className={`shrink-0 transition-colors ${todo.completed ? 'text-primary' : 'text-on-surface-variant/35 hover:text-primary'} ${editMode ? 'pointer-events-none' : 'cursor-pointer'}`}
             >
                 {todo.completed
                     ? <CheckCircle2 size={17} className="fill-primary/10" />
@@ -122,7 +166,7 @@ const SortableTodoRow: React.FC<SortableTodoProps> = ({ todo, editMode, onToggle
                 }
             </button>
 
-            {/* Text / inline edit */}
+            {/* Text / Exam details / inline edit */}
             {editing ? (
                 <input
                     ref={inputRef}
@@ -133,22 +177,46 @@ const SortableTodoRow: React.FC<SortableTodoProps> = ({ todo, editMode, onToggle
                     className="flex-1 text-sm bg-transparent outline-none border-b border-on-surface focus:border-primary transition-colors py-0.5"
                 />
             ) : (
-                <span
+                <div
                     onDoubleClick={() => editMode && setEditing(true)}
-                    className={`flex-1 text-sm leading-snug select-none transition-all ${todo.completed ? 'line-through text-on-surface-variant/30' : 'text-on-surface'}`}
+                    className="flex-1 min-w-0 select-none"
                 >
-                    {todo.text}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {todo.subject && (
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/14 text-primary shrink-0 ${todo.completed ? 'opacity-45 line-through' : ''}`}>
+                                {todo.subject}
+                            </span>
+                        )}
+                        <span className={`text-sm leading-snug transition-all ${todo.completed ? 'line-through text-on-surface-variant/35' : 'text-on-surface font-medium'}`}>
+                            {todo.text}
+                        </span>
+                    </div>
+                    {examInfo && (
+                        <div className="flex items-center gap-2 mt-1 text-[11px] text-on-surface-variant">
+                            <CalendarClock size={11} className="text-primary/80 shrink-0" />
+                            <span>{examInfo.formatted}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Exam countdown badge */}
+            {!editing && examInfo && !todo.completed && (
+                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shrink-0 tabular-nums ${examInfo.pillClass}`}>
+                    {examInfo.label}
                 </span>
             )}
 
-            {/* Edit-mode actions */}
-            {editMode && !editing && (
-                <div className="flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => setEditing(true)} className="p-1 text-on-surface-variant/40 hover:text-on-surface rounded transition-colors cursor-pointer">
-                        <Pencil size={12} />
-                    </button>
-                    <button onClick={() => onDelete(todo.id)} className="p-1 text-on-surface-variant/40 hover:text-red-500 rounded transition-colors cursor-pointer">
-                        <Trash2 size={12} />
+            {/* Actions */}
+            {!editing && (
+                <div className={`flex items-center gap-1 shrink-0 transition-opacity ${editMode ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100'}`}>
+                    {editMode && (
+                        <button onClick={() => setEditing(true)} className="p-1 text-on-surface-variant/50 hover:text-on-surface rounded transition-colors cursor-pointer" title="Rename">
+                            <Pencil size={12} />
+                        </button>
+                    )}
+                    <button onClick={() => onDelete(todo.id)} className="p-1 text-on-surface-variant/45 hover:text-rose-500 rounded transition-colors cursor-pointer" title="Remove">
+                        <X size={13} />
                     </button>
                 </div>
             )}
@@ -165,7 +233,11 @@ const ToolbarBtn: React.FC<{ active?: boolean; onClick: () => void; title?: stri
         type="button"
         title={title}
         onClick={onClick}
-        className={`p-1.5 rounded transition-colors cursor-pointer ${active ? 'bg-on-surface text-surface' : 'text-on-surface-variant/50 hover:text-on-surface hover:bg-surface-container'}`}
+        className={`no-fluid w-8 h-8 rounded-xl inline-flex items-center justify-center transition-colors cursor-pointer ${
+            active
+                ? 'bg-primary/18 text-primary border border-primary/30'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/[0.07] border border-transparent'
+        }`}
     >
         {children}
     </button>
@@ -208,8 +280,8 @@ const NoteToolbar: React.FC<NoteToolbarProps> = ({
             {hasAiDraft && (
                 <div className="flex flex-col bg-primary/5 border border-primary/20 rounded-lg p-2.5 gap-2 animate-fadeIn">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-primary text-[10px] font-bold uppercase tracking-wider animate-pulse">
-                            <Sparkles size={12} />
+                        <div className="flex items-center gap-1.5 text-primary text-[10px] font-bold uppercase tracking-wider">
+                            <Bot size={13} />
                             AI Draft Generated
                         </div>
                         <div className="flex items-center gap-2">
@@ -292,82 +364,85 @@ const NoteToolbar: React.FC<NoteToolbarProps> = ({
                         type="button"
                         onClick={() => !loadingAi && setShowAiMenu(m => !m)}
                         disabled={loadingAi}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                            loadingAi 
-                                ? 'bg-surface-container border-outline text-on-surface-variant/40 cursor-not-allowed'
+                        className={`no-fluid h-8 px-3.5 rounded-full border text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
+                            loadingAi
+                                ? 'bg-on-surface/[0.05] border-on-surface/[0.09] text-on-surface-variant/45 cursor-not-allowed'
                                 : showAiMenu
-                                    ? 'bg-primary/10 border-primary/30 text-primary'
-                                    : 'border-outline text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container'
+                                    ? 'btn-gradient border-transparent'
+                                    : 'bg-on-surface/[0.04] border-on-surface/[0.11] text-on-surface-variant hover:text-primary hover:border-primary/35 hover:bg-primary/10'
                         }`}
                     >
                         {loadingAi ? (
                             <>
-                                <div className="w-3 h-3 rounded-full border border-primary/20 border-t-primary animate-spin" />
-                                Processing...
+                                <div className="w-3 h-3 rounded-full border-2 border-primary/25 border-t-primary animate-spin" />
+                                Processing…
                             </>
                         ) : (
                             <>
-                                <Sparkles size={12} className={showAiMenu ? 'animate-pulse' : ''} />
+                                <PenTool size={12} />
                                 AI Writer
                             </>
                         )}
                     </button>
 
                     {showAiMenu && !loadingAi && (
-                        <div className="fixed bottom-16 left-4 right-4 md:absolute md:bottom-full md:right-0 md:left-auto md:w-64 md:mb-2 z-50 bg-surface border border-outline rounded-xl shadow-lg p-2.5 flex flex-col gap-2.5 animate-fadeIn">
-                            <div className="flex flex-col gap-0.5">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowAiMenu(false);
-                                        onAiAction('reformat');
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
-                                >
-                                    Re-format Spacing
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setShowAiMenu(false);
-                                        onAiAction('improve');
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container rounded-lg transition-colors cursor-pointer"
-                                >
-                                    Improve Writing
-                                </button>
-                            </div>
-                            <div className="border-t border-outline" />
-                            <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const val = menuPromptText.trim();
-                                    if (val) {
-                                        setShowAiMenu(false);
-                                        onAiAction('custom', val);
-                                        setMenuPromptText('');
-                                    }
-                                }}
-                                className="flex flex-col gap-1.5"
-                            >
-                                <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-wider px-1">Custom Prompt</span>
-                                <div className="flex items-center gap-1.5 border border-outline bg-surface rounded-md px-2 py-1 focus-within:border-primary/50 transition-colors">
-                                    <input
-                                        type="text"
-                                        value={menuPromptText}
-                                        onChange={(e) => setMenuPromptText(e.target.value)}
-                                        placeholder="e.g., summarize, translate to Spanish..."
-                                        className="flex-1 text-[11px] bg-transparent outline-none border-none focus:ring-0 placeholder:text-on-surface-variant/30 py-0.5"
-                                    />
+                        <div className="fixed bottom-16 left-4 right-4 md:absolute md:bottom-full md:right-0 md:left-auto md:w-72 md:mb-2.5 z-50 liquid-glass-overlay rounded-2xl overflow-hidden">
+                            <div className="h-[2px] w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-400" />
+                            <div className="p-2.5 flex flex-col gap-2">
+                                <div className="flex flex-col gap-0.5">
                                     <button
-                                        type="submit"
-                                        disabled={!menuPromptText.trim()}
-                                        className="text-[10px] font-bold text-primary hover:text-primary/80 disabled:opacity-35 transition-colors cursor-pointer"
+                                        type="button"
+                                        onClick={() => {
+                                            setShowAiMenu(false);
+                                            onAiAction('reformat');
+                                        }}
+                                        className="no-fluid w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-primary/12 hover:text-primary rounded-xl transition-colors cursor-pointer"
                                     >
-                                        Run
+                                        Re-format Spacing
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowAiMenu(false);
+                                            onAiAction('improve');
+                                        }}
+                                        className="no-fluid w-full text-left px-3 py-2 text-xs font-semibold text-on-surface hover:bg-primary/12 hover:text-primary rounded-xl transition-colors cursor-pointer"
+                                    >
+                                        Improve Writing
                                     </button>
                                 </div>
-                            </form>
+                                <div className="h-px bg-on-surface/[0.08]" />
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const val = menuPromptText.trim();
+                                        if (val) {
+                                            setShowAiMenu(false);
+                                            onAiAction('custom', val);
+                                            setMenuPromptText('');
+                                        }
+                                    }}
+                                    className="flex flex-col gap-2 px-0.5 pb-0.5"
+                                >
+                                    <span className="text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-wider px-1">Custom Prompt</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <input
+                                            type="text"
+                                            value={menuPromptText}
+                                            onChange={(e) => setMenuPromptText(e.target.value)}
+                                            placeholder="Summarize, make bullets…"
+                                            className="flex-1 min-w-0 h-8 px-3 rounded-xl bg-on-surface/[0.05] border border-on-surface/[0.11] text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!menuPromptText.trim()}
+                                            className="no-fluid h-8 px-3 rounded-xl btn-gradient text-[11px] font-bold disabled:opacity-35 shrink-0 cursor-pointer"
+                                        >
+                                            Run
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -513,6 +588,37 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, onClo
 
         setLoadingAi(true);
         try {
+            if (isTauriDesktop()) {
+                const res = await desktopDb.aiProcessNote(currentHtml, action, customPrompt);
+                const processed = res?.processedContent;
+                if (processed) {
+                    if (!hasAiDraft) setPrevContent(currentHtml);
+                    editor.commands.setContent(processed);
+                    setHasAiDraft(true);
+                    showToast('success', 'AI draft ready — Keep or Undo below');
+                } else {
+                    showToast('error', 'AI returned empty content');
+                }
+                return;
+            }
+            if (isDevTestMode()) {
+                if (!hasAiDraft) setPrevContent(currentHtml);
+                const plain = editor.getText().trim();
+                const lines = plain.split(/\n+/).map(l => l.trim()).filter(Boolean);
+                let processed = currentHtml;
+                if (action === 'reformat') {
+                    processed = lines.map(l => `<p>${l}</p>`).join('');
+                } else if (action === 'improve') {
+                    processed = `<h3>Refined Notes</h3><ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul>`;
+                } else {
+                    processed = `<p><strong>AI Focus (${customPrompt || 'Summary'}):</strong></p><ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul>`;
+                }
+                await new Promise(r => setTimeout(r, 260));
+                editor.commands.setContent(processed);
+                setHasAiDraft(true);
+                showToast('success', 'AI draft ready — Keep or Undo below');
+                return;
+            }
             const res = await api.post('/api/ai/process_note', { content: currentHtml, action, customPrompt });
             const processed = res.data?.data?.processedContent;
             if (processed) {
@@ -685,78 +791,94 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, onClo
         };
     }, [editor]);
 
-    // Scroll lock on mobile when NoteEditor is mounted
+    // Track mobile breakpoint (avoid touching documentElement overflow which causes scrollbar shift)
     useEffect(() => {
         const handleResize = () => {
-            const isMob = window.innerWidth < 1024;
-            setIsMobile(isMob);
-            if (isMob) {
-                document.body.style.overflow = 'hidden';
-                document.documentElement.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';
-            }
+            setIsMobile(window.innerWidth < 1024);
         };
 
         handleResize();
         window.addEventListener('resize', handleResize);
         return () => {
             window.removeEventListener('resize', handleResize);
-            document.body.style.overflow = '';
-            document.documentElement.style.overflow = '';
         };
     }, []);
 
     const modalContent = (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm lg:relative lg:inset-auto lg:z-auto lg:p-0 lg:bg-transparent lg:backdrop-blur-none"
-            onClick={onClose}
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 lg:static lg:inset-auto lg:z-auto lg:p-0 lg:bg-transparent lg:flex-1 lg:min-w-0 lg:flex"
+            onClick={() => isMobile && onClose()}
         >
             <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
                 onClick={e => e.stopPropagation()}
-                className="w-full max-w-lg lg:w-[460px] border border-outline bg-surface rounded-xl p-5 flex flex-col max-h-[85vh] lg:max-h-none lg:h-[calc(100vh-160px)] shadow-2xl lg:shadow-sm lg:sticky lg:top-20 lg:self-start lg:shrink-0"
+                className="w-full max-w-lg lg:max-w-none lg:flex-1 liquid-glass-overlay lg:liquid-glass rounded-[26px] p-5 sm:p-7 flex flex-col max-h-[85vh] lg:max-h-none lg:h-[calc(100vh-185px)] lg:min-h-[540px]"
             >
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-outline mb-3">
-                    <div className="flex items-center gap-1">
+                {/* Editor Top Toolbar */}
+                <div className="flex items-center justify-between pb-4 border-b border-primary/12 mb-5">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setReadMode(m => !m)}
+                            className={`no-fluid flex items-center gap-1.5 px-3.5 h-8 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                !readMode
+                                    ? 'btn-gradient'
+                                    : 'bg-primary/12 text-primary border border-primary/25 hover:bg-primary/20'
+                            }`}
+                        >
+                            {readMode ? <><Eye size={12} /> Reading · Click to Edit</> : <><Pencil size={12} /> Editing</>}
+                        </button>
+                        <button
+                            onClick={onTogglePin}
+                            className={`no-fluid w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                                note.is_pinned
+                                    ? 'bg-primary/15 border border-primary/25 text-primary'
+                                    : 'bg-on-surface/[0.05] text-on-surface-variant hover:text-primary'
+                            }`}
+                            title={note.is_pinned ? 'Unpin note' : 'Pin note'}
+                        >
+                            <Pin size={13} className={note.is_pinned ? 'fill-current' : ''} />
+                        </button>
                         <HoldButton
                             variant="danger"
                             holdDuration={750}
                             title="Hold to delete note"
                             onComplete={onDelete}
-                            className="p-1.5 rounded-lg flex items-center justify-center"
+                            className="no-fluid w-8 h-8 p-0 rounded-full flex items-center justify-center"
                         >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                         </HoldButton>
-                        <button onClick={onTogglePin} className={`p-1.5 rounded hover:bg-surface-container transition-colors cursor-pointer ${note.is_pinned ? 'text-primary' : 'text-on-surface-variant/30'}`} title="Pin">
-                            <Pin size={14} className={note.is_pinned ? 'fill-current' : ''} />
-                        </button>
-                        <button onClick={() => setReadMode(m => !m)} className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${readMode ? 'bg-surface-container text-on-surface' : 'text-on-surface-variant/40 hover:text-on-surface'}`}>
-                            {readMode ? <><Eye size={11} /> Reading</> : <><Pencil size={11} /> Editing</>}
-                        </button>
                     </div>
-                    <div className="flex items-center">
-                        <button onClick={onClose} className="p-1.5 text-on-surface-variant/30 hover:text-on-surface rounded transition-colors cursor-pointer" title="Close"><X size={14} /></button>
+                    <div className="flex items-center gap-2">
+                        <span className="hidden sm:inline text-[11px] font-medium text-on-surface-variant/60">
+                            Updated {new Date(note.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                        </span>
+                        {isMobile && (
+                            <button
+                                onClick={onClose}
+                                className="no-fluid w-8 h-8 rounded-full bg-on-surface/[0.06] hover:bg-on-surface/[0.12] text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors cursor-pointer"
+                                title="Close"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                {/* Title */}
+                {/* Borderless Editorial Title */}
                 <input
                     type="text"
                     value={note.title}
                     onChange={e => onUpdate({ title: e.target.value })}
-                    placeholder="Title"
+                    placeholder="Untitled Note"
                     readOnly={readMode}
-                    className="w-full text-base font-bold tracking-tight bg-transparent outline-none mb-3 py-1 border-none focus:ring-0"
+                    className="w-full font-display text-2xl sm:text-[26px] font-extrabold tracking-tight text-on-surface !bg-transparent !border-none !shadow-none !rounded-none !px-0 outline-none mb-4 py-0.5 focus:!ring-0 placeholder:text-on-surface-variant/35"
                 />
 
                 {/* Tiptap Editor area */}
-                <div className="flex-1 overflow-y-auto min-h-0 prose-area">
+                <div className="flex-1 overflow-y-auto min-h-0 prose-area custom-scrollbar pr-2">
                     <EditorContent
                         editor={editor}
                         className={`h-full tiptap-editor text-sm leading-relaxed ${readMode ? 'read-mode' : ''}`}
@@ -787,25 +909,58 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onUpdate, onDelete, onClo
 
 interface TodoPanelProps {
     note: Note;
+    subjects?: Subject[];
     onUpdate: (fields: Partial<Note>) => void;
     onDelete: () => void;
     onClose: () => void;
     isInline?: boolean;
 }
 
-const TodoPanel: React.FC<TodoPanelProps> = ({ note, onUpdate, onDelete, onClose, isInline = false }) => {
+const EXAM_PRESETS = ['End-Sem', 'Mid-Sem', 'Practical Viva', 'Lab File'] as const;
+
+const TodoPanel: React.FC<TodoPanelProps> = ({ note, subjects = [], onUpdate }) => {
     const confirm = useConfirm();
     const [editMode, setEditMode] = useState(false);
     const [newText, setNewText] = useState('');
+    const [examSubject, setExamSubject] = useState('');
+    const [examDate, setExamDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 3);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    });
+    const [examLabel, setExamLabel] = useState<string>('End-Sem');
     const inputRef = useRef<HTMLInputElement>(null);
+    const examSubjectRef = useRef<HTMLInputElement>(null);
+
+    const isExamMode = (note.category || '').toLowerCase() === 'exam';
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     );
 
-    const activeTodos = (note.todos || []).filter(t => !t.completed);
+    const rawActiveTodos = (note.todos || []).filter(t => !t.completed);
+    const activeTodos = isExamMode
+        ? [...rawActiveTodos].sort((a, b) => {
+            if (a.exam_date && b.exam_date) return a.exam_date.localeCompare(b.exam_date);
+            if (a.exam_date) return -1;
+            if (b.exam_date) return 1;
+            return 0;
+        })
+        : rawActiveTodos;
     const doneTodos = (note.todos || []).filter(t => t.completed);
+
+    const nextUpcomingExam = activeTodos
+        .map(t => ({ item: t, info: getExamCountdown(t.exam_date) }))
+        .filter((e): e is { item: TodoItem; info: ExamCountdown } => Boolean(e.info && e.info.daysLeft >= 0))
+        .sort((a, b) => a.info.daysLeft - b.info.daysLeft)[0] || null;
+
+    const toggleExamMode = () => {
+        onUpdate({ category: isExamMode ? '' : 'exam' });
+    };
 
     const addTodo = () => {
         const text = newText.trim();
@@ -816,17 +971,28 @@ const TodoPanel: React.FC<TodoPanelProps> = ({ note, onUpdate, onDelete, onClose
         inputRef.current?.focus();
     };
 
+    const addExamItem = () => {
+        const sub = examSubject.trim();
+        const lbl = examLabel.trim() || 'Exam';
+        if (!sub && !examDate) return;
+        const item: TodoItem = {
+            id: 'exam-' + Date.now(),
+            text: lbl,
+            subject: sub || lbl,
+            exam_date: examDate || undefined,
+            completed: false,
+        };
+        onUpdate({ category: 'exam', todos: [item, ...(note.todos || [])] });
+        setExamSubject('');
+        examSubjectRef.current?.focus();
+    };
+
     const toggleTodo = (id: string) => {
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(8);
         onUpdate({ todos: (note.todos || []).map(t => t.id === id ? { ...t, completed: !t.completed } : t) });
     };
 
-    const deleteTodo = async (id: string) => {
-        const confirmed = await confirm({
-            title: 'Delete Task',
-            message: 'Are you sure you want to delete this task?',
-        });
-        if (!confirmed) return;
+    const deleteTodo = (id: string) => {
         onUpdate({ todos: (note.todos || []).filter(t => t.id !== id) });
     };
 
@@ -836,11 +1002,11 @@ const TodoPanel: React.FC<TodoPanelProps> = ({ note, onUpdate, onDelete, onClose
 
     const clearDone = async () => {
         const confirmed = await confirm({
-            title: 'Clear Completed Tasks',
-            message: 'Are you sure you want to delete all completed tasks?',
+            title: 'Clear Completed Items',
+            message: 'Are you sure you want to delete all completed items?',
         });
         if (!confirmed) return;
-        onUpdate({ todos: activeTodos });
+        onUpdate({ todos: rawActiveTodos });
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
@@ -854,125 +1020,251 @@ const TodoPanel: React.FC<TodoPanelProps> = ({ note, onUpdate, onDelete, onClose
         }
     };
 
+    const totalTodosCount = (note.todos || []).length;
+    const pctDone = totalTodosCount > 0 ? Math.round((doneTodos.length / totalTodosCount) * 100) : 0;
+
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 15 }}
-            className={`w-full border border-outline bg-surface rounded-xl p-6 shadow-sm flex flex-col min-h-[400px] h-[calc(100vh-220px)] ${isInline ? 'max-w-xl mx-auto' : 'lg:w-[420px] sticky top-20 self-start'}`}
-        >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-outline mb-4">
-                {!isInline && (
-                    <HoldButton
-                            variant="danger"
-                            holdDuration={750}
-                            title="Hold to delete checklist"
-                            onComplete={onDelete}
-                            className="p-1.5 rounded-lg flex items-center justify-center mr-1"
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-8 liquid-glass rounded-[26px] p-6 flex flex-col min-h-[500px] h-[calc(100vh-205px)]">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 pb-4 border-b border-primary/12 mb-4 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                        <span className="font-display text-base font-extrabold text-on-surface tracking-tight">
+                            {isExamMode ? 'Exam & Practical Datesheet' : 'Action Checklist'}
+                        </span>
+                        {isExamMode && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/18 text-amber-500 border border-amber-500/30">
+                                <BellRing size={10} /> Alerts Active
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={toggleExamMode}
+                            className={`no-fluid flex items-center gap-1.5 px-3.5 h-8 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                                isExamMode
+                                    ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white border-transparent shadow-sm'
+                                    : 'bg-on-surface/[0.06] border-primary/18 text-on-surface-variant hover:text-primary hover:border-primary/40'
+                            }`}
                         >
-                            <Trash2 size={14} />
-                        </HoldButton>
-                )}
-                {isInline ? (
-                    <span className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-widest ml-1">My Tasks Checklist</span>
-                ) : (
-                    <input
-                        type="text"
-                        value={note.title}
-                        onChange={e => onUpdate({ title: e.target.value })}
-                        placeholder="List title"
-                        className="text-base font-bold tracking-tight bg-transparent outline-none border-none focus:ring-0 flex-1"
-                    />
-                )}
-                <div className="flex items-center gap-1.5 ml-2">
-                    <button
-                        onClick={() => setEditMode(m => !m)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${editMode ? 'bg-on-surface text-surface' : 'border border-outline text-on-surface-variant/50 hover:text-on-surface'}`}
-                    >
-                        {editMode ? <><Check size={10} /> Done</> : <><Pencil size={10} /> Edit Mode</>}
-                    </button>
-                    {!isInline && (
-                        <button onClick={onClose} className="p-1.5 text-on-surface-variant/30 hover:text-on-surface rounded transition-colors cursor-pointer" title="Close"><X size={14} /></button>
-                    )}
+                            <GraduationCap size={13} />
+                            Exam Mode {isExamMode ? 'ON' : 'OFF'}
+                        </button>
+                        <button
+                            onClick={() => setEditMode(m => !m)}
+                            className={`no-fluid flex items-center gap-1.5 px-3.5 h-8 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                                editMode
+                                    ? 'btn-gradient'
+                                    : 'bg-on-surface/[0.06] border border-primary/18 text-on-surface-variant hover:text-primary'
+                            }`}
+                        >
+                            {editMode ? <><Check size={12} /> Done</> : <><Pencil size={12} /> Reorder</>}
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Add task row */}
-            {!editMode && (
-                <div className="flex items-center gap-3 px-2 py-1.5 rounded-xl border border-outline bg-surface-container/20 mb-4 focus-within:border-primary/50 transition-colors">
-                    <button onClick={addTodo} className="text-on-surface-variant/30 hover:text-primary transition-colors shrink-0 cursor-pointer">
-                        <Plus size={18} />
-                    </button>
-                    <input
-                        ref={inputRef}
-                        value={newText}
-                        onChange={e => setNewText(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && addTodo()}
-                        placeholder="Add a task straight up…"
-                        className="flex-1 text-sm bg-transparent outline-none border-none focus:ring-0 placeholder:text-on-surface-variant/25 py-0.5"
-                    />
-                </div>
-            )}
-
-            {/* Task list with DnD */}
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5 pr-1 custom-scrollbar">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={(note.todos || []).map(t => t.id)} strategy={verticalListSortingStrategy}>
-                        {/* Active tasks */}
-                        {activeTodos.length === 0 && doneTodos.length === 0 && (
-                            <p className="text-center text-xs text-on-surface-variant/25 py-16 italic">No tasks. Type above to add one quickly!</p>
-                        )}
-                        {activeTodos.map(todo => (
-                            <SortableTodoRow
-                                key={todo.id}
-                                todo={todo}
-                                editMode={editMode}
-                                onToggle={toggleTodo}
-                                onDelete={deleteTodo}
-                                onEdit={editTodo}
-                            />
-                        ))}
-
-                        {/* Done section */}
-                        {doneTodos.length > 0 && (
-                            <div className="pt-4 border-t border-outline/30 mt-4">
-                                <div className="flex items-center justify-between mb-2 px-1">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/30">
-                                        Done · {doneTodos.length}
+                {/* Add row — Exam Mode vs Standard Task */}
+                {!editMode && (
+                    isExamMode ? (
+                        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.05] p-3.5 mb-4 space-y-2.5">
+                            {subjects.length > 0 && (
+                                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant shrink-0 mr-1">
+                                        Courses:
                                     </span>
-                                    {editMode && (
-                                        <button onClick={clearDone} className="text-[10px] font-semibold text-red-400 hover:text-red-600 cursor-pointer transition-colors">
-                                            Clear all done
-                                        </button>
-                                    )}
+                                    {subjects.map(sub => {
+                                        const active = examSubject.trim().toLowerCase() === sub.name.trim().toLowerCase();
+                                        return (
+                                            <button
+                                                key={sub._id || sub.id || sub.name}
+                                                type="button"
+                                                onClick={() => setExamSubject(sub.name)}
+                                                className={`no-fluid px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 transition-all cursor-pointer border ${
+                                                    active
+                                                        ? 'btn-gradient border-transparent'
+                                                        : 'bg-surface/75 dark:bg-white/[0.06] border-primary/18 text-on-surface-variant hover:text-primary'
+                                                }`}
+                                            >
+                                                {sub.code || sub.name}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                {doneTodos.map(todo => (
-                                    <SortableTodoRow
-                                        key={todo.id}
-                                        todo={todo}
-                                        editMode={editMode}
-                                        onToggle={toggleTodo}
-                                        onDelete={deleteTodo}
-                                        onEdit={editTodo}
-                                    />
-                                ))}
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                <input
+                                    ref={examSubjectRef}
+                                    value={examSubject}
+                                    onChange={e => setExamSubject(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && addExamItem()}
+                                    placeholder="Subject name (e.g. Operating Systems)…"
+                                    className="sm:col-span-5 text-xs px-3.5 py-2 rounded-xl bg-surface/80 dark:bg-black/25 border border-primary/20 outline-none focus:border-primary text-on-surface placeholder:text-on-surface-variant/45"
+                                />
+                                <input
+                                    type="date"
+                                    value={examDate}
+                                    onChange={e => setExamDate(e.target.value)}
+                                    className="sm:col-span-4 text-xs px-3 py-2 rounded-xl bg-surface/80 dark:bg-black/25 border border-primary/20 outline-none focus:border-primary text-on-surface"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={addExamItem}
+                                    disabled={!examSubject.trim() && !examDate}
+                                    className="no-fluid sm:col-span-3 h-9 px-3.5 rounded-xl btn-gradient text-xs font-bold inline-flex items-center justify-center gap-1 cursor-pointer disabled:opacity-45"
+                                >
+                                    <Plus size={13} /> Add Exam
+                                </button>
                             </div>
-                        )}
-                    </SortableContext>
-                </DndContext>
+
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                {EXAM_PRESETS.map(preset => (
+                                    <button
+                                        key={preset}
+                                        type="button"
+                                        onClick={() => setExamLabel(preset)}
+                                        className={`no-fluid px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all cursor-pointer border ${
+                                            examLabel === preset
+                                                ? 'bg-amber-500/20 text-amber-500 border-amber-500/45'
+                                                : 'bg-on-surface/[0.04] text-on-surface-variant border-transparent hover:border-primary/25'
+                                        }`}
+                                    >
+                                        {preset}
+                                    </button>
+                                ))}
+                                <input
+                                    value={examLabel}
+                                    onChange={e => setExamLabel(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && addExamItem()}
+                                    placeholder="Type / note"
+                                    className="flex-1 min-w-[110px] text-[11px] px-2.5 py-0.5 rounded-full bg-surface/60 dark:bg-black/20 border border-primary/15 outline-none focus:border-primary text-on-surface"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2.5 pl-4 pr-1.5 py-1.5 rounded-full border border-primary/20 bg-on-surface/[0.04] mb-4 focus-within:border-primary transition-colors">
+                            <input
+                                ref={inputRef}
+                                value={newText}
+                                onChange={e => setNewText(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && addTodo()}
+                                placeholder="Add a new task and press Enter…"
+                                className="flex-1 text-xs !bg-transparent !border-none !shadow-none outline-none focus:!ring-0 placeholder:text-on-surface-variant/45 py-1"
+                            />
+                            <button
+                                onClick={addTodo}
+                                className="no-fluid h-7 px-3.5 rounded-full btn-gradient text-xs font-bold inline-flex items-center gap-1 cursor-pointer shrink-0"
+                            >
+                                <Plus size={13} /> Add
+                            </button>
+                        </div>
+                    )
+                )}
+
+                {/* Task / Exam list with DnD */}
+                <div className="flex-1 overflow-y-auto min-h-0 space-y-1 pr-1 custom-scrollbar">
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={(note.todos || []).map(t => t.id)} strategy={verticalListSortingStrategy}>
+                            {activeTodos.length === 0 && doneTodos.length === 0 && (
+                                <p className="text-center text-xs text-on-surface-variant/55 py-16">
+                                    {isExamMode
+                                        ? 'No exam dates added yet. Pick a subject and date above to track your datesheet.'
+                                        : 'No tasks yet. Type above to add one.'}
+                                </p>
+                            )}
+                            {activeTodos.map(todo => (
+                                <SortableTodoRow
+                                    key={todo.id}
+                                    todo={todo}
+                                    editMode={editMode}
+                                    onToggle={toggleTodo}
+                                    onDelete={deleteTodo}
+                                    onEdit={editTodo}
+                                />
+                            ))}
+
+                            {doneTodos.length > 0 && (
+                                <div className="pt-4 border-t border-primary/10 mt-4">
+                                    <div className="flex items-center justify-between mb-2 px-1">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/55">
+                                            Completed · {doneTodos.length}
+                                        </span>
+                                        <button onClick={clearDone} className="text-[11px] font-bold text-rose-500 hover:text-rose-400 cursor-pointer transition-colors">
+                                            Clear completed
+                                        </button>
+                                    </div>
+                                    {doneTodos.map(todo => (
+                                        <SortableTodoRow
+                                            key={todo.id}
+                                            todo={todo}
+                                            editMode={editMode}
+                                            onToggle={toggleTodo}
+                                            onDelete={deleteTodo}
+                                            onEdit={editTodo}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </SortableContext>
+                    </DndContext>
+                </div>
             </div>
 
-            {/* Footer */}
-            <div className="pt-3 border-t border-outline mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/25">
-                <span>
-                    {activeTodos.length} remaining · {doneTodos.length} done
-                </span>
-                {editMode && (
-                    <span>Hold handle to reorder</span>
+            {/* Right 4 cols: Focus Progress Ring + Next Exam Spotlight */}
+            <div className="lg:col-span-4 space-y-4">
+                {nextUpcomingExam && (
+                    <div className="liquid-glass rounded-[24px] p-5 border border-amber-500/28 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-500">
+                                <GraduationCap size={13} /> Next Exam
+                            </span>
+                            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${nextUpcomingExam.info.pillClass}`}>
+                                {nextUpcomingExam.info.label}
+                            </span>
+                        </div>
+                        <p className="font-display text-base font-extrabold text-on-surface leading-snug">
+                            {nextUpcomingExam.item.subject || nextUpcomingExam.item.text}
+                        </p>
+                        <p className="text-xs text-on-surface-variant">
+                            {nextUpcomingExam.item.text} · {nextUpcomingExam.info.formatted}
+                        </p>
+                        <p className="text-[10px] text-on-surface-variant/75 pt-1 border-t border-primary/10">
+                            Syncs to Android for Google Calendar-style reminders (1 day before & exam morning).
+                        </p>
+                    </div>
                 )}
+
+                <div className="liquid-hero-banner rounded-[26px] p-6 flex flex-col items-center text-center gap-4">
+                    <CometDial
+                        value={pctDone}
+                        size={126}
+                        strokeWidth={9}
+                        color="#6366f1"
+                        secondaryColor="#06b6d4"
+                        label="Complete"
+                    />
+                    <div>
+                        <h3 className="font-display text-lg font-extrabold text-on-surface">
+                            {isExamMode ? 'Exam Readiness' : 'Task Momentum'}
+                        </h3>
+                        <p className="text-xs text-on-surface-variant mt-0.5">
+                            {activeTodos.length === 0 ? 'Everything checked off!' : `${activeTodos.length} remaining to wrap up`}
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 w-full pt-2">
+                        <div className="rounded-2xl bg-surface/75 dark:bg-black/25 border border-primary/15 p-3">
+                            <p className="text-[10px] font-bold uppercase text-on-surface-variant">Pending</p>
+                            <p className="font-display text-2xl font-extrabold text-primary tabular-nums">{activeTodos.length}</p>
+                        </div>
+                        <div className="rounded-2xl bg-surface/75 dark:bg-black/25 border border-primary/15 p-3">
+                            <p className="text-[10px] font-bold uppercase text-on-surface-variant">Done</p>
+                            <p className="font-display text-2xl font-extrabold text-on-surface tabular-nums">{doneTodos.length}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 
@@ -991,8 +1283,6 @@ interface NoteCardProps {
 const NoteCard: React.FC<NoteCardProps> = ({ note, isActive, onSelect, onDelete, onTogglePin }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const completedTodos = (note.todos || []).filter(t => t.completed).length;
-    const totalTodos = (note.todos || []).length;
 
     // Plain text preview from HTML, safely stripping tags and decoding HTML entities (like &nbsp;, &amp;)
     const plainText = (() => {
@@ -1027,11 +1317,39 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, isActive, onSelect, onDelete,
         }
     })();
 
-    const previewHtml = (() => {
-        if (!note.content) return '<p class="italic opacity-30">Empty note</p>';
-        return note.content
-            .replace(/<img[^>]*>/gi, '<span class="text-primary font-bold text-[9px] bg-primary/10 px-1 rounded uppercase tracking-wider">[Image]</span> ')
-            .replace(/<iframe[^>]*>/gi, '<span class="text-primary font-bold text-[9px] bg-primary/10 px-1 rounded uppercase tracking-wider">[Video]</span> ');
+    const previewTokens = (() => {
+        if (!note.content) return [] as Array<{ type: 'text' | 'badge'; value: string }>;
+        try {
+            const doc = new DOMParser().parseFromString(note.content, 'text/html');
+            const out: Array<{ type: 'text' | 'badge'; value: string }> = [];
+            const walk = (node: Node) => {
+                if (out.length > 40) return;
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const txt = (node.textContent || '').replace(/\s+/g, ' ');
+                    if (txt.trim()) out.push({ type: 'text', value: txt });
+                    return;
+                }
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                const tag = (node as HTMLElement).tagName.toLowerCase();
+                if (tag === 'script' || tag === 'style' || tag === 'svg' || tag === 'object' || tag === 'embed') return;
+                if (tag === 'img') {
+                    out.push({ type: 'badge', value: 'Image' });
+                    return;
+                }
+                if (tag === 'iframe') {
+                    out.push({ type: 'badge', value: 'Video' });
+                    return;
+                }
+                node.childNodes.forEach(walk);
+                if (['p', 'div', 'br', 'li', 'h1', 'h2', 'h3', 'h4', 'blockquote'].includes(tag)) {
+                    out.push({ type: 'text', value: ' ' });
+                }
+            };
+            doc.body.childNodes.forEach(walk);
+            return out;
+        } catch {
+            return plainText ? [{ type: 'text' as const, value: plainText }] : [];
+        }
     })();
 
     useEffect(() => {
@@ -1044,41 +1362,50 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, isActive, onSelect, onDelete,
     return (
         <div
             onClick={() => onSelect(note)}
-            className={`group relative p-4 rounded-xl border transition-all cursor-pointer select-none ${isActive ? 'border-on-surface bg-surface-container/20' : 'border-outline hover:border-on-surface/50 bg-surface'}`}
+            className={`group relative overflow-hidden p-3.5 pl-4 rounded-2xl border transition-all cursor-pointer select-none ${
+                isActive
+                    ? 'bg-gradient-to-r from-indigo-500/14 via-violet-500/10 to-cyan-500/10 border-primary/35 shadow-sm'
+                    : 'bg-surface/65 dark:bg-white/[0.03] border-primary/10 hover:border-primary/28 hover:bg-primary/[0.05]'
+            }`}
         >
-            <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="text-sm font-bold tracking-tight truncate flex-1 leading-snug">{note.title || 'Untitled'}</h3>
+            {isActive && (
+                <span className="absolute left-0 top-2.5 bottom-2.5 w-[3.5px] rounded-r-full bg-gradient-to-b from-indigo-500 to-cyan-400" />
+            )}
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+                <h3 className={`text-xs font-bold tracking-tight truncate flex-1 leading-snug ${isActive ? 'text-primary' : 'text-on-surface'}`}>
+                    {note.title || 'Untitled'}
+                </h3>
                 <div className="flex items-center gap-1 shrink-0" ref={menuRef}>
-                    {note.is_pinned && <Pin size={10} className="text-on-surface/50 fill-current" />}
+                    {note.is_pinned && <Pin size={10} className="text-primary fill-current" />}
                     <button
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); setMenuOpen(m => !m); }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-container transition-all cursor-pointer text-on-surface-variant/40"
+                        className="no-fluid opacity-70 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-full hover:bg-primary/15 flex items-center justify-center transition-all cursor-pointer text-on-surface-variant hover:text-primary"
                     >
-                        <MoreHorizontal size={13} />
+                        <MoreHorizontal size={12} />
                     </button>
 
-                    {/* Context mini-menu */}
                     <AnimatePresence>
                         {menuOpen && (
                             <motion.div
-                                initial={{ opacity: 0, scale: 0.92, y: -4 }}
+                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.92, y: -4 }}
-                                className="absolute right-0 top-8 z-30 bg-surface border border-outline rounded-lg shadow-lg p-1 min-w-[130px]"
+                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                transition={{ duration: 0.12 }}
+                                className="absolute right-0 top-8 z-30 liquid-glass-overlay rounded-2xl p-1.5 min-w-[144px]"
                                 onClick={e => e.stopPropagation()}
                             >
-                                <button onClick={e => { e.stopPropagation(); onTogglePin(note); setMenuOpen(false); }} className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold hover:bg-surface-container rounded-md transition-colors cursor-pointer">
+                                <button onClick={e => { e.stopPropagation(); onTogglePin(note); setMenuOpen(false); }} className="no-fluid flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold hover:bg-primary/10 rounded-xl transition-colors cursor-pointer">
                                     <Pin size={11} />{note.is_pinned ? 'Unpin' : 'Pin to top'}
                                 </button>
-                                <div className="h-px bg-outline my-1" />
+                                <div className="h-px bg-primary/12 my-1" />
                                 <HoldButton
                                     variant="danger"
                                     label="Hold to Delete"
                                     completedLabel="Deleted"
                                     holdDuration={750}
                                     onComplete={() => { onDelete(note.id); setMenuOpen(false); }}
-                                    className="w-full text-left px-2 py-1 text-xs font-semibold rounded-md"
+                                    className="w-full text-left px-2 py-1 text-xs font-semibold rounded-xl"
                                 />
                             </motion.div>
                         )}
@@ -1086,30 +1413,27 @@ const NoteCard: React.FC<NoteCardProps> = ({ note, isActive, onSelect, onDelete,
                 </div>
             </div>
 
-            {note.is_todo ? (
-                <div className="space-y-1 mb-2">
-                    {totalTodos === 0
-                        ? <span className="text-[11px] text-on-surface-variant/30 italic">No tasks</span>
-                        : (note.todos || []).slice(0, 4).map(t => (
-                            <div key={t.id} className="flex items-center gap-1.5 text-xs">
-                                {t.completed
-                                    ? <CheckCircle2 size={11} className="text-on-surface-variant/30 shrink-0" />
-                                    : <Circle size={11} className="text-on-surface-variant/40 shrink-0" />
-                                }
-                                <span className={`truncate ${t.completed ? 'line-through text-on-surface-variant/30' : 'text-on-surface/80'}`}>{t.text}</span>
-                            </div>
-                        ))}
-                    {totalTodos > 4 && <span className="text-[10px] text-on-surface-variant/25 font-semibold">+{totalTodos - 4} more</span>}
-                </div>
-            ) : (
-                <div 
-                    className="text-xs text-on-surface-variant/60 line-clamp-3 leading-relaxed note-preview-html select-none pointer-events-none"
-                    dangerouslySetInnerHTML={{ __html: previewHtml }}
-                />
-            )}
+            <div className="text-[11px] text-on-surface-variant/75 line-clamp-2 leading-relaxed select-none pointer-events-none">
+                {previewTokens.length === 0 ? (
+                    <span className="italic opacity-40">Empty note</span>
+                ) : (
+                    previewTokens.map((tok, i) =>
+                        tok.type === 'badge' ? (
+                            <span
+                                key={i}
+                                className="text-primary font-bold text-[9px] bg-primary/10 px-1 py-0.5 rounded uppercase tracking-wider mr-1 inline-block"
+                            >
+                                [{tok.value}]
+                            </span>
+                        ) : (
+                            <React.Fragment key={i}>{tok.value}</React.Fragment>
+                        )
+                    )
+                )}
+            </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-outline/40 mt-2 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/25">
-                <span>{note.is_todo ? `${completedTodos}/${totalTodos} done` : `${plainText.length} chars`}</span>
+            <div className="flex items-center justify-between pt-2 mt-2 text-[10px] font-semibold text-on-surface-variant/50">
+                <span>{plainText.length} chars</span>
                 <span>{new Date(note.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
             </div>
         </div>
@@ -1124,10 +1448,12 @@ const Notes: React.FC = () => {
     const confirm = useConfirm();
     const { showToast } = useToast();
     const queryClient = useQueryClient();
+    const { currentSemester } = useSemester();
     const [notes, setNotes] = useState<Note[]>([]);
+    const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'notes' | 'todos'>(() => {
-        const saved = localStorage.getItem('zenith_notes_view_mode');
+        const saved = localStorage.getItem('semester_notes_view_mode') || localStorage.getItem('zenith_notes_view_mode');
         return (saved === 'notes' || saved === 'todos') ? saved : 'notes';
     });
     const [activeNote, setActiveNote] = useState<Note | null>(null);
@@ -1135,22 +1461,54 @@ const Notes: React.FC = () => {
     const handleViewModeChange = (mode: 'notes' | 'todos') => {
         setViewMode(mode);
         setActiveNote(null);
-        localStorage.setItem('zenith_notes_view_mode', mode);
+        localStorage.setItem('semester_notes_view_mode', mode);
     };
     const [searchQuery, setSearchQuery] = useState('');
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const examAlertShownRef = useRef(false);
 
     usePageMeta({
-        title: 'Notes & Tasks | Zenith',
-        description: 'Write notes with rich formatting and manage tasks with a clean todo list.',
+        title: 'Notes & Tasks | Semester',
+        description: 'Write notes with rich formatting, manage checklists, and track upcoming exam dates.',
     });
 
     useEffect(() => { fetchNotes(); }, []);
 
+    useEffect(() => {
+        attendanceService.getSubjects(currentSemester)
+            .then(data => setSubjects(data || []))
+            .catch(() => setSubjects([]));
+    }, [currentSemester]);
+
+    // Calendar-style desktop reminder if an exam is Today or Tomorrow
+    useEffect(() => {
+        if (examAlertShownRef.current || notes.length === 0) return;
+        const dueSoon = notes
+            .filter(n => n.is_todo)
+            .flatMap(n => n.todos || [])
+            .filter(t => !t.completed && t.exam_date)
+            .map(t => ({ item: t, info: getExamCountdown(t.exam_date) }))
+            .filter((e): e is { item: TodoItem; info: ExamCountdown } => Boolean(e.info && e.info.daysLeft >= 0 && e.info.daysLeft <= 1));
+        if (dueSoon.length > 0) {
+            examAlertShownRef.current = true;
+            const first = dueSoon[0];
+            const whenText = first.info.daysLeft === 0 ? 'TODAY' : 'TOMORROW';
+            const titleText = `${first.item.subject || first.item.text} (${first.item.text}) is ${whenText}`;
+            showToast('info', `Upcoming Exam: ${titleText}`);
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification('Upcoming Exam Reminder', { body: titleText });
+            }
+        }
+    }, [notes, showToast]);
+
     const fetchNotes = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/api/notes');
+            if (isDevTestMode()) {
+                setNotes(loadDevNotes() as Note[]);
+                return;
+            }
+            const res = await notesHttp.get('/api/notes');
             setNotes(res.data?.data || []);
         } catch {
             showToast('error', 'Failed to load');
@@ -1170,7 +1528,7 @@ const Notes: React.FC = () => {
 
     // Create note
     const createNote = async (isTodo: boolean) => {
-        const tempId = 'temp-' + Date.now();
+        const tempId = isDevTestMode() ? `dev-note-${Date.now()}` : 'temp-' + Date.now();
         const newNote: Note = {
             id: tempId,
             title: isTodo ? 'My Tasks' : 'Untitled Note',
@@ -1182,10 +1540,18 @@ const Notes: React.FC = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };
-        setNotes(prev => [newNote, ...prev]);
+        setNotes(prev => {
+            const next = [newNote, ...prev];
+            if (isDevTestMode()) saveDevNotes(next as any);
+            return next;
+        });
         if (!isTodo) setActiveNote(newNote);
+        if (isDevTestMode()) {
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            return;
+        }
         try {
-            const res = await api.post('/api/notes', { title: newNote.title, content: '', is_todo: isTodo, todos: [] });
+            const res = await notesHttp.post('/api/notes', { title: newNote.title, content: '', is_todo: isTodo, todos: [] });
             const saved = res.data?.data;
             if (saved) {
                 setNotes(prev => prev.map(n => n.id === tempId ? saved : n));
@@ -1204,13 +1570,22 @@ const Notes: React.FC = () => {
         if (!activeNote) return;
         const updated: Note = { ...activeNote, ...fields, updated_at: new Date().toISOString() };
         setActiveNote(updated);
-        setNotes(prev => prev.map(n => n.id === activeNote.id ? updated : n));
+        setNotes(prev => {
+            const next = prev.map(n => n.id === activeNote.id ? updated : n);
+            if (isDevTestMode()) saveDevNotes(next as any);
+            return next;
+        });
+
+        if (isDevTestMode()) {
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            return;
+        }
 
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(async () => {
             if (activeNote.id.startsWith('temp-')) return;
-            try { 
-                await api.put(`/api/notes/${activeNote.id}`, fields);
+            try {
+                await notesHttp.put(`/api/notes/${activeNote.id}`, fields);
                 queryClient.invalidateQueries({ queryKey: ['notes'] });
             } catch { /* silent */ }
         }, 700);
@@ -1218,13 +1593,21 @@ const Notes: React.FC = () => {
 
     const togglePin = async (note: Note) => {
         const pinned = !note.is_pinned;
-        setNotes(prev => prev.map(n => n.id === note.id ? { ...n, is_pinned: pinned } : n).sort((a, b) => {
-            if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
-            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-        }));
+        setNotes(prev => {
+            const next = prev.map(n => n.id === note.id ? { ...n, is_pinned: pinned } : n).sort((a, b) => {
+                if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+            });
+            if (isDevTestMode()) saveDevNotes(next as any);
+            return next;
+        });
         if (activeNote?.id === note.id) setActiveNote(a => a ? { ...a, is_pinned: pinned } : a);
-        try { 
-            await api.put(`/api/notes/${note.id}`, { is_pinned: pinned });
+        if (isDevTestMode()) {
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            return;
+        }
+        try {
+            await notesHttp.put(`/api/notes/${note.id}`, { is_pinned: pinned });
             queryClient.invalidateQueries({ queryKey: ['notes'] });
         } catch { fetchNotes(); }
     };
@@ -1239,10 +1622,19 @@ const Notes: React.FC = () => {
             if (!confirmed) return;
         }
         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate([15, 5, 15]);
-        setNotes(prev => prev.filter(n => n.id !== noteId));
+        setNotes(prev => {
+            const next = prev.filter(n => n.id !== noteId);
+            if (isDevTestMode()) saveDevNotes(next as any);
+            return next;
+        });
         if (activeNote?.id === noteId) setActiveNote(null);
+        if (isDevTestMode()) {
+            showToast('success', 'Deleted');
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            return;
+        }
         try {
-            await api.delete(`/api/notes/${noteId}`);
+            await notesHttp.delete(`/api/notes/${noteId}`);
             showToast('success', 'Deleted');
             queryClient.invalidateQueries({ queryKey: ['notes'] });
         } catch { fetchNotes(); }
@@ -1257,13 +1649,21 @@ const Notes: React.FC = () => {
     const pinned = filtered.filter(n => n.is_pinned);
     const unpinned = filtered.filter(n => !n.is_pinned);
 
+    // Auto-select the first note on desktop so the split-pane canvas is always populated
+    useEffect(() => {
+        if (viewMode === 'notes' && !loading && !activeNote && filtered.length > 0 && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+            setActiveNote(pinned[0] || unpinned[0] || filtered[0]);
+        }
+    }, [viewMode, loading, activeNote, filtered.length]);
+
     return (
-        <div className="pb-24 max-w-7xl mx-auto px-4">
-            {viewMode === 'todos' ? (
-                // Single unified checklist view
-                <div className="w-full">
-                    {/* Top bar with tabs only */}
-                    <div className="flex justify-between items-center mb-6">
+        <div className="w-full pb-12">
+            <PageHeader
+                title={viewMode === 'todos' ? 'Tasks' : 'Notes'}
+                icon={viewMode === 'todos' ? ListTodo : StickyNote}
+                badge={viewMode === 'notes' ? `${filtered.length} notes` : `${(defaultTasksNote?.todos || []).filter(t => !t.completed).length} left`}
+                actions={
+                    <div className="flex items-center gap-2.5 flex-wrap">
                         <RubberSegment<'notes' | 'todos'>
                             options={[
                                 { id: 'notes', label: 'Notes', icon: <StickyNote size={12} /> },
@@ -1271,26 +1671,47 @@ const Notes: React.FC = () => {
                             ]}
                             value={viewMode}
                             size="sm"
-                            variant="white"
-                            layoutId="notes-view-mode-rubber-1"
+                            layoutId="notes-view-mode-header"
                             onChange={handleViewModeChange}
                         />
+                        {viewMode === 'notes' && (
+                            <button
+                                onClick={() => createNote(false)}
+                                className="no-fluid h-8 px-4 rounded-full btn-gradient text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <Plus size={13} />
+                                New Note
+                            </button>
+                        )}
                     </div>
+                }
+            />
 
+            {viewMode === 'todos' ? (
+                <div className="w-full">
                     {loading ? (
                         <div className="py-24 text-center">
-                            <span className="text-xs text-on-surface-variant/30 animate-pulse">Loading Tasks…</span>
+                            <span className="text-xs text-on-surface-variant/55 animate-pulse">Loading Tasks…</span>
                         </div>
                     ) : defaultTasksNote ? (
                         <TodoPanel
                             note={defaultTasksNote}
+                            subjects={subjects}
                             onUpdate={(fields) => {
                                 const updated: Note = { ...defaultTasksNote, ...fields, updated_at: new Date().toISOString() };
-                                setNotes(prev => prev.map(n => n.id === defaultTasksNote.id ? updated : n));
+                                setNotes(prev => {
+                                    const next = prev.map(n => n.id === defaultTasksNote.id ? updated : n);
+                                    if (isDevTestMode()) saveDevNotes(next as any);
+                                    return next;
+                                });
+                                if (isDevTestMode()) {
+                                    queryClient.invalidateQueries({ queryKey: ['notes'] });
+                                    return;
+                                }
                                 if (saveTimer.current) clearTimeout(saveTimer.current);
                                 saveTimer.current = setTimeout(async () => {
-                                    try { 
-                                        await api.put(`/api/notes/${defaultTasksNote.id}`, fields);
+                                    try {
+                                        await notesHttp.put(`/api/notes/${defaultTasksNote.id}`, fields);
                                         queryClient.invalidateQueries({ queryKey: ['notes'] });
                                     } catch {}
                                 }, 700);
@@ -1301,93 +1722,68 @@ const Notes: React.FC = () => {
                         />
                     ) : (
                         <div className="py-24 text-center">
-                            <span className="text-xs text-on-surface-variant/30 animate-pulse">Setting up checklist…</span>
+                            <span className="text-xs text-on-surface-variant/55 animate-pulse">Setting up checklist…</span>
                         </div>
                     )}
                 </div>
             ) : (
-                // Traditional Notes view
-                <div className="flex flex-col lg:flex-row gap-6 w-full">
-                    {/* Left: Notes List */}
-                    <div className="flex-1 min-w-0">
-                        {/* Top bar */}
-                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 mb-6">
-                            <RubberSegment<'notes' | 'todos'>
-                                options={[
-                                    { id: 'notes', label: 'Notes', icon: <StickyNote size={12} /> },
-                                    { id: 'todos', label: 'Tasks', icon: <ListTodo size={12} /> },
-                                ]}
-                                value={viewMode}
-                                size="sm"
-                                variant="white"
-                                layoutId="notes-view-mode-rubber-2"
-                                onChange={handleViewModeChange}
+                /* True macOS Apple Notes / Craft Split-Pane Studio */
+                <div className="flex flex-col lg:flex-row gap-5 w-full items-stretch">
+                    {/* Left Master Sidebar Rail */}
+                    <div className="w-full lg:w-[320px] shrink-0 liquid-glass rounded-[26px] p-4 flex flex-col lg:h-[calc(100vh-185px)] lg:min-h-[540px]">
+                        <div className="mb-3.5">
+                            <input
+                                type="text"
+                                placeholder="Search notes…"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="w-full text-xs px-4 py-2 bg-on-surface/[0.04] border border-primary/18 rounded-full outline-none focus:border-primary transition-colors placeholder:text-on-surface-variant/45 text-on-surface"
                             />
-
-                            <div className="flex items-center gap-2 flex-1 max-w-sm">
-                                <input
-                                    type="text"
-                                    placeholder="Search notes…"
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full text-xs px-4 py-2 bg-surface border border-outline rounded-lg outline-none focus:border-on-surface transition-all placeholder:text-on-surface-variant/25"
-                                />
-                                <button
-                                    onClick={() => createNote(false)}
-                                    className="h-9 w-9 flex items-center justify-center bg-on-surface text-surface hover:bg-on-surface/85 rounded-lg shrink-0 transition-all cursor-pointer"
-                                    title="New Note"
-                                >
-                                    <Plus size={16} />
-                                </button>
-                            </div>
                         </div>
 
-                        {/* Card grid */}
-                        {loading ? (
-                            <div className="py-24 text-center">
-                                <span className="text-xs text-on-surface-variant/30 animate-pulse">Loading…</span>
-                            </div>
-                        ) : filtered.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-24 rounded-xl border border-dashed border-outline">
-                                <StickyNote size={22} className="text-on-surface-variant/15 mb-3" />
-                                <p className="text-xs font-bold text-on-surface-variant/25 uppercase tracking-widest">
-                                    {searchQuery ? 'No results' : 'No notes yet'}
-                                </p>
-                                {!searchQuery && (
-                                    <button onClick={() => createNote(false)} className="mt-4 text-xs font-semibold text-on-surface-variant/40 hover:text-on-surface transition-colors cursor-pointer underline underline-offset-2">
-                                        Create one
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-5">
-                                {pinned.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-wider mb-2.5 px-0.5">Pinned</p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-0.5 space-y-4">
+                            {loading ? (
+                                <div className="py-16 text-center">
+                                    <span className="text-xs text-on-surface-variant/50 animate-pulse">Loading…</span>
+                                </div>
+                            ) : filtered.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-center px-3">
+                                    <StickyNote size={22} className="text-primary/45 mb-2.5" />
+                                    <p className="text-xs font-bold text-on-surface mb-1">
+                                        {searchQuery ? 'No matching notes' : 'No notes yet'}
+                                    </p>
+                                    {!searchQuery && (
+                                        <button onClick={() => createNote(false)} className="no-fluid mt-3 h-8 px-4 rounded-full btn-gradient text-xs font-bold cursor-pointer">
+                                            Create Note
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    {pinned.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-bold text-on-surface-variant/55 uppercase tracking-[0.14em] px-1">Pinned</p>
                                             {pinned.map(note => (
                                                 <NoteCard key={note.id} note={note} isActive={activeNote?.id === note.id} onSelect={setActiveNote} onDelete={deleteNote} onTogglePin={togglePin} />
                                             ))}
                                         </div>
-                                    </div>
-                                )}
-                                {unpinned.length > 0 && (
-                                    <div>
-                                        {pinned.length > 0 && <p className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-wider mb-2.5 px-0.5">Recent</p>}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    )}
+                                    {unpinned.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-bold text-on-surface-variant/55 uppercase tracking-[0.14em] px-1">Recent</p>
                                             {unpinned.map(note => (
                                                 <NoteCard key={note.id} note={note} isActive={activeNote?.id === note.id} onSelect={setActiveNote} onDelete={deleteNote} onTogglePin={togglePin} />
                                             ))}
                                         </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Right: Editor panel */}
+                    {/* Right Full-Width Editorial Document Canvas */}
                     <AnimatePresence mode="wait">
-                        {activeNote && (
+                        {activeNote ? (
                             <NoteEditor
                                 key={activeNote.id}
                                 note={activeNote}
@@ -1396,6 +1792,19 @@ const Notes: React.FC = () => {
                                 onClose={() => setActiveNote(null)}
                                 onTogglePin={() => togglePin(activeNote)}
                             />
+                        ) : (
+                            <div className="hidden lg:flex flex-1 liquid-glass rounded-[26px] flex-col items-center justify-center text-center p-12 min-h-[540px]">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-white flex items-center justify-center mb-4 shadow-sm">
+                                    <StickyNote size={22} />
+                                </div>
+                                <h3 className="font-display text-lg font-extrabold text-on-surface">Select or Create a Note</h3>
+                                <p className="text-xs text-on-surface-variant/70 mt-1 max-w-xs">
+                                    Pick a note from the sidebar or start a fresh document with rich formatting and AI cleanup.
+                                </p>
+                                <button onClick={() => createNote(false)} className="no-fluid mt-5 h-9 px-5 rounded-full btn-gradient text-xs font-bold cursor-pointer">
+                                    New Note
+                                </button>
+                            </div>
                         )}
                     </AnimatePresence>
                 </div>

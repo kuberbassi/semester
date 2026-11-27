@@ -6,9 +6,10 @@ import { useTheme } from '@/contexts/theme-context';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
 import {
-    Sun, Moon, Download, Sparkles, Shield, Cpu,
+    Sun, Moon, Download, FileText, Shield, Cpu,
     Layers, CheckCircle2, ChevronRight, Terminal
 } from 'lucide-react';
+import BrandLogo from '@/components/ui/BrandLogo';
 import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
 import { AuroraGlow } from '@/components/ui/AuroraGlow';
 import { FullCardLiquidFill } from '@/components/ui/FullCardLiquidFill';
@@ -71,10 +72,8 @@ const Landing: React.FC = () => {
             ].join(' ')}>
                 <div className="max-w-7xl mx-auto px-6 h-18 flex items-center justify-between">
                     <Link to="/" className="flex items-center gap-3 group">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-white/20 to-white/5 border border-white/20 flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3">
-                            <img src="/Semester-logo-96.png" alt="Semester Logo" className="w-5 h-5 object-contain invert dark:invert-0" />
-                        </div>
-                        <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
+                        <BrandLogo size={36} className="drop-shadow-[0_6px_12px_rgba(79,70,229,0.4)] transition-transform duration-300 group-hover:scale-105" />
+                        <span className="font-display font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
                             Semester
                             <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
                                 3.0 Core
@@ -86,10 +85,10 @@ const Landing: React.FC = () => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleEnterDevMode}
-                            className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold transition-all shadow-lg active:scale-95 cursor-pointer"
+                            className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 text-xs font-bold transition-all shadow-lg active:scale-95 cursor-pointer"
                         >
-                            <Sparkles size={13} className="text-emerald-400 animate-pulse" />
-                            <span>⚡ Dev Test Mode</span>
+                            <Terminal size={13} className="text-cyan-400" />
+                            <span>Dev Test Mode</span>
                         </button>
 
                         <button
@@ -195,8 +194,8 @@ const Landing: React.FC = () => {
                             variant="primary"
                             className="px-5 py-4 text-sm"
                         >
-                            <Sparkles size={16} className="text-cyan-400 mr-2 inline-block animate-spin" style={{ animationDuration: '4s' }} />
-                            <span>⚡ Launch Dev Test Mode</span>
+                            <Terminal size={16} className="text-cyan-400 mr-2 inline-block" />
+                            <span>Launch Dev Test Mode</span>
                         </FuseButton>
                     </motion.div>
 
@@ -350,7 +349,7 @@ const Landing: React.FC = () => {
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30">
                                     Knowledge Base
                                 </span>
-                                <Sparkles size={16} className="text-emerald-400" />
+                                <FileText size={16} className="text-emerald-400" />
                             </div>
                             <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
                                 Notes &amp; Task Checklist
@@ -459,7 +458,7 @@ const Landing: React.FC = () => {
             <footer className="border-t border-white/[0.08] py-12 px-6 bg-[#050507] relative z-10 text-xs text-white/40">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-3">
-                        <img src="/Semester-logo-96.png" alt="Semester Logo" className="w-5 h-5 object-contain invert dark:invert-0 opacity-70" />
+                        <BrandLogo size={22} />
                         <span className="font-semibold text-white/80">Semester</span>
                         <span>•</span>
                         <span>{getCopyrightYears()} Kuber Bassi</span>

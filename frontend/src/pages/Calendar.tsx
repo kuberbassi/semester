@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { usePageMeta } from '@/hooks/usePageMeta';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, XCircle, Activity, Edit3 } from 'lucide-react';
 import AttendanceModal from '@/components/modals/AttendanceModal';
 import { formatLocalDate } from '@/lib/date';
 import { attendanceService } from '@/services/attendance.service';
+import PageHeader from '@/components/ui/PageHeader';
 import { useSemester } from '@/contexts/semester-context';
 import { useToast } from '@/components/ui/toast-context';
 import type { AttendanceRecord } from '@/types';
 
-const CALENDAR_STATUS_STYLES: Record<string, { label: string; dot: string }> = {
-    present: { label: 'Present', dot: 'bg-on-surface' },
-    absent: { label: 'Absent', dot: 'bg-red-500' },
-    medical: { label: 'Medical Leave', dot: 'bg-blue-500' },
-    approved_medical: { label: 'Medical Leave', dot: 'bg-blue-500' },
-    cancelled: { label: 'Cancelled', dot: 'bg-slate-400' },
-    substituted: { label: 'Substitution', dot: 'bg-violet-500' },
+const CALENDAR_STATUS_STYLES: Record<string, { label: string; dot: string; badge: string }> = {
+    present: { label: 'Present', dot: 'bg-indigo-500 dark:bg-cyan-400', badge: 'bg-indigo-500/14 text-indigo-600 dark:text-cyan-300 border-indigo-500/25' },
+    absent: { label: 'Absent', dot: 'bg-rose-500', badge: 'bg-rose-500/14 text-rose-600 dark:text-rose-300 border-rose-500/25' },
+    medical: { label: 'Medical', dot: 'bg-sky-500', badge: 'bg-sky-500/14 text-sky-600 dark:text-sky-300 border-sky-500/25' },
+    approved_medical: { label: 'Medical', dot: 'bg-sky-500', badge: 'bg-sky-500/14 text-sky-600 dark:text-sky-300 border-sky-500/25' },
+    cancelled: { label: 'Cancelled', dot: 'bg-on-surface-variant/45', badge: 'bg-on-surface/[0.06] text-on-surface-variant border-on-surface/[0.12]' },
+    substituted: { label: 'Substitution', dot: 'bg-amber-500', badge: 'bg-amber-500/14 text-amber-600 dark:text-amber-300 border-amber-500/25' },
 };
 
 const Calendar: React.FC = () => {
@@ -23,7 +24,7 @@ const Calendar: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [attendanceData, setAttendanceData] = useState<Record<string, AttendanceRecord[]>>({});
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
     const fetchToken = React.useRef(0);
 
@@ -72,12 +73,31 @@ const Calendar: React.FC = () => {
         return { daysInMonth, startingDayOfWeek, year, month };
     };
 
-    const getAttendanceForDate = (date: Date) => {
-        return attendanceData[formatLocalDate(date)] || [];
-    };
+    const getAttendanceForDate = (date: Date) => attendanceData[formatLocalDate(date)] || [];
+
+    const monthStats = useMemo(() => {
+        let present = 0;
+        let absent = 0;
+        let other = 0;
+        Object.values(attendanceData).forEach((logs) => {
+            logs.forEach((log) => {
+                if (log.status === 'present') present++;
+                else if (log.status === 'absent') absent++;
+                else other++;
+            });
+        });
+        const denom = present + absent;
+        const rate = denom > 0 ? Math.round((present / denom) * 100) : 0;
+        return { present, absent, other, rate };
+    }, [attendanceData]);
 
     const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
     const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+    const handleToday = () => {
+        const now = new Date();
+        setCurrentDate(now);
+        setSelectedDate(now);
+    };
 
     const handleDayClick = (day: number) => {
         const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
@@ -91,119 +111,221 @@ const Calendar: React.FC = () => {
 
     const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
     const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const selectedLogs = getAttendanceForDate(selectedDate);
 
     return (
-        <div className="max-w-4xl mx-auto pb-24 select-none">
-            {/* Page Header */}
-            <div className="mb-8">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-2">
-                    Attendance / Calendar
-                </p>
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-on-surface tracking-tight">
-                        {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
-                    </h1>
+        <div className="w-full pb-12 select-none">
+            <PageHeader
+                title={`${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`}
+                icon={CalendarDays}
+                badge={`Sem ${currentSemester}`}
+                actions={
                     <div className="flex items-center gap-1.5">
-                        <button onClick={handlePrevMonth} className="w-8 h-8 rounded-md border border-outline/60 bg-surface flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                        <button
+                            onClick={handleToday}
+                            data-tooltip="Jump to today's date"
+                            className="no-fluid h-8 px-3.5 rounded-full bg-primary/12 border border-primary/25 text-xs font-bold text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer"
+                        >
+                            Today
+                        </button>
+                        <button
+                            onClick={handlePrevMonth}
+                            aria-label="Previous month"
+                            data-tooltip="Previous month"
+                            className="no-fluid w-8 h-8 rounded-full bg-surface/80 dark:bg-white/[0.06] border border-primary/18 flex items-center justify-center text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                        >
                             <ChevronLeft size={14} />
                         </button>
-                        <button onClick={handleNextMonth} className="w-8 h-8 rounded-md border border-outline/60 bg-surface flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+                        <button
+                            onClick={handleNextMonth}
+                            aria-label="Next month"
+                            data-tooltip="Next month"
+                            className="no-fluid w-8 h-8 rounded-full bg-surface/80 dark:bg-white/[0.06] border border-primary/18 flex items-center justify-center text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                        >
                             <ChevronRight size={14} />
                         </button>
                     </div>
-                </div>
-                <div className="mt-4 h-px bg-outline/30" />
-            </div>
+                }
+            />
 
-            {loading ? (
-                /* Non-blocking Skeleton Grid */
-                <div className="border border-outline/50 bg-surface rounded-xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-                    <div className="grid grid-cols-7 gap-2">
-                        {weekDays.map(d => (
-                            <div key={d} className="h-6 bg-surface-container-high rounded animate-pulse" />
-                        ))}
-                        {Array.from({ length: 35 }).map((_, i) => (
-                            <div key={i} className="aspect-square bg-surface-container-high border border-outline/40 rounded animate-pulse" />
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                /* Calendar Grid */
-                <div className="rounded-xl border border-outline/50 bg-surface p-6 relative overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
-                    {/* Weekday Headers */}
-                    <div className="grid grid-cols-7 mb-4">
-                        {weekDays.map(day => (
-                            <div key={day} className="text-center text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest py-1.5">
-                                {day}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Left 8 cols: Interactive Calendar Grid */}
+                <div className="lg:col-span-8">
+                    {loading ? (
+                        <div className="liquid-glass rounded-[26px] p-6">
+                            <div className="grid grid-cols-7 gap-2.5">
+                                {weekDays.map(d => (
+                                    <div key={d} className="h-6 bg-primary/10 rounded-lg animate-pulse" />
+                                ))}
+                                {Array.from({ length: 35 }).map((_, i) => (
+                                    <div key={i} className="aspect-square bg-on-surface/[0.05] rounded-2xl animate-pulse" />
+                                ))}
                             </div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-2">
-                        {/* Empty Slots */}
-                        {Array.from({ length: startingDayOfWeek }).map((_, i) => (
-                            <div key={`empty-${i}`} className="aspect-square border border-transparent" />
-                        ))}
-
-                        {/* Days */}
-                        {Array.from({ length: daysInMonth }).map((_, i) => {
-                            const day = i + 1;
-                            const date = new Date(year, month, day);
-                            const attendance = getAttendanceForDate(date);
-                            const isToday = new Date().toDateString() === date.toDateString();
-                            const total = attendance.length;
-
-                            return (
-                                <button
-                                    key={day}
-                                    onClick={() => handleDayClick(day)}
-                                    className={`aspect-square rounded-md border p-1 md:p-2 relative flex flex-col items-center justify-center transition-all ${isToday
-                                        ? 'bg-on-surface/5 border-on-surface font-bold shadow-[0_1px_3px_rgba(0,0,0,0.02)]'
-                                        : total > 0
-                                            ? 'bg-surface-container/60 border-outline/50 hover:bg-surface-container-high hover:border-on-surface'
-                                            : 'bg-transparent border-outline/25 hover:bg-surface-container/40 hover:border-on-surface'
-                                        }`}
-                                >
-                                    <span className={`text-xs sm:text-sm md:text-base font-bold ${isToday ? 'text-on-surface' : 'text-on-surface-variant/80'} leading-none ${total > 0 ? 'mb-1.5' : ''}`}>
+                        </div>
+                    ) : (
+                        <div className="liquid-glass rounded-[26px] p-5 sm:p-6">
+                            <div className="grid grid-cols-7 mb-3">
+                                {weekDays.map(day => (
+                                    <div key={day} className="text-center text-[11px] font-bold text-on-surface-variant/65 uppercase tracking-[0.12em] py-1.5">
                                         {day}
-                                    </span>
+                                    </div>
+                                ))}
+                            </div>
 
-                                    {total > 0 && (
-                                        <div className="absolute bottom-1 left-1 right-1 flex justify-center gap-0.5 h-1 overflow-hidden">
-                                            {attendance.slice(0, 6).map((record, idx) => (
-                                                <div
-                                                    key={`${record.status}-${idx}`}
-                                                    className={`w-1 h-1 shrink-0 rounded-full ${CALENDAR_STATUS_STYLES[record.status]?.dot || 'bg-orange-500'}`}
-                                                />
-                                            ))}
+                            <div className="grid grid-cols-7 gap-2 sm:gap-2.5">
+                                {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                                    <div key={`empty-${i}`} className="aspect-square" />
+                                ))}
+
+                                {Array.from({ length: daysInMonth }).map((_, i) => {
+                                    const day = i + 1;
+                                    const date = new Date(year, month, day);
+                                    const attendance = getAttendanceForDate(date);
+                                    const isToday = new Date().toDateString() === date.toDateString();
+                                    const isSelected = selectedDate.toDateString() === date.toDateString();
+                                    const total = attendance.length;
+
+                                    return (
+                                        <button
+                                            key={day}
+                                            onClick={() => handleDayClick(day)}
+                                            data-tooltip={
+                                                total > 0
+                                                    ? `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${total} ${total === 1 ? 'record' : 'records'} — Click to edit`
+                                                    : `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — Click to mark attendance`
+                                            }
+                                            className={`no-fluid aspect-square rounded-2xl border p-1.5 relative flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-gradient-to-br from-indigo-500/20 via-violet-500/15 to-cyan-500/20 border-primary ring-2 ring-primary/25 shadow-sm'
+                                                    : isToday
+                                                    ? 'bg-primary/12 border-primary/45'
+                                                    : total > 0
+                                                    ? 'bg-surface/75 dark:bg-white/[0.045] border-primary/14 hover:border-primary/35'
+                                                    : 'bg-on-surface/[0.015] border-on-surface/[0.06] hover:bg-primary/[0.05] hover:border-primary/20'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`font-display text-sm sm:text-base font-bold tabular-nums leading-none ${
+                                                    isSelected || isToday ? 'text-primary font-extrabold' : 'text-on-surface/85'
+                                                } ${total > 0 ? 'mb-1.5' : ''}`}
+                                            >
+                                                {day}
+                                            </span>
+
+                                            {total > 0 && (
+                                                <div className="absolute bottom-2 left-1 right-1 flex justify-center gap-1 h-1.5 overflow-hidden">
+                                                    {attendance.slice(0, 5).map((record, idx) => (
+                                                        <div
+                                                            key={`${record.status}-${idx}`}
+                                                            className={`w-1.5 h-1.5 shrink-0 rounded-full ${CALENDAR_STATUS_STYLES[record.status]?.dot || 'bg-amber-400'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-primary/10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-semibold text-on-surface-variant">
+                                {Object.entries(CALENDAR_STATUS_STYLES)
+                                    .filter(([status]) => status !== 'medical')
+                                    .map(([status, style]) => (
+                                        <div key={status} className="flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${style.dot}`} />
+                                            <span>{style.label}</span>
                                         </div>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+                                    ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-                    {/* Legend */}
-                    <div className="mt-8 pt-5 border-t border-outline/30 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">
-                        {Object.entries(CALENDAR_STATUS_STYLES)
-                            .filter(([status]) => status !== 'medical')
-                            .map(([status, style]) => (
-                                <div key={status} className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${style.dot}`} />
-                                    <span>{style.label}</span>
+                {/* Right 4 cols: Monthly Pulse + Live Selected Day Inspector */}
+                <div className="lg:col-span-4 space-y-5">
+                    <div className="liquid-hero-banner rounded-[24px] p-5">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary">
+                                <Activity size={13} />
+                                Month Pulse
+                            </span>
+                            <span className="font-display text-2xl font-extrabold gradient-text tabular-nums">
+                                {monthStats.rate}%
+                            </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-on-surface/[0.09] overflow-hidden mb-4">
+                            <div
+                                className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-400"
+                                style={{ width: `${monthStats.rate}%` }}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div className="rounded-2xl bg-surface/75 dark:bg-white/[0.04] border border-primary/18 p-3 flex items-center gap-2.5">
+                                <CheckCircle2 size={16} className="text-indigo-500 dark:text-cyan-400 shrink-0" />
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase text-on-surface-variant">Present</p>
+                                    <p className="font-display text-lg font-extrabold text-on-surface tabular-nums leading-none">{monthStats.present}</p>
                                 </div>
-                            ))}
-                        <div className="flex items-center gap-2">
-                            <div className="px-2 py-0.5 rounded border border-on-surface/50 text-[8px] font-black">Today</div>
+                            </div>
+                            <div className="rounded-2xl bg-surface/75 dark:bg-white/[0.04] border border-rose-500/20 p-3 flex items-center gap-2.5">
+                                <XCircle size={16} className="text-rose-500 shrink-0" />
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase text-on-surface-variant">Absent</p>
+                                    <p className="font-display text-lg font-extrabold text-rose-500 dark:text-rose-400 tabular-nums leading-none">{monthStats.absent}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <div className="liquid-glass rounded-[24px] p-5 flex flex-col gap-4">
+                        <div className="flex items-center justify-between gap-2 pb-3 border-b border-primary/10">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Selected Day</p>
+                                <h3 className="font-display text-base font-extrabold text-on-surface">
+                                    {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setIsMarkModalOpen(true)}
+                                className="no-fluid h-8 px-3.5 rounded-full btn-gradient text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <Edit3 size={12} />
+                                Mark Day
+                            </button>
+                        </div>
+
+                        {selectedLogs.length === 0 ? (
+                            <div className="py-8 text-center">
+                                <p className="text-xs font-medium text-on-surface-variant/65">No attendance recorded for this date.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 max-h-[290px] overflow-y-auto custom-scrollbar pr-0.5">
+                                {selectedLogs.map((log, idx) => {
+                                    const meta = CALENDAR_STATUS_STYLES[log.status] || CALENDAR_STATUS_STYLES.cancelled;
+                                    return (
+                                        <div
+                                            key={`${log._id || log.id || idx}`}
+                                            className="flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl bg-on-surface/[0.03] border border-primary/10"
+                                        >
+                                            <span className="text-xs font-bold text-on-surface truncate">
+                                                {log.subject_name || 'Class'}
+                                            </span>
+                                            <span className={`shrink-0 px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${meta.badge}`}>
+                                                {meta.label}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            )}
+            </div>
 
             <AttendanceModal
                 isOpen={isMarkModalOpen}
                 onClose={() => setIsMarkModalOpen(false)}
-                defaultDate={selectedDate || new Date()}
+                defaultDate={selectedDate}
                 onSuccess={() => loadData(false)}
                 onLogsUpdate={handleLogsUpdate}
             />
@@ -212,4 +334,3 @@ const Calendar: React.FC = () => {
 };
 
 export default Calendar;
-

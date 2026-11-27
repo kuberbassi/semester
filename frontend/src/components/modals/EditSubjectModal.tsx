@@ -4,7 +4,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ui/toast-context';
 import { attendanceService } from '@/services/attendance.service';
-import { BookOpen, User, MapPin, Hash, FileText, Maximize2, Save, X } from 'lucide-react';
+import { BookOpen, User, MapPin, Hash, FileText, Maximize2, Save, X, SlidersHorizontal } from 'lucide-react';
 import type { Subject } from '@/types';
 
 interface SubjectFormData {
@@ -145,21 +145,23 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Edit Subject Details"
-            size="md"
+            title="Edit Subject"
+            subtitle={formData.code ? `${formData.code} · Semester ${formData.semester}` : `Semester ${formData.semester} course details`}
+            icon={<SlidersHorizontal size={18} />}
+            size="lg"
         >
             <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Subject Name */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Subject Name</label>
+                <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Subject Name</label>
                     <div className="relative">
-                        <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40" />
+                        <BookOpen className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/45" />
                         <input
                             type="text"
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/30"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-on-surface/[0.04] border border-on-surface/[0.10] focus:border-primary/50 focus:ring-2 focus:ring-primary/15 focus:outline-none transition-all text-xs font-medium text-on-surface placeholder:text-on-surface-variant/40"
                             placeholder="e.g. Data Structures"
                             required
                         />
@@ -169,9 +171,9 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                 {/* Categories, Code, & Credits Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                     {/* Categories Multi-Select */}
-                    <div className="space-y-2 sm:col-span-2">
-                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Categories</label>
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-surface-container border border-outline rounded-lg min-h-[46px]">
+                    <div className="space-y-1.5 sm:col-span-2">
+                        <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Categories</label>
+                        <div className="flex flex-wrap items-center gap-2 p-2 bg-on-surface/[0.03] border border-on-surface/[0.08] rounded-2xl min-h-[46px]">
                             {['Theory', 'Practical', 'Assignment'].map((cat) => (
                                 <button
                                     key={cat}
@@ -201,10 +203,10 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                                             credits: nextCredits 
                                         }));
                                     }}
-                                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold border transition-all
+                                    className={`no-fluid px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer
                                         ${formData.categories.includes(cat)
-                                            ? 'bg-primary/10 border-primary text-primary'
-                                            : 'bg-surface border-transparent text-on-surface-variant/50 hover:bg-surface-container hover:text-on-surface'
+                                            ? 'bg-primary/16 border-primary/35 text-primary'
+                                            : 'bg-on-surface/[0.04] border-transparent text-on-surface-variant hover:bg-on-surface/[0.08] hover:text-on-surface'
                                         }
                                     `}
                                 >
@@ -215,24 +217,24 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                     </div>
 
                     {/* Subject Code */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Subject Code</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Subject Code</label>
                         <div className="relative">
-                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40" />
+                            <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/45" />
                             <input
                                 type="text"
                                 name="code"
                                 value={formData.code}
                                 onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/30"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-on-surface/[0.04] border border-on-surface/[0.10] focus:border-primary/50 focus:outline-none transition-all text-xs font-medium text-on-surface placeholder:text-on-surface-variant/40"
                                 placeholder="e.g. CS-101"
                             />
                         </div>
                     </div>
 
                     {/* Credits */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Credits</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Credits</label>
                         <div className="relative">
                             <input
                                 type="number"
@@ -241,8 +243,8 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                                 onChange={handleChange}
                                 min="0"
                                 max="10"
-                                className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/30"
-                                placeholder="Credits (e.g. 3)"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-on-surface/[0.04] border border-on-surface/[0.10] focus:border-primary/50 focus:outline-none transition-all text-xs font-medium text-on-surface placeholder:text-on-surface-variant/40"
+                                placeholder="3"
                             />
                         </div>
                     </div>
@@ -250,32 +252,32 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Professor */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Professor</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Professor</label>
                         <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40" />
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/45" />
                             <input
                                 type="text"
                                 name="professor"
                                 value={formData.professor}
                                 onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/30"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-on-surface/[0.04] border border-on-surface/[0.10] focus:border-primary/50 focus:outline-none transition-all text-xs font-medium text-on-surface placeholder:text-on-surface-variant/40"
                                 placeholder="Prof. Name"
                             />
                         </div>
                     </div>
 
                     {/* Classroom */}
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Classroom</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Classroom</label>
                         <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/40" />
+                            <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/45" />
                             <input
                                 type="text"
                                 name="classroom"
                                 value={formData.classroom}
                                 onChange={handleChange}
-                                className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/30"
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-on-surface/[0.04] border border-on-surface/[0.10] focus:border-primary/50 focus:outline-none transition-all text-xs font-medium text-on-surface placeholder:text-on-surface-variant/40"
                                 placeholder="Room 301"
                             />
                         </div>
@@ -283,23 +285,23 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                 </div>
 
                 {/* Syllabus */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Syllabus / Notes</label>
+                <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Syllabus / Notes</label>
                     <button
                         type="button"
                         onClick={() => setIsSyllabusExpanded(true)}
-                        className="group w-full min-h-[92px] rounded-lg border border-outline bg-surface px-4 py-3 text-left transition-colors hover:border-primary/50 hover:bg-surface-container/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                        className="no-fluid group w-full min-h-[82px] rounded-2xl border border-on-surface/[0.09] bg-on-surface/[0.03] px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-on-surface/[0.06] cursor-pointer"
                         aria-label="Expand syllabus and notes editor"
                     >
                         <div className="flex min-w-0 items-center justify-between gap-3">
-                            <div className="flex min-w-0 flex-1 items-start gap-3">
-                            <FileText className="mt-0.5 h-5 w-5 shrink-0 text-on-surface-variant/40 group-hover:text-primary/70" />
-                            <p className={`line-clamp-2 min-w-0 whitespace-pre-line text-sm leading-6 ${formData.syllabus ? 'text-on-surface' : 'italic text-on-surface-variant/35'}`}>
+                            <div className="flex min-w-0 flex-1 items-start gap-2.5">
+                            <FileText className="mt-0.5 h-4 w-4 shrink-0 text-on-surface-variant/45 group-hover:text-primary" />
+                            <p className={`line-clamp-2 min-w-0 whitespace-pre-line text-xs leading-5 ${formData.syllabus ? 'text-on-surface' : 'italic text-on-surface-variant/45'}`}>
                                 {formData.syllabus || 'Add syllabus topics or important notes…'}
                             </p>
                             </div>
-                            <span className="flex h-9 shrink-0 items-center gap-1.5 self-center rounded-md border border-outline/50 bg-surface-container/40 px-2.5 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50 transition-colors group-hover:border-primary/30 group-hover:text-primary">
-                                <Maximize2 className="h-3.5 w-3.5" />
+                            <span className="flex h-7 shrink-0 items-center gap-1.5 self-center rounded-full border border-on-surface/[0.09] bg-on-surface/[0.05] px-2.5 text-[10px] font-semibold text-on-surface-variant transition-colors group-hover:border-primary/30 group-hover:text-primary">
+                                <Maximize2 className="h-3 w-3" />
                                 <span className="hidden min-[380px]:inline">Expand</span>
                             </span>
                         </div>
@@ -307,12 +309,12 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                 </div>
 
                 {/* Attendance Count Override */}
-                <div className="p-4 rounded-lg bg-orange-500/10 dark:bg-orange-500/5 border border-orange-500/20">
-                    <label className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase mb-2 block">⚠️ Manual Attendance Override</label>
-                    <p className="text-xs text-on-surface-variant/60 mb-3">Enter physical attendance and all conducted classes. Medical leave is excluded from the adjusted total.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Physical Classes Attended</label>
+                <div className="p-4 rounded-2xl bg-amber-500/[0.06] border border-amber-500/20">
+                    <label className="text-xs font-bold text-amber-400 mb-1 block">Manual Attendance Override</label>
+                    <p className="text-[11px] text-on-surface-variant/65 mb-3">Adjust conducted totals directly. Medical leave is excluded from the adjusted total.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Classes Attended</label>
                             <input
                                 type="number"
                                 name="attended"
@@ -320,75 +322,80 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                                 onChange={handleChange}
                                 min="0"
                                 max={Math.max(0, formData.total - medicalLeaveCount)}
-                                className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-orange-500/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
+                                className="w-full px-3.5 py-2 rounded-xl bg-on-surface/[0.05] border border-on-surface/[0.10] focus:border-amber-400/50 focus:outline-none transition-all text-on-surface text-center font-bold text-base tabular-nums"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Total Conducted Classes</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Total Conducted</label>
                             <input
                                 type="number"
                                 name="total"
                                 value={formData.total}
                                 onChange={handleChange}
                                 min={medicalLeaveCount}
-                                className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-orange-500/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
+                                className="w-full px-3.5 py-2 rounded-xl bg-on-surface/[0.05] border border-on-surface/[0.10] focus:border-amber-400/50 focus:outline-none transition-all text-on-surface text-center font-bold text-base tabular-nums"
                             />
                         </div>
 
-                        <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-outline/40 bg-surface-container/30 p-3">
+                        <div className="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-on-surface/[0.07] bg-on-surface/[0.03] p-3">
                             <div>
-                                <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Medical excluded · {formData.attended}/{eligibleTotal}</p>
-                                <p className="mt-1 text-sm font-bold text-on-surface">{attendanceWithoutMedical.toFixed(1)}%</p>
+                                <p className="text-[10px] font-semibold text-on-surface-variant/55">Medical excluded · {formData.attended}/{eligibleTotal}</p>
+                                <p className="mt-0.5 text-sm font-bold text-on-surface tabular-nums">{attendanceWithoutMedical.toFixed(1)}%</p>
                             </div>
                             <div>
-                                <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/50">Medical counted absent · {formData.attended}/{formData.total}</p>
-                                <p className="mt-1 text-sm font-bold text-on-surface">{attendanceWithMedicalAsAbsent.toFixed(1)}%</p>
+                                <p className="text-[10px] font-semibold text-on-surface-variant/55">Medical counted absent · {formData.attended}/{formData.total}</p>
+                                <p className="mt-0.5 text-sm font-bold text-on-surface tabular-nums">{attendanceWithMedicalAsAbsent.toFixed(1)}%</p>
                             </div>
                         </div>
 
                         {/* Assignment & Practical Totals Override */}
-                        <div className="col-span-1 sm:col-span-2 p-4 rounded-lg bg-surface-container/30 border border-outline">
-                            <label className="text-xs font-bold text-on-surface-variant/80 uppercase mb-2 block">🎯 Target Totals</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {formData.categories.includes('Practical') && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Practical Total</label>
-                                        <input
-                                            type="number"
-                                            name="practical_total"
-                                            value={formData.practical_total || 10}
-                                            onChange={handleChange}
-                                            min="1"
-                                            className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
-                                        />
-                                    </div>
-                                )}
-                                {formData.categories.includes('Assignment') && (
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-on-surface-variant/70 uppercase ml-1">Assignment Total</label>
-                                        <input
-                                            type="number"
-                                            name="assignment_total"
-                                            value={formData.assignment_total || 4}
-                                            onChange={handleChange}
-                                            min="1"
-                                            className="w-full px-4 py-2.5 rounded-lg bg-surface border border-outline focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
-                                        />
-                                    </div>
-                                )}
+                        {(formData.categories.includes('Practical') || formData.categories.includes('Assignment')) && (
+                            <div className="col-span-1 sm:col-span-2 p-3.5 rounded-xl bg-on-surface/[0.03] border border-on-surface/[0.07]">
+                                <label className="text-xs font-bold text-on-surface mb-2.5 block">Target Totals</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                    {formData.categories.includes('Practical') && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Practical Total</label>
+                                            <input
+                                                type="number"
+                                                name="practical_total"
+                                                value={formData.practical_total || 10}
+                                                onChange={handleChange}
+                                                min="1"
+                                                className="w-full px-3.5 py-2 rounded-xl bg-on-surface/[0.05] border border-on-surface/[0.10] focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-base tabular-nums"
+                                            />
+                                        </div>
+                                    )}
+                                    {formData.categories.includes('Assignment') && (
+                                        <div className="space-y-1.5">
+                                            <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Assignment Total</label>
+                                            <input
+                                                type="number"
+                                                name="assignment_total"
+                                                value={formData.assignment_total || 4}
+                                                onChange={handleChange}
+                                                min="1"
+                                                className="w-full px-3.5 py-2 rounded-xl bg-on-surface/[0.05] border border-on-surface/[0.10] focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-base tabular-nums"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="pt-2">
+                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-on-surface/[0.08]">
+                    <Button type="button" variant="text" onClick={onClose} disabled={loading}>
+                        Cancel
+                    </Button>
                     <Button
                         type="submit"
                         disabled={loading}
-                        className="w-full"
-                        icon={!loading && <Save size={18} />}
+                        isLoading={loading}
+                        icon={!loading && <Save size={15} />}
                     >
-                        {loading ? 'Saving...' : 'Save Changes'}
+                        {loading ? 'Saving…' : 'Save Changes'}
                     </Button>
                 </div>
             </form>
@@ -406,44 +413,44 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                 <button
                     type="button"
                     aria-label="Close expanded syllabus editor"
-                    className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                    className="absolute inset-0 bg-black/70"
                     onClick={() => setIsSyllabusExpanded(false)}
                 />
                 <section
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="expanded-syllabus-title"
-                    className="relative flex h-[min(78vh,640px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-outline bg-surface shadow-2xl"
+                    className="relative flex h-[min(78vh,640px)] w-full max-w-3xl flex-col overflow-hidden rounded-[24px] liquid-glass-overlay"
                 >
-                    <header className="flex items-center justify-between border-b border-outline bg-surface-container/20 px-4 py-3 sm:px-5">
+                    <header className="flex items-center justify-between border-b border-on-surface/[0.08] px-5 py-4">
                         <div className="flex min-w-0 items-center gap-3">
-                            <FileText className="h-5 w-5 shrink-0 text-primary" />
+                            <FileText className="h-4 w-4 shrink-0 text-primary" />
                             <div className="min-w-0">
                                 <h2 id="expanded-syllabus-title" className="truncate text-sm font-bold text-on-surface">Syllabus / Notes</h2>
-                                <p className="truncate text-[10px] text-on-surface-variant/50">{formData.name || 'Subject details'}</p>
+                                <p className="truncate text-[11px] text-on-surface-variant/60">{formData.name || 'Subject details'}</p>
                             </div>
                         </div>
                         <button
                             type="button"
                             onClick={() => setIsSyllabusExpanded(false)}
-                            className="rounded-lg p-2 text-on-surface-variant/50 transition-colors hover:bg-surface-container hover:text-on-surface"
+                            className="no-fluid w-7 h-7 rounded-full bg-on-surface/[0.06] hover:bg-on-surface/[0.12] text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors cursor-pointer"
                             aria-label="Close expanded syllabus editor"
                         >
-                            <X className="h-5 w-5" />
+                            <X className="h-4 w-4" />
                         </button>
                     </header>
-                    <div className="flex min-h-0 flex-1 p-3 sm:p-5">
+                    <div className="flex min-h-0 flex-1 p-4 sm:p-5">
                         <textarea
                             name="syllabus"
                             value={formData.syllabus}
                             onChange={handleChange}
                             autoFocus
-                            className="h-full w-full resize-none rounded-lg border border-outline bg-surface-container/20 p-4 text-sm leading-6 text-on-surface placeholder:text-on-surface-variant/30 focus:border-primary focus:outline-none"
+                            className="h-full w-full resize-none rounded-2xl border border-on-surface/[0.09] bg-on-surface/[0.03] p-4 text-sm leading-6 text-on-surface placeholder:text-on-surface-variant/35 focus:border-primary/50 focus:outline-none"
                             placeholder="Enter syllabus topics or important notes…"
                         />
                     </div>
-                    <footer className="flex items-center justify-between gap-3 border-t border-outline px-4 py-3 sm:px-5">
-                        <span className="text-[10px] text-on-surface-variant/40">Changes save with the subject form</span>
+                    <footer className="flex items-center justify-between gap-3 border-t border-on-surface/[0.08] px-5 py-3.5">
+                        <span className="text-[11px] text-on-surface-variant/55">Changes save with the subject form</span>
                         <Button type="button" onClick={() => setIsSyllabusExpanded(false)}>Done</Button>
                     </footer>
                 </section>

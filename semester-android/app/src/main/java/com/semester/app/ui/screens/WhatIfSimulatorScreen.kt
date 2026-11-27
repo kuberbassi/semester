@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,47 +46,67 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.semester.app.core.CoreRepository
+import com.semester.app.core.WorkspaceRepository
+import com.semester.app.core.WorkspaceSubject
 import com.semester.app.haptics.HapticCrownEngine
 import com.semester.app.ui.components.AmbientTopGlow
 import com.semester.app.ui.components.LiquidFillGauge
 import com.semester.app.ui.components.LocalChromeScroll
+import com.semester.app.ui.components.ScrollForwardHint
+import com.semester.app.ui.components.SemesterPickerBadge
 import com.semester.app.ui.components.SemesterSectionHeader
+import com.semester.app.ui.components.StudioPillChip
 import com.semester.app.ui.components.liquidGlass
+import com.semester.app.ui.components.liquidHeroBanner
 import com.semester.app.ui.components.pressable
+import com.semester.app.ui.theme.LocalIsDarkTheme
 import com.semester.app.ui.theme.SemesterColors
-import uniffi.semester_core.Subject
+import com.semester.app.ui.theme.SemesterGradients
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
 fun WhatIfSimulatorScreen(
-    subjects: List<Subject>,
-    repo: CoreRepository,
+    semester: Int = 1,
+    subjects: List<WorkspaceSubject>,
+    repo: WorkspaceRepository,
     haptics: HapticCrownEngine,
+    onOpenSemesterPicker: () -> Unit = {},
 ) {
     val chromeScroll = LocalChromeScroll.current
-    var selectedSubject by remember(subjects) { mutableStateOf(subjects.firstOrNull()) }
+    val isDark = LocalIsDarkTheme.current
+    var selectedSubjectId by remember(subjects) { mutableStateOf(subjects.firstOrNull()?.id) }
     var futureClasses by remember { mutableFloatStateOf(10f) }
     var willAttend by remember { mutableFloatStateOf(8f) }
     var lastStep by remember { mutableIntStateOf(8) }
 
-    val currentSubject = selectedSubject ?: subjects.firstOrNull()
+    val currentSubject = subjects.firstOrNull { it.id == selectedSubjectId } ?: subjects.firstOrNull()
     val projectedPct = if (currentSubject != null) {
         repo.simulateFutureAttendance(
-            currentSubject.attended,
-            currentSubject.total,
-            futureClasses.toUInt(),
-            willAttend.toUInt(),
+            currentSubject.physicalAttended,
+            currentSubject.eligibleTotal,
+            futureClasses.toInt(),
+            willAttend.toInt(),
         )
     } else {
         0.0
+    }
+    val projectedGuard = if (currentSubject != null) {
+        repo.calculateMedicalBunkGuard(
+            attended = currentSubject.attended + willAttend.toInt(),
+            total = currentSubject.total + futureClasses.toInt(),
+            medical = currentSubject.medicalCount,
+            target = currentSubject.target,
+        )
+    } else {
+        null
     }
 
     val statusColor by animateColorAsState(
         targetValue = if (currentSubject != null) {
             SemesterColors.healthColor(projectedPct, currentSubject.target.toDouble())
         } else {
-            SemesterColors.ElectricViolet
+            SemesterColors.BrandCobalt
         },
         animationSpec = tween(450),
         label = "WhatIfStatusColor",
@@ -97,7 +119,7 @@ fun WhatIfSimulatorScreen(
     ) {
         AmbientTopGlow(
             color = statusColor,
-            peakAlpha = 0.24f,
+            peakAlpha = if (isDark) 0.24f else 0.13f,
             height = 310.dp,
             modifier = Modifier.align(Alignment.TopCenter),
         )
@@ -111,83 +133,72 @@ fun WhatIfSimulatorScreen(
                 .padding(top = 14.dp, bottom = 128.dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                Text(
-                    text = "PREDICTIVE SANDBOX",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 1.2.sp,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SemesterPickerBadge(
+                        semester = semester,
+                        onClick = {
+                            haptics.crownTick()
+                            onOpenSemesterPicker()
+                        },
+                    )
+                    Text(
+                        text = "ATTENDANCE FORECAST",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 1.sp,
+                    )
+                }
                 Text(
                     text = "What-If Simulator",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = Color.White,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Forecast attendance trajectories before taking leaves.",
+                    text = "Forecast medical-adjusted attendance before skipping classes.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             if (currentSubject != null) {
-                // Horizontal Liquid Course Selector
+                val subRailState = rememberLazyListState()
+                val canScrollSubs by remember { derivedStateOf { subRailState.canScrollForward } }
                 LazyRow(
+                    state = subRailState,
                     contentPadding = PaddingValues(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(subjects, key = { it.id }) { sub ->
-                        val active = sub.id == currentSubject.id
-                        Box(
-                            modifier = Modifier
-                                .pressable(
-                                    onClick = {
-                                        haptics.crownTick()
-                                        selectedSubject = sub
-                                    },
-                                    pressedScale = 0.94f,
-                                )
-                                .clip(CircleShape)
-                                .background(
-                                    if (active) statusColor.copy(alpha = 0.22f) else Color(0xFF16161A),
-                                )
-                                .border(
-                                    width = 1.dp,
-                                    color = if (active) statusColor.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.08f),
-                                    shape = CircleShape,
-                                )
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                text = sub.code.ifBlank { sub.name.take(12) },
-                                style = MaterialTheme.typography.labelLarge,
-                                color = if (active) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        StudioPillChip(
+                            label = sub.code.ifBlank { sub.name.take(12) },
+                            selected = sub.id == currentSubject.id,
+                            onClick = {
+                                haptics.crownTick()
+                                selectedSubjectId = sub.id
+                            },
+                        )
                     }
                 }
+                ScrollForwardHint(visible = canScrollSubs)
 
                 Spacer(Modifier.height(18.dp))
 
-                val currentPct = repo.calculatePercentage(currentSubject.attended, currentSubject.total)
-                val delta = projectedPct - currentPct
-                val deltaText = if (delta >= 0) "+${String.format("%.1f", delta)}%" else "${String.format("%.1f", delta)}%"
+                val delta = projectedPct - currentSubject.percentage
+                val deltaText = if (delta >= 0) "+${String.format(Locale.US, "%.1f", delta)}%" else "${String.format(Locale.US, "%.1f", delta)}%"
 
-                // Liquid Glass Projection Hero Card
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .liquidGlass(
+                        .liquidHeroBanner(
                             shape = RoundedCornerShape(28.dp),
-                            tint = Color(0xFF141418).copy(alpha = 0.88f),
                             accentTint = statusColor,
-                            elevation = 16.dp,
-                            touchResponse = true,
-                            swell = false,
                         )
                         .border(1.2.dp, statusColor.copy(alpha = 0.45f), RoundedCornerShape(28.dp))
                         .padding(20.dp),
@@ -200,7 +211,7 @@ fun WhatIfSimulatorScreen(
                             text = currentSubject.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -218,24 +229,21 @@ fun WhatIfSimulatorScreen(
                         Spacer(Modifier.height(14.dp))
 
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Surface(
-                                color = Color.White.copy(alpha = 0.08f),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 shape = CircleShape,
                             ) {
                                 Text(
-                                    text = "Now ${currentPct.roundToInt()}%",
+                                    text = "Now ${currentSubject.percentage.roundToInt()}%",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                 )
                             }
-                            Surface(
-                                color = statusColor.copy(alpha = 0.16f),
-                                shape = CircleShape,
-                            ) {
+                            Surface(color = statusColor.copy(alpha = 0.16f), shape = CircleShape) {
                                 Text(
                                     text = "Net $deltaText",
                                     style = MaterialTheme.typography.labelMedium,
@@ -245,19 +253,27 @@ fun WhatIfSimulatorScreen(
                                 )
                             }
                         }
+
+                        if (projectedGuard != null) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = projectedGuard.statusMessage,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (projectedGuard.canBunk) SemesterColors.SafeEmerald else SemesterColors.CriticalCrimson,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                     }
                 }
 
                 Spacer(Modifier.height(18.dp))
 
-                // Sliders inside a Liquid Glass Control Panel
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
                         .liquidGlass(
                             shape = RoundedCornerShape(24.dp),
-                            tint = Color(0xFF141418).copy(alpha = 0.88f),
                             elevation = 8.dp,
                             touchResponse = false,
                         )
@@ -273,7 +289,7 @@ fun WhatIfSimulatorScreen(
                         Text(
                             text = "Upcoming Classes: ${futureClasses.toInt()}",
                             style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Slider(
@@ -285,18 +301,18 @@ fun WhatIfSimulatorScreen(
                             valueRange = 1f..30f,
                             steps = 28,
                             colors = SliderDefaults.colors(
-                                thumbColor = Color.White,
-                                activeTrackColor = SemesterColors.ElectricViolet,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.12f),
+                                thumbColor = SemesterColors.BrandCobalt,
+                                activeTrackColor = SemesterColors.BrandCobalt,
+                                inactiveTrackColor = MaterialTheme.colorScheme.outline,
                             ),
                         )
 
                         Spacer(Modifier.height(12.dp))
 
                         Text(
-                            text = "Will Attend: ${willAttend.toInt()}  •  Bunking: ${(futureClasses - willAttend).toInt()}",
+                            text = "Will Attend: ${willAttend.toInt()}  •  Skipping: ${(futureClasses - willAttend).toInt()}",
                             style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Slider(
@@ -314,7 +330,7 @@ fun WhatIfSimulatorScreen(
                             colors = SliderDefaults.colors(
                                 thumbColor = statusColor,
                                 activeTrackColor = statusColor,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.12f),
+                                inactiveTrackColor = MaterialTheme.colorScheme.outline,
                             ),
                         )
                     }

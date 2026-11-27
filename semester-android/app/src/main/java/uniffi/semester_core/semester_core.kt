@@ -762,6 +762,106 @@ internal interface UniffiForeignFutureCompleteVoid : com.sun.jna.Callback {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -819,15 +919,117 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_semester_core_fn_method_semesterdb_unmark_attendance(`ptr`: Pointer,`logId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
+    fun uniffi_semester_core_fn_clone_semesterworkspace(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_semester_core_fn_free_semesterworkspace(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_semester_core_fn_constructor_semesterworkspace_open(`path`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_semester_core_fn_method_semesterworkspace_add_subject_json(`ptr`: Pointer,`payloadJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_checkpoint_wal(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_attendance(`ptr`: Pointer,`logId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_attendance_batch_json(`ptr`: Pointer,`logIdsJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_manual_course(`ptr`: Pointer,`courseId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_meta(`ptr`: Pointer,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_note(`ptr`: Pointer,`noteId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_subject(`ptr`: Pointer,`subjectId`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_semester_core_fn_method_semesterworkspace_delete_timetable_slot(`ptr`: Pointer,`slotId`: RustBuffer.ByValue,`semester`: Long,`fallbackDay`: RustBuffer.ByValue,`fallbackStart`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    fun uniffi_semester_core_fn_method_semesterworkspace_edit_attendance_full_json(`ptr`: Pointer,`logId`: RustBuffer.ByValue,`status`: RustBuffer.ByValue,`notes`: RustBuffer.ByValue,`date`: RustBuffer.ByValue,`substitutedBy`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_edit_attendance_json(`ptr`: Pointer,`logId`: RustBuffer.ByValue,`status`: RustBuffer.ByValue,`notes`: RustBuffer.ByValue,`date`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_export_sync_snapshot_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_export_timetable_qr_v2(`ptr`: Pointer,`semester`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_calendar_json(`ptr`: Pointer,`year`: Int,`month`: Int,`semester`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_classes_for_date_json(`ptr`: Pointer,`date`: RustBuffer.ByValue,`semester`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_dashboard_json(`ptr`: Pointer,`semester`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_logs_for_date_json(`ptr`: Pointer,`date`: RustBuffer.ByValue,`semester`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_manual_courses_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_meta(`ptr`: Pointer,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_notes_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_profile_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_results_analytics_json(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_subject_logs_json(`ptr`: Pointer,`subjectId`: RustBuffer.ByValue,`limit`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_subjects_json(`ptr`: Pointer,`semester`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_system_logs_json(`ptr`: Pointer,`limit`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_get_timetable_json(`ptr`: Pointer,`semester`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_import_backup_json(`ptr`: Pointer,`rawJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_import_timetable_qr_v2_json(`ptr`: Pointer,`semester`: Long,`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_mark_attendance_batch_json(`ptr`: Pointer,`itemsJson`: RustBuffer.ByValue,`status`: RustBuffer.ByValue,`date`: RustBuffer.ByValue,`notes`: RustBuffer.ByValue,`semester`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_mark_attendance_json(`ptr`: Pointer,`subjectId`: RustBuffer.ByValue,`status`: RustBuffer.ByValue,`date`: RustBuffer.ByValue,`notes`: RustBuffer.ByValue,`substitutedBy`: RustBuffer.ByValue,`semester`: RustBuffer.ByValue,`logType`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_merge_remote_snapshot_json(`ptr`: Pointer,`remoteJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_prune_old_tombstones(`ptr`: Pointer,`maxAgeDays`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    fun uniffi_semester_core_fn_method_semesterworkspace_query_local_assistant_json(`ptr`: Pointer,`message`: RustBuffer.ByValue,`semester`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_save_manual_course_json(`ptr`: Pointer,`courseJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_save_note_json(`ptr`: Pointer,`noteJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_save_semester_results_batch_json(`ptr`: Pointer,`enrollmentNumber`: RustBuffer.ByValue,`studentInfoJson`: RustBuffer.ByValue,`semestersJson`: RustBuffer.ByValue,`source`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_save_timetable_slot_json(`ptr`: Pointer,`semester`: Long,`slotJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_save_timetable_structure_json(`ptr`: Pointer,`semester`: Long,`periodsJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_semester_core_fn_method_semesterworkspace_set_meta(`ptr`: Pointer,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_semester_core_fn_method_semesterworkspace_update_profile_json(`ptr`: Pointer,`patchJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_update_result_subject_credit_json(`ptr`: Pointer,`semester`: Long,`code`: RustBuffer.ByValue,`name`: RustBuffer.ByValue,`credits`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_update_subject_json(`ptr`: Pointer,`subjectId`: RustBuffer.ByValue,`patchJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_method_semesterworkspace_wipe_all_data(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_semester_core_fn_func_core_calculate_bunk_guard(`attended`: Int,`total`: Int,`target`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_semester_core_fn_func_core_calculate_medical_adjusted(`attended`: Int,`total`: Int,`medicalCount`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
+    fun uniffi_semester_core_fn_func_core_calculate_medical_bunk_guard(`attended`: Int,`total`: Int,`medicalCount`: Int,`target`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_semester_core_fn_func_core_calculate_percentage(`attended`: Int,`total`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    fun uniffi_semester_core_fn_func_core_calculate_required_sgpa(`earnedCredits`: Int,`earnedGradePoints`: Double,`nextSemCredits`: Int,`targetCgpa`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
     fun uniffi_semester_core_fn_func_core_export_timetable_qr(`slots`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_semester_core_fn_func_core_import_timetable_qr(`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_func_core_ipu_salted_password_hash(`password`: RustBuffer.ByValue,`captcha`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_func_core_merge_sync_snapshots(`localJson`: RustBuffer.ByValue,`remoteJson`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_semester_core_fn_func_core_parse_ipu_portal_response(`responseText`: RustBuffer.ByValue,`fallbackSemester`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_semester_core_fn_func_core_parse_ipu_results_json(`jsonStr`: RustBuffer.ByValue,`defaultSemester`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -949,11 +1151,21 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_semester_core_checksum_func_core_calculate_medical_adjusted(
     ): Short
+    fun uniffi_semester_core_checksum_func_core_calculate_medical_bunk_guard(
+    ): Short
     fun uniffi_semester_core_checksum_func_core_calculate_percentage(
+    ): Short
+    fun uniffi_semester_core_checksum_func_core_calculate_required_sgpa(
     ): Short
     fun uniffi_semester_core_checksum_func_core_export_timetable_qr(
     ): Short
     fun uniffi_semester_core_checksum_func_core_import_timetable_qr(
+    ): Short
+    fun uniffi_semester_core_checksum_func_core_ipu_salted_password_hash(
+    ): Short
+    fun uniffi_semester_core_checksum_func_core_merge_sync_snapshots(
+    ): Short
+    fun uniffi_semester_core_checksum_func_core_parse_ipu_portal_response(
     ): Short
     fun uniffi_semester_core_checksum_func_core_parse_ipu_results_json(
     ): Short
@@ -991,7 +1203,95 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_semester_core_checksum_method_semesterdb_unmark_attendance(
     ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_add_subject_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_checkpoint_wal(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_attendance(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_attendance_batch_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_manual_course(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_meta(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_note(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_subject(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_delete_timetable_slot(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_edit_attendance_full_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_edit_attendance_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_export_sync_snapshot_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_export_timetable_qr_v2(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_calendar_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_classes_for_date_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_dashboard_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_logs_for_date_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_manual_courses_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_meta(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_notes_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_profile_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_results_analytics_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_subject_logs_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_subjects_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_system_logs_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_get_timetable_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_import_backup_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_import_timetable_qr_v2_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_mark_attendance_batch_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_mark_attendance_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_merge_remote_snapshot_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_prune_old_tombstones(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_query_local_assistant_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_save_manual_course_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_save_note_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_save_semester_results_batch_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_save_timetable_slot_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_save_timetable_structure_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_set_meta(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_update_profile_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_update_result_subject_credit_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_update_subject_json(
+    ): Short
+    fun uniffi_semester_core_checksum_method_semesterworkspace_wipe_all_data(
+    ): Short
     fun uniffi_semester_core_checksum_constructor_semesterdb_open(
+    ): Short
+    fun uniffi_semester_core_checksum_constructor_semesterworkspace_open(
     ): Short
     fun ffi_semester_core_uniffi_contract_version(
     ): Int
@@ -1016,13 +1316,28 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_semester_core_checksum_func_core_calculate_medical_adjusted() != 45780.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_semester_core_checksum_func_core_calculate_medical_bunk_guard() != 5606.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_semester_core_checksum_func_core_calculate_percentage() != 342.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_func_core_calculate_required_sgpa() != 27676.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_semester_core_checksum_func_core_export_timetable_qr() != 28645.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_semester_core_checksum_func_core_import_timetable_qr() != 27353.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_func_core_ipu_salted_password_hash() != 11245.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_func_core_merge_sync_snapshots() != 51721.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_func_core_parse_ipu_portal_response() != 51264.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_semester_core_checksum_func_core_parse_ipu_results_json() != 57516.toShort()) {
@@ -1079,7 +1394,139 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_semester_core_checksum_method_semesterdb_unmark_attendance() != 33140.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_add_subject_json() != 3710.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_checkpoint_wal() != 46486.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_attendance() != 48345.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_attendance_batch_json() != 20054.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_manual_course() != 49177.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_meta() != 54995.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_note() != 40361.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_subject() != 25151.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_delete_timetable_slot() != 37708.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_edit_attendance_full_json() != 17533.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_edit_attendance_json() != 30894.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_export_sync_snapshot_json() != 10600.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_export_timetable_qr_v2() != 12985.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_calendar_json() != 58625.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_classes_for_date_json() != 9806.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_dashboard_json() != 5562.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_logs_for_date_json() != 35633.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_manual_courses_json() != 54654.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_meta() != 55018.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_notes_json() != 53130.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_profile_json() != 17922.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_results_analytics_json() != 15729.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_subject_logs_json() != 12124.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_subjects_json() != 16420.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_system_logs_json() != 21042.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_get_timetable_json() != 37784.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_import_backup_json() != 32686.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_import_timetable_qr_v2_json() != 40100.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_mark_attendance_batch_json() != 28909.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_mark_attendance_json() != 40293.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_merge_remote_snapshot_json() != 40389.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_prune_old_tombstones() != 33149.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_query_local_assistant_json() != 3526.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_save_manual_course_json() != 52406.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_save_note_json() != 53095.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_save_semester_results_batch_json() != 36129.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_save_timetable_slot_json() != 57760.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_save_timetable_structure_json() != 43261.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_set_meta() != 21591.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_update_profile_json() != 31132.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_update_result_subject_credit_json() != 33916.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_update_subject_json() != 11547.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_method_semesterworkspace_wipe_all_data() != 24346.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_semester_core_checksum_constructor_semesterdb_open() != 43406.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_semester_core_checksum_constructor_semesterworkspace_open() != 40584.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1149,6 +1596,75 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 
     override fun write(value: UInt, buf: ByteBuffer) {
         buf.putInt(value.toInt())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterInt: FfiConverter<Int, Int> {
+    override fun lift(value: Int): Int {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Int {
+        return buf.getInt()
+    }
+
+    override fun lower(value: Int): Int {
+        return value
+    }
+
+    override fun allocationSize(value: Int) = 4UL
+
+    override fun write(value: Int, buf: ByteBuffer) {
+        buf.putInt(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
     }
 }
 
@@ -1788,6 +2304,886 @@ public object FfiConverterTypeSemesterDb: FfiConverter<SemesterDb, Pointer> {
 }
 
 
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Full v2 Unified Workspace Engine (100% schema & 2-way CRDT sync parity with Desktop SQLite).
+ */
+public interface SemesterWorkspaceInterface {
+    
+    fun `addSubjectJson`(`payloadJson`: kotlin.String): kotlin.String
+    
+    fun `checkpointWal`()
+    
+    fun `deleteAttendance`(`logId`: kotlin.String): kotlin.Boolean
+    
+    fun `deleteAttendanceBatchJson`(`logIdsJson`: kotlin.String): kotlin.String
+    
+    fun `deleteManualCourse`(`courseId`: kotlin.String): kotlin.Boolean
+    
+    fun `deleteMeta`(`key`: kotlin.String)
+    
+    fun `deleteNote`(`noteId`: kotlin.String): kotlin.Boolean
+    
+    fun `deleteSubject`(`subjectId`: kotlin.String): kotlin.Boolean
+    
+    fun `deleteTimetableSlot`(`slotId`: kotlin.String, `semester`: kotlin.Long, `fallbackDay`: kotlin.String?, `fallbackStart`: kotlin.String?): kotlin.Boolean
+    
+    fun `editAttendanceFullJson`(`logId`: kotlin.String, `status`: kotlin.String, `notes`: kotlin.String?, `date`: kotlin.String?, `substitutedBy`: kotlin.String?): kotlin.String
+    
+    fun `editAttendanceJson`(`logId`: kotlin.String, `status`: kotlin.String, `notes`: kotlin.String?, `date`: kotlin.String?): kotlin.String
+    
+    fun `exportSyncSnapshotJson`(): kotlin.String
+    
+    fun `exportTimetableQrV2`(`semester`: kotlin.Long): kotlin.String
+    
+    fun `getCalendarJson`(`year`: kotlin.Int, `month`: kotlin.UInt, `semester`: kotlin.Long?): kotlin.String
+    
+    fun `getClassesForDateJson`(`date`: kotlin.String, `semester`: kotlin.Long): kotlin.String
+    
+    fun `getDashboardJson`(`semester`: kotlin.Long): kotlin.String
+    
+    fun `getLogsForDateJson`(`date`: kotlin.String, `semester`: kotlin.Long?): kotlin.String
+    
+    fun `getManualCoursesJson`(): kotlin.String
+    
+    fun `getMeta`(`key`: kotlin.String): kotlin.String?
+    
+    fun `getNotesJson`(): kotlin.String
+    
+    fun `getProfileJson`(): kotlin.String
+    
+    fun `getResultsAnalyticsJson`(): kotlin.String
+    
+    fun `getSubjectLogsJson`(`subjectId`: kotlin.String, `limit`: kotlin.Long): kotlin.String
+    
+    fun `getSubjectsJson`(`semester`: kotlin.Long?): kotlin.String
+    
+    fun `getSystemLogsJson`(`limit`: kotlin.Long): kotlin.String
+    
+    fun `getTimetableJson`(`semester`: kotlin.Long): kotlin.String
+    
+    fun `importBackupJson`(`rawJson`: kotlin.String): kotlin.String
+    
+    fun `importTimetableQrV2Json`(`semester`: kotlin.Long, `payload`: kotlin.String): kotlin.String
+    
+    fun `markAttendanceBatchJson`(`itemsJson`: kotlin.String, `status`: kotlin.String, `date`: kotlin.String, `notes`: kotlin.String, `semester`: kotlin.Long?): kotlin.String
+    
+    fun `markAttendanceJson`(`subjectId`: kotlin.String, `status`: kotlin.String, `date`: kotlin.String, `notes`: kotlin.String, `substitutedBy`: kotlin.String, `semester`: kotlin.Long?, `logType`: kotlin.String): kotlin.String
+    
+    fun `mergeRemoteSnapshotJson`(`remoteJson`: kotlin.String): kotlin.String
+    
+    fun `pruneOldTombstones`(`maxAgeDays`: kotlin.Long): kotlin.ULong
+    
+    fun `queryLocalAssistantJson`(`message`: kotlin.String, `semester`: kotlin.Long): kotlin.String
+    
+    fun `saveManualCourseJson`(`courseJson`: kotlin.String): kotlin.String
+    
+    fun `saveNoteJson`(`noteJson`: kotlin.String): kotlin.String
+    
+    fun `saveSemesterResultsBatchJson`(`enrollmentNumber`: kotlin.String, `studentInfoJson`: kotlin.String, `semestersJson`: kotlin.String, `source`: kotlin.String): kotlin.String
+    
+    fun `saveTimetableSlotJson`(`semester`: kotlin.Long, `slotJson`: kotlin.String): kotlin.String
+    
+    fun `saveTimetableStructureJson`(`semester`: kotlin.Long, `periodsJson`: kotlin.String)
+    
+    fun `setMeta`(`key`: kotlin.String, `value`: kotlin.String)
+    
+    fun `updateProfileJson`(`patchJson`: kotlin.String): kotlin.String
+    
+    fun `updateResultSubjectCreditJson`(`semester`: kotlin.Long, `code`: kotlin.String, `name`: kotlin.String, `credits`: kotlin.Long): kotlin.String
+    
+    fun `updateSubjectJson`(`subjectId`: kotlin.String, `patchJson`: kotlin.String): kotlin.String
+    
+    fun `wipeAllData`(): kotlin.String
+    
+    companion object
+}
+
+/**
+ * Full v2 Unified Workspace Engine (100% schema & 2-way CRDT sync parity with Desktop SQLite).
+ */
+open class SemesterWorkspace: Disposable, AutoCloseable, SemesterWorkspaceInterface {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_semester_core_fn_free_semesterworkspace(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_semester_core_fn_clone_semesterworkspace(pointer!!, status)
+        }
+    }
+
+    
+    @Throws(SemesterCoreException::class)override fun `addSubjectJson`(`payloadJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_add_subject_json(
+        it, FfiConverterString.lower(`payloadJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `checkpointWal`()
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_checkpoint_wal(
+        it, _status)
+}
+    }
+    
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteAttendance`(`logId`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_attendance(
+        it, FfiConverterString.lower(`logId`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteAttendanceBatchJson`(`logIdsJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_attendance_batch_json(
+        it, FfiConverterString.lower(`logIdsJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteManualCourse`(`courseId`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_manual_course(
+        it, FfiConverterString.lower(`courseId`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteMeta`(`key`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_meta(
+        it, FfiConverterString.lower(`key`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteNote`(`noteId`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_note(
+        it, FfiConverterString.lower(`noteId`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteSubject`(`subjectId`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_subject(
+        it, FfiConverterString.lower(`subjectId`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `deleteTimetableSlot`(`slotId`: kotlin.String, `semester`: kotlin.Long, `fallbackDay`: kotlin.String?, `fallbackStart`: kotlin.String?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_delete_timetable_slot(
+        it, FfiConverterString.lower(`slotId`),FfiConverterLong.lower(`semester`),FfiConverterOptionalString.lower(`fallbackDay`),FfiConverterOptionalString.lower(`fallbackStart`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `editAttendanceFullJson`(`logId`: kotlin.String, `status`: kotlin.String, `notes`: kotlin.String?, `date`: kotlin.String?, `substitutedBy`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_edit_attendance_full_json(
+        it, FfiConverterString.lower(`logId`),FfiConverterString.lower(`status`),FfiConverterOptionalString.lower(`notes`),FfiConverterOptionalString.lower(`date`),FfiConverterOptionalString.lower(`substitutedBy`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `editAttendanceJson`(`logId`: kotlin.String, `status`: kotlin.String, `notes`: kotlin.String?, `date`: kotlin.String?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_edit_attendance_json(
+        it, FfiConverterString.lower(`logId`),FfiConverterString.lower(`status`),FfiConverterOptionalString.lower(`notes`),FfiConverterOptionalString.lower(`date`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `exportSyncSnapshotJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_export_sync_snapshot_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `exportTimetableQrV2`(`semester`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_export_timetable_qr_v2(
+        it, FfiConverterLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getCalendarJson`(`year`: kotlin.Int, `month`: kotlin.UInt, `semester`: kotlin.Long?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_calendar_json(
+        it, FfiConverterInt.lower(`year`),FfiConverterUInt.lower(`month`),FfiConverterOptionalLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getClassesForDateJson`(`date`: kotlin.String, `semester`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_classes_for_date_json(
+        it, FfiConverterString.lower(`date`),FfiConverterLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getDashboardJson`(`semester`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_dashboard_json(
+        it, FfiConverterLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getLogsForDateJson`(`date`: kotlin.String, `semester`: kotlin.Long?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_logs_for_date_json(
+        it, FfiConverterString.lower(`date`),FfiConverterOptionalLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getManualCoursesJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_manual_courses_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getMeta`(`key`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_meta(
+        it, FfiConverterString.lower(`key`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getNotesJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_notes_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getProfileJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_profile_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getResultsAnalyticsJson`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_results_analytics_json(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getSubjectLogsJson`(`subjectId`: kotlin.String, `limit`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_subject_logs_json(
+        it, FfiConverterString.lower(`subjectId`),FfiConverterLong.lower(`limit`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getSubjectsJson`(`semester`: kotlin.Long?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_subjects_json(
+        it, FfiConverterOptionalLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getSystemLogsJson`(`limit`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_system_logs_json(
+        it, FfiConverterLong.lower(`limit`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `getTimetableJson`(`semester`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_get_timetable_json(
+        it, FfiConverterLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `importBackupJson`(`rawJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_import_backup_json(
+        it, FfiConverterString.lower(`rawJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `importTimetableQrV2Json`(`semester`: kotlin.Long, `payload`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_import_timetable_qr_v2_json(
+        it, FfiConverterLong.lower(`semester`),FfiConverterString.lower(`payload`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `markAttendanceBatchJson`(`itemsJson`: kotlin.String, `status`: kotlin.String, `date`: kotlin.String, `notes`: kotlin.String, `semester`: kotlin.Long?): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_mark_attendance_batch_json(
+        it, FfiConverterString.lower(`itemsJson`),FfiConverterString.lower(`status`),FfiConverterString.lower(`date`),FfiConverterString.lower(`notes`),FfiConverterOptionalLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `markAttendanceJson`(`subjectId`: kotlin.String, `status`: kotlin.String, `date`: kotlin.String, `notes`: kotlin.String, `substitutedBy`: kotlin.String, `semester`: kotlin.Long?, `logType`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_mark_attendance_json(
+        it, FfiConverterString.lower(`subjectId`),FfiConverterString.lower(`status`),FfiConverterString.lower(`date`),FfiConverterString.lower(`notes`),FfiConverterString.lower(`substitutedBy`),FfiConverterOptionalLong.lower(`semester`),FfiConverterString.lower(`logType`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `mergeRemoteSnapshotJson`(`remoteJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_merge_remote_snapshot_json(
+        it, FfiConverterString.lower(`remoteJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `pruneOldTombstones`(`maxAgeDays`: kotlin.Long): kotlin.ULong {
+            return FfiConverterULong.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_prune_old_tombstones(
+        it, FfiConverterLong.lower(`maxAgeDays`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `queryLocalAssistantJson`(`message`: kotlin.String, `semester`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_query_local_assistant_json(
+        it, FfiConverterString.lower(`message`),FfiConverterLong.lower(`semester`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `saveManualCourseJson`(`courseJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_save_manual_course_json(
+        it, FfiConverterString.lower(`courseJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `saveNoteJson`(`noteJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_save_note_json(
+        it, FfiConverterString.lower(`noteJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `saveSemesterResultsBatchJson`(`enrollmentNumber`: kotlin.String, `studentInfoJson`: kotlin.String, `semestersJson`: kotlin.String, `source`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_save_semester_results_batch_json(
+        it, FfiConverterString.lower(`enrollmentNumber`),FfiConverterString.lower(`studentInfoJson`),FfiConverterString.lower(`semestersJson`),FfiConverterString.lower(`source`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `saveTimetableSlotJson`(`semester`: kotlin.Long, `slotJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_save_timetable_slot_json(
+        it, FfiConverterLong.lower(`semester`),FfiConverterString.lower(`slotJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `saveTimetableStructureJson`(`semester`: kotlin.Long, `periodsJson`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_save_timetable_structure_json(
+        it, FfiConverterLong.lower(`semester`),FfiConverterString.lower(`periodsJson`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `setMeta`(`key`: kotlin.String, `value`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_set_meta(
+        it, FfiConverterString.lower(`key`),FfiConverterString.lower(`value`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `updateProfileJson`(`patchJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_update_profile_json(
+        it, FfiConverterString.lower(`patchJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `updateResultSubjectCreditJson`(`semester`: kotlin.Long, `code`: kotlin.String, `name`: kotlin.String, `credits`: kotlin.Long): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_update_result_subject_credit_json(
+        it, FfiConverterLong.lower(`semester`),FfiConverterString.lower(`code`),FfiConverterString.lower(`name`),FfiConverterLong.lower(`credits`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `updateSubjectJson`(`subjectId`: kotlin.String, `patchJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_update_subject_json(
+        it, FfiConverterString.lower(`subjectId`),FfiConverterString.lower(`patchJson`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(SemesterCoreException::class)override fun `wipeAllData`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_method_semesterworkspace_wipe_all_data(
+        it, _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+    companion object {
+        
+    @Throws(SemesterCoreException::class) fun `open`(`path`: kotlin.String): SemesterWorkspace {
+            return FfiConverterTypeSemesterWorkspace.lift(
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_constructor_semesterworkspace_open(
+        FfiConverterString.lower(`path`),_status)
+}
+    )
+    }
+    
+
+        
+    }
+    
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSemesterWorkspace: FfiConverter<SemesterWorkspace, Pointer> {
+
+    override fun lower(value: SemesterWorkspace): Pointer {
+        return value.uniffiClonePointer()
+    }
+
+    override fun lift(value: Pointer): SemesterWorkspace {
+        return SemesterWorkspace(value)
+    }
+
+    override fun read(buf: ByteBuffer): SemesterWorkspace {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: SemesterWorkspace) = 8UL
+
+    override fun write(value: SemesterWorkspace, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
 
 data class AttendanceLog (
     var `id`: kotlin.String, 
@@ -2331,26 +3727,26 @@ sealed class SemesterCoreException: kotlin.Exception() {
     
     class DatabaseException(
         
-        val `message`: kotlin.String
+        val `reason`: kotlin.String
         ) : SemesterCoreException() {
         override val message
-            get() = "message=${ `message` }"
+            get() = "reason=${ `reason` }"
     }
     
     class ParseException(
         
-        val `message`: kotlin.String
+        val `reason`: kotlin.String
         ) : SemesterCoreException() {
         override val message
-            get() = "message=${ `message` }"
+            get() = "reason=${ `reason` }"
     }
     
     class SyncException(
         
-        val `message`: kotlin.String
+        val `reason`: kotlin.String
         ) : SemesterCoreException() {
         override val message
-            get() = "message=${ `message` }"
+            get() = "reason=${ `reason` }"
     }
     
 
@@ -2387,17 +3783,17 @@ public object FfiConverterTypeSemesterCoreError : FfiConverterRustBuffer<Semeste
             is SemesterCoreException.DatabaseException -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
-                + FfiConverterString.allocationSize(value.`message`)
+                + FfiConverterString.allocationSize(value.`reason`)
             )
             is SemesterCoreException.ParseException -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
-                + FfiConverterString.allocationSize(value.`message`)
+                + FfiConverterString.allocationSize(value.`reason`)
             )
             is SemesterCoreException.SyncException -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
-                + FfiConverterString.allocationSize(value.`message`)
+                + FfiConverterString.allocationSize(value.`reason`)
             )
         }
     }
@@ -2406,17 +3802,17 @@ public object FfiConverterTypeSemesterCoreError : FfiConverterRustBuffer<Semeste
         when(value) {
             is SemesterCoreException.DatabaseException -> {
                 buf.putInt(1)
-                FfiConverterString.write(value.`message`, buf)
+                FfiConverterString.write(value.`reason`, buf)
                 Unit
             }
             is SemesterCoreException.ParseException -> {
                 buf.putInt(2)
-                FfiConverterString.write(value.`message`, buf)
+                FfiConverterString.write(value.`reason`, buf)
                 Unit
             }
             is SemesterCoreException.SyncException -> {
                 buf.putInt(3)
-                FfiConverterString.write(value.`message`, buf)
+                FfiConverterString.write(value.`reason`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -2452,6 +3848,38 @@ public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
         } else {
             buf.put(1)
             FfiConverterUInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
         }
     }
 }
@@ -2672,11 +4100,29 @@ public object FfiConverterSequenceTypeTimetableSlot: FfiConverterRustBuffer<List
     )
     }
     
+ fun `coreCalculateMedicalBunkGuard`(`attended`: kotlin.UInt, `total`: kotlin.UInt, `medicalCount`: kotlin.UInt, `target`: kotlin.UInt): BunkGuard {
+            return FfiConverterTypeBunkGuard.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_calculate_medical_bunk_guard(
+        FfiConverterUInt.lower(`attended`),FfiConverterUInt.lower(`total`),FfiConverterUInt.lower(`medicalCount`),FfiConverterUInt.lower(`target`),_status)
+}
+    )
+    }
+    
  fun `coreCalculatePercentage`(`attended`: kotlin.UInt, `total`: kotlin.UInt): kotlin.Double {
             return FfiConverterDouble.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_calculate_percentage(
         FfiConverterUInt.lower(`attended`),FfiConverterUInt.lower(`total`),_status)
+}
+    )
+    }
+    
+ fun `coreCalculateRequiredSgpa`(`earnedCredits`: kotlin.UInt, `earnedGradePoints`: kotlin.Double, `nextSemCredits`: kotlin.UInt, `targetCgpa`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_calculate_required_sgpa(
+        FfiConverterUInt.lower(`earnedCredits`),FfiConverterDouble.lower(`earnedGradePoints`),FfiConverterUInt.lower(`nextSemCredits`),FfiConverterDouble.lower(`targetCgpa`),_status)
 }
     )
     }
@@ -2697,6 +4143,38 @@ public object FfiConverterSequenceTypeTimetableSlot: FfiConverterRustBuffer<List
     uniffiRustCallWithError(SemesterCoreException) { _status ->
     UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_import_timetable_qr(
         FfiConverterString.lower(`payload`),_status)
+}
+    )
+    }
+    
+ fun `coreIpuSaltedPasswordHash`(`password`: kotlin.String, `captcha`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_ipu_salted_password_hash(
+        FfiConverterString.lower(`password`),FfiConverterString.lower(`captcha`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Lossless 2-way CRDT/LWW + Tombstone snapshot merge shared by Android (Kotlin) and Desktop (Tauri).
+         */
+    @Throws(SemesterCoreException::class) fun `coreMergeSyncSnapshots`(`localJson`: kotlin.String, `remoteJson`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_merge_sync_snapshots(
+        FfiConverterString.lower(`localJson`),FfiConverterString.lower(`remoteJson`),_status)
+}
+    )
+    }
+    
+
+    @Throws(SemesterCoreException::class) fun `coreParseIpuPortalResponse`(`responseText`: kotlin.String, `fallbackSemester`: kotlin.UInt?): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCallWithError(SemesterCoreException) { _status ->
+    UniffiLib.INSTANCE.uniffi_semester_core_fn_func_core_parse_ipu_portal_response(
+        FfiConverterString.lower(`responseText`),FfiConverterOptionalUInt.lower(`fallbackSemester`),_status)
 }
     )
     }

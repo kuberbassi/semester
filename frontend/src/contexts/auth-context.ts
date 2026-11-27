@@ -7,6 +7,10 @@ export interface AuthContextValue {
     loading: boolean;
     login: () => void;
     loginWithGoogle: (code: string) => Promise<void>;
+    /** Desktop only: native PKCE Google sign-in in the system browser + Drive auto-sync. */
+    loginWithGoogleDesktop?: () => Promise<void>;
+    /** Desktop only: open the real local SQLite workspace. */
+    enterLocalWorkspace?: () => Promise<void>;
     loginAsDevTestUser?: () => void;
     logout: () => Promise<void>;
     setUser: (user: User | null) => void;

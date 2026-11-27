@@ -1,9 +1,13 @@
 import { useRef, useEffect } from "react";
+import { isTauriDesktop } from "@/utils/platform";
 
 export function useAutoUpdate() {
     const versionRef = useRef<string | null>(null);
 
     useEffect(() => {
+        // Native desktop bundles are immutable per executable; skip web version polling
+        if (isTauriDesktop()) return;
+
         const checkVersion = async () => {
             try {
                 // Add timestamp to prevent caching of the version file itself

@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BrandLogo from './BrandLogo';
 
-const OPENING_KEY = 'semester_opening_played_v1';
+const OPENING_KEY = 'semester_opening_played_v2';
 
 /**
- * OpenTune-inspired OpeningReveal for the Semester Desktop (.exe) & Web app.
- * Plays once per session: a luminous ring breathes with a crisp glint, then
- * expands like a portal diving straight into the live workspace.
+ * Precision Brand Splash Reveal (plays once per session):
+ * Theme-aware backdrop with refreshed Semester BrandLogo expanding smoothly into the app.
+ * Blocks pointer events and suppresses tooltips beneath while visible.
  */
 export const OpeningReveal: React.FC = () => {
     const [visible, setVisible] = useState<boolean>(() => {
@@ -19,6 +20,7 @@ export const OpeningReveal: React.FC = () => {
 
     useEffect(() => {
         if (!visible) return;
+        window.dispatchEvent(new Event('semester:hide-tooltips'));
         const timer = setTimeout(() => {
             try {
                 sessionStorage.setItem(OPENING_KEY, '1');
@@ -26,40 +28,41 @@ export const OpeningReveal: React.FC = () => {
                 // ignore storage errors
             }
             setVisible(false);
-        }, 1050);
-        return () => clearTimeout(timer);
+        }, 850);
+        return () => {
+            clearTimeout(timer);
+            window.dispatchEvent(new Event('semester:hide-tooltips'));
+        };
     }, [visible]);
 
     return (
-        <AnimatePresence>
+        <AnimatePresence onExitComplete={() => window.dispatchEvent(new Event('semester:hide-tooltips'))}>
             {visible && (
                 <motion.div
+                    data-tooltip-blocker="true"
                     initial={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                    className="fixed inset-0 z-[10000] pointer-events-none flex items-center justify-center bg-black overflow-hidden"
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    className="fixed inset-0 z-[10100] pointer-events-auto select-none flex flex-col items-center justify-center gap-3.5 bg-background overflow-hidden"
                 >
-                    {/* Expanding luminous portal ring */}
                     <motion.div
-                        initial={{ scale: 0.65, opacity: 0.9 }}
-                        animate={{
-                            scale: [0.65, 1.05, 22],
-                            opacity: [0.9, 1, 0],
-                        }}
-                        transition={{
-                            duration: 1.0,
-                            times: [0, 0.42, 1],
-                            ease: [0.6, 0, 0.85, 0.35],
-                        }}
-                        className="w-24 h-24 rounded-full border-2 border-emerald-400/90 shadow-[0_0_60px_rgba(16,185,129,0.65)] flex items-center justify-center"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: [0.8, 1.04, 1], opacity: 1 }}
+                        exit={{ scale: 1.12, opacity: 0 }}
+                        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                        className="drop-shadow-[0_18px_32px_rgba(79,70,229,0.48)]"
                     >
-                        <motion.div
-                            initial={{ opacity: 1, scale: 1 }}
-                            animate={{ opacity: [1, 1, 0], scale: [1, 1.08, 0.4] }}
-                            transition={{ duration: 0.65, times: [0, 0.5, 1] }}
-                            className="w-10 h-10 rounded-full bg-gradient-to-br from-white via-emerald-300 to-emerald-500"
-                        />
+                        <BrandLogo size={68} />
                     </motion.div>
+                    <motion.span
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.32, delay: 0.1 }}
+                        className="font-display text-lg font-extrabold tracking-tight gradient-text"
+                    >
+                        Semester
+                    </motion.span>
                 </motion.div>
             )}
         </AnimatePresence>

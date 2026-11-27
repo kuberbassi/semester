@@ -1,128 +1,85 @@
 <p align="center">
-  <img src="frontend/public/Semester-logo.png" alt="Semester Logo" width="140" />
+  <img src="docs/brand-logo.svg" alt="Semester Logo" width="112" />
 </p>
 
-# Semester — Your Academic Operating System
+<h1 align="center">Semester</h1>
 
-Semester is a high-performance, full-stack Academic Operating System designed for college students. It provides real-time attendance compliance tracking, target analysis, and interactive AI study assistance inside a premium dark-themed PWA container.
+<p align="center">
+  <strong>Local-first academic workspace for Windows &amp; Android.</strong><br />
+  Track attendance, live timetables, IPU ExamWeb results, practicals, exam dates, and notes — all stored locally on your device with private 2-way Google Drive sync.
+</p>
 
----
-
-## 🚀 Key Features
-
-- 📅 **Timetable & Attendance Log**: Plan weekly slots and record classes with substitution/cancellation support. Consecutive periods of the same subject share one smart attendance mark, while a later occurrence after another class is tracked separately.
-- 📊 **Target Compliance & Bunk Guard**: Dynamic compliance indicators showing how many classes you can bunk or must attend to stay above your target percentage.
-- 🤖 **Semester Assistant**: Contextual study chat assistant powered by Groq LLM with automatic failover to Google Gemini.
-- 💾 **Google Drive Auto-Sync**: Auto-backup and sync academic data to your private Google AppData folder.
-- 🔑 **Account Migration**: Cryptographically signed migration tokens to easily transfer data to another account.
-
----
-
-## 📂 Project Structure
-
-Semester is structured as a monorepo:
-- **`frontend/`**: React + TypeScript + Vite Single Page Application (PWA).
-- **`api-node/`**: Node.js + Express + Prisma + Neon PostgreSQL API backend.
+<p align="center">
+  <a href="https://kuberbassi.github.io/semester/"><strong>Official Website &amp; Downloads</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://github.com/kuberbassi/semester/releases/latest"><strong>Latest Release</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="DOCUMENTATION.md"><strong>Architecture Docs</strong></a>
+</p>
 
 ---
 
-## 🔑 Environment Setup
+## Downloads
 
-### Backend (`api-node/.env`)
-```env
-DATABASE_URL="postgresql://..."
-JWT_SECRET="your_jwt_secret"
-GOOGLE_CLIENT_ID="your_google_client_id"
-GOOGLE_CLIENT_SECRET="your_google_client_secret"
-GROQ_API_KEY="your_groq_api_key"
-GEMINI_API_KEY="your_gemini_api_key"
-PORT=5001
-NODE_ENV=development
+Get the latest installers directly from the [download site](https://kuberbassi.github.io/semester/) or [GitHub Releases](https://github.com/kuberbassi/semester/releases/latest):
+
+| Platform | Package | Requirements |
+| :--- | :--- | :--- |
+| **Windows Desktop** | `Semester_1.0.0_x64-setup.exe` (NSIS) &amp; portable `Semester.exe` | Windows 10 / 11 (64-bit) |
+| **Android** | `Semester-v1.0.0-android.apk` (ARM64 + x86_64) | Android 8.0+ (API 26+) |
+
+---
+
+## Key Features
+
+- **Instant Local-First Engine**: Powered by a shared Rust + SQLite (WAL) core (`semester-core`) across Windows and Android — sub-millisecond reads/writes and 100% offline capable.
+- **Dashboard & Bunk Guard**: Live liquid attendance gauges, safe-skip / recovery calculations, medical leave adjustments, and slot-ordered **Today's Classes** with real-time period indicators (`Red` done · `Green` active · `Blue` upcoming).
+- **Timetable & Calendar Attendance**: Monday–Friday timetable builder with linked course classrooms, Monday–Sunday attendance calendar, Present / Absent / Medical / Substituted (linked to enrolled courses) / Cancelled tracking, and offline **2-Way QR Timetable Share & Camera Scanner**.
+- **IPU ExamWeb Results Vault**: Direct `examweb.ggsipu.ac.in` sync with manual CAPTCHA verification, automatic profile linking, smart credit fallback (`Theory = 3`, `Lab / Engineering Graphics = 1`, `NUES / HVPE = 2`), CGPA/SGPA analytics, and printable PDF transcript export.
+- **Academic Studio**: Rich notes & checklists with **Exam Mode** (Google-Calendar-style upcoming exam & practical alerts), Practicals/Assignments & Hardcopy tracker, and self-paced Online Courses tracker.
+- **Private 2-Way Google Drive Sync**: Syncs conflict-free snapshots directly to your own hidden Google Drive `appDataFolder` with empty-device upload protection and automatic local safety backups.
+- **Android Home Screen Widget & Schedule Alerts**: Glanceable live/next class widget with 1-tap marking and clean pre-class & exam reminders.
+- **Built-In Local AI + Optional BYOK**: Instant offline academic assistant out of the box, plus optional bring-your-own Gemini or Groq API key encrypted locally.
+
+---
+
+## Repository Structure
+
+```text
+semester/
+├── semester-core/       # Shared Rust + SQLite workspace, math, IPU parser, QR & CRDT sync engine
+├── src-tauri/           # Windows Desktop Tauri v2 backend (SQLite, DPAPI crypto, Drive sync, IPU)
+├── frontend/            # React + TypeScript + Vite desktop UI
+├── semester-android/    # Native Jetpack Compose Android app (UniFFI Rust bridge, Glance widget, CameraX QR)
+├── docs/                # GitHub Pages download & landing site (https://kuberbassi.github.io/semester/)
+├── scripts/             # Android build/deploy helper scripts
+├── api-node/            # Legacy web API workspace & shared domain helpers
+└── tests/               # Unit quality tests
 ```
 
-### Frontend (`frontend/.env`)
-```env
-VITE_API_BASE_URL="http://localhost:5001"
-VITE_GOOGLE_CLIENT_ID="your_google_client_id"
+---
+
+## Building From Source
+
+### Prerequisites
+- **Node.js 22+**, **Rust stable**, **JDK 21**
+- For Android: **Android SDK + NDK** and `cargo-ndk`
+
+### Windows Desktop (Tauri v2)
+```powershell
+npm install
+cargo test --manifest-path semester-core/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml
+npx @tauri-apps/cli@2 build --bundles nsis
+```
+
+### Android Release APK
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 build -Release
 ```
 
 ---
 
-## 🛠️ Quick Start
+## License
 
-You can run the entire workspace concurrently from the root directory:
-
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Sync Database Schema**:
-   ```bash
-   cd api-node
-   npx prisma db push
-   cd ..
-   ```
-
-3. **Start Development Servers**:
-   ```bash
-   npm run dev
-   ```
-   * Frontend will start on `http://localhost:5173`
-   * Backend API will start on `http://localhost:5001`
-   * The root startup command waits for `/api/health` before starting Vite, preventing temporary proxy connection errors while the API boots.
-
----
-
-## 🧪 Testing
-
-Run the fast, database-free quality checks from the repository root:
-
-```bash
-npm test
-npm run lint
-npm run build
-```
-
-Or run the same complete local gate used by continuous integration:
-
-```bash
-npm run quality
-```
-
-The unit tests cover attendance status rules, attendance and grade calculations, timetable compatibility and ordering, and local calendar-date formatting.
-
-The following backend integration scripts require a configured test database. They create isolated sentinel records and clean those records after the run:
-
-Run the attendance backend test suite to verify DB connectivity, all attendance marking statuses, counter logic, duplicate detection, substitution flow, and query filters — without touching any real data:
-
-```bash
-cd api-node
-npx tsx scripts/test-attendance.ts
-npm run test:tracker-activity
-npm run test:bulk-attendance
-```
-
-> All test data is created under a sentinel semester (`99`) with dates in year `2000` and is fully cleaned up after the run.
-
-The tracker activity test performs a real submitted-to-unsubmitted database round trip. It verifies that one subject row is updated, each committed transition has a unique server-timestamped event, and a stale concurrent write creates neither a state change nor a duplicate activity row.
-
-The frontend and API lint checks can also be run separately with `npm run lint:frontend` and `npm run lint:api`. Database integration scripts are intentionally not part of the default CI gate because CI has no authenticated test database. The current cleanup status and known verification limits are recorded honestly in [logs.md](logs.md).
-
----
-
-## Attendance Workflow
-
-- Mark each scheduled attendance block individually, or use the three-dot **Mark all** menu for Present, Absent, Medical Leave, or Cancelled. **Unmark all** atomically clears only the exact Marked Records loaded for the selected date and semester. Substitution remains an individual marking action because it requires selecting a replacement subject.
-- Bulk marking is available only when the selected date has no marked records. If even one record exists, use **Unmark all** first; the API independently enforces the same rule and applies the complete bulk mark atomically.
-- Attendance controls remain locked until the selected date's Marked Records are verified. Failed or lost mutation responses trigger a server reload, and reconnecting automatically retries record loading; writes are never blindly repeated.
-- Consecutive periods of one subject share a mark, while a later occurrence after another timetable slot remains independently markable.
-- The dashboard shows official attendance and a conservative **Medical as absent** percentage for leaves that have not yet been accepted.
-- Calendar colours distinguish Present, Absent, Medical Leave, Cancelled, and Substitution records.
-- Semester Assistant uses the selected semester, understands block-based pending attendance, and keeps official and medical-as-absent percentages clearly separated.
-
----
-
-## Code quality
-
-Every push and pull request runs lint, the database-free unit suite, and both production builds through [the quality workflow](.github/workflows/quality.yml). See [CODE_QUALITY_PLAN.md](CODE_QUALITY_PLAN.md) for the practices behind the checks and [logs.md](logs.md) for the plain-language change record and current validation evidence.
+Released under the [MIT License](LICENSE).

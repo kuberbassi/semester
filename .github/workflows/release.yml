@@ -1,9 +1,6 @@
 name: Release Native Artifacts
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -11,16 +8,16 @@ permissions:
 
 jobs:
   test-rust-core:
-    name: Test Rust Native Core
+    name: Test Unified Rust Core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Run Core Test Suite
+      - name: Run Core Test Suite (Math, CRDT Sync, Workspace v2)
         run: cargo test --manifest-path semester-core/Cargo.toml
 
   build-android:
-    name: Build Android APK
+    name: Build Native Android APK (ARM64 + x86_64 Rust Core)
     needs: test-rust-core
     runs-on: ubuntu-latest
     steps:
@@ -40,28 +37,31 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
 
-      - name: Compile Rust Core for Android (.so)
+      - name: Compile Rust Core for Android (.so) & Refresh UniFFI Bindings
         run: |
           cd semester-core
           cargo ndk -t arm64-v8a -t x86_64 -o ../semester-android/app/src/main/jniLibs build --release
+          cargo run --bin uniffi-bindgen -- generate --library ../semester-android/app/src/main/jniLibs/arm64-v8a/libsemester_core.so --language kotlin --out-dir ../semester-android/app/src/main/java
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Build Release APK
         run: |
           cd semester-android
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          gradle assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Semester-android.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Semester-Android-APK
-          path: semester-android/app/build/outputs/apk/release/*.apk
+          path: semester-android/app/build/outputs/apk/release/Semester-android.apk
 
   build-windows:
-    name: Build Windows Desktop (.exe)
+    name: Build Windows Desktop Installer (.exe)
     needs: test-rust-core
     runs-on: windows-latest
     steps:
@@ -75,11 +75,22 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Frontend Dependencies
+        run: npm ci --prefix frontend
 
-      - name: Build Frontend
-        run: npm run build --prefix frontend
+      - name: Test Desktop Rust Backend
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+      - name: Build Tauri NSIS Installer
+        run: npx --yes @tauri-apps/cli@2 build --bundles nsis
+
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Semester-Windows-Installer
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/Semester.exe
 
   publish-release:
     name: Publish to GitHub Releases

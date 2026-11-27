@@ -4,9 +4,10 @@ import { useDashboard, useMarkAttendance, useDeleteSubject } from '@/hooks/useDa
 import { useAuth } from '@/contexts/auth-context';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Plus, Trash2, Edit2, Check, X,
-    Target, Settings as SettingsIcon
+    Plus, Trash2, Edit2,
+    Target, Settings as SettingsIcon, LayoutGrid, List, LayoutDashboard
 } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
 import AttendanceModal from '@/components/modals/AttendanceModal';
@@ -21,11 +22,9 @@ import { useConfirm } from '@/contexts/confirm-context';
 import { haptics } from '@/utils/haptics';
 import type { Subject, TimetableSlot } from '@/types';
 import { sortTimetableSlots } from '@/lib/timetable';
-import { HorizontalLiquidSubjects } from '@/components/dashboard/HorizontalLiquidSubjects';
 import { WhatIfBunkSimulator } from '@/components/dashboard/WhatIfBunkSimulator';
 import { LivePeriodRadarWidget } from '@/components/dashboard/LivePeriodRadarWidget';
 import { DashboardTodoWidget } from '@/components/dashboard/DashboardTodoWidget';
-import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
 import { triggerCelebration } from '@/utils/celebration';
 import { isDevTestMode, resetDevTestData, disableDevTestMode } from '@/utils/devTestData';
 import { FramerSpotlightCard } from '@/components/ui/FramerSpotlightCard';
@@ -64,7 +63,6 @@ const SubjectRow: React.FC<{
     triggerBubbleMenu: (subjectId: string, event: SubjectMenuEvent) => void;
     setEditingSubject: (subject: Subject) => void;
     handleDeleteSubject: (subjectId: string, subjectName: string) => void;
-    onQuickMark: (subjectId: string, status: 'present' | 'absent') => void;
 }> = ({
     subject,
     targetThreshold,
@@ -73,7 +71,6 @@ const SubjectRow: React.FC<{
     triggerBubbleMenu,
     setEditingSubject,
     handleDeleteSubject,
-    onQuickMark,
 }) => {
     const { attended, total, totalWithMedical, medicalLeaveCount } = getMedicalAdjustedCounts(subject);
     const pct = subject.attendance_percentage ?? (total > 0 ? (attended / total) * 100 : 0);
@@ -90,83 +87,100 @@ const SubjectRow: React.FC<{
     return (
         <tr
             {...longPressHandlers}
-            className="hover:bg-surface-container/20 transition-colors group cursor-default border-b border-outline/10 last:border-b-0"
+            className="hover:bg-on-surface/[0.025] transition-colors group cursor-default border-b border-on-surface/[0.07] last:border-b-0"
         >
-            <td className="px-6 py-3.5 font-mono text-xs font-semibold text-on-surface-variant/40">{subject.code || 'COURSE'}</td>
-            <td className="px-6 py-3.5 font-bold text-on-surface">
-                <div>
-                    <p className="truncate max-w-[200px] leading-tight text-xs">{subject.name}</p>
+            <td
+                className="px-5 py-3.5 font-mono text-[11px] font-bold text-on-surface-variant whitespace-nowrap"
+                data-tooltip={subject.code ? `Course code: ${subject.code}` : 'No course code assigned'}
+            >
+                <span className="px-2 py-0.5 rounded-full bg-on-surface/[0.05] border border-on-surface/[0.08]">
+                    {subject.code || '—'}
+                </span>
+            </td>
+            <td className="px-5 py-3.5 font-bold text-on-surface">
+                <div className="min-w-0">
+                    <p className="truncate max-w-[240px] leading-tight text-xs font-bold" data-tooltip={subject.name}>
+                        {subject.name}
+                    </p>
                     <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[8px] font-semibold text-on-surface-variant/40 uppercase tracking-widest">
+                        <span className="text-[9px] font-semibold text-on-surface-variant/65 uppercase tracking-wider">
                             {(subject.categories?.includes('Practical') || subject.type?.toLowerCase() === 'practical' || subject.type?.toLowerCase() === 'lab' || subject.name?.toLowerCase().includes('lab')) ? 'Practical' : 'Theory'}
                         </span>
                         {subject.credits !== null && subject.credits !== undefined && (
                             <>
-                                <span className="w-1 h-1 rounded-full bg-on-surface-variant/20" />
-                                <span className="text-[8px] font-bold text-primary/70 uppercase tracking-widest">{subject.credits} Credits</span>
+                                <span className="w-1 h-1 rounded-full bg-on-surface-variant/30" />
+                                <span className="text-[9px] font-bold text-primary/85 uppercase tracking-wider whitespace-nowrap">
+                                    {subject.credits} {subject.credits === 1 ? 'Credit' : 'Credits'}
+                                </span>
                             </>
                         )}
                     </div>
                 </div>
             </td>
-            <td className="px-6 py-3.5 text-on-surface-variant/50 font-medium text-xs">
-                <p className="truncate max-w-[150px] leading-tight">{formatTeacherName(subject.professor || '')}</p>
+            <td className="px-5 py-3.5 text-on-surface-variant font-medium text-xs">
+                <p
+                    className="truncate max-w-[160px] leading-tight"
+                    data-tooltip={subject.professor ? `Faculty: ${formatTeacherName(subject.professor)}` : undefined}
+                >
+                    {formatTeacherName(subject.professor || '') || '—'}
+                </p>
             </td>
-            <td className="px-6 py-3.5 text-center font-semibold text-on-surface text-xs">
+            <td className="px-5 py-3.5 text-center font-semibold text-on-surface text-xs whitespace-nowrap tabular-nums">
                 <div>{attended} / {total}</div>
                 {medicalLeaveCount > 0 && (
-                    <WarmTooltip content={`Medical counted as absent: ${attended}/${totalWithMedical} (${Math.round(withMedicalAsAbsentPct)}%)`}>
-                        <div className="mt-1 text-[8px] font-medium text-cyan-400/80 cursor-help underline decoration-dotted">
-                            med: +{medicalLeaveCount} excluded
+                    <WarmTooltip content={`${medicalLeaveCount} medical leaves excluded · Counted as absent: ${attended}/${totalWithMedical} (${Math.round(withMedicalAsAbsentPct)}%)`}>
+                        <div className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-[9.5px] font-bold text-sky-700 dark:text-cyan-300 cursor-help">
+                            +{medicalLeaveCount} med
                         </div>
                     </WarmTooltip>
                 )}
             </td>
-            <td className="px-6 py-3.5 text-center">
-                <div className="flex flex-col items-center gap-1">
-                    <span className={`font-bold text-xs ${isCritical ? 'text-red-500' : 'text-on-surface'}`}>{Math.round(pct)}%</span>
-                    <div className="w-12 h-1 bg-on-surface/5 rounded-full overflow-hidden shrink-0">
-                        <div className={`h-full ${isCritical ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, pct)}%` }} />
+            <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                <div
+                    className="flex flex-col items-center gap-1"
+                    data-tooltip={`${pct.toFixed(1)}% attendance (Goal: ${targetThreshold}%)`}
+                >
+                    <span className={`font-bold text-xs tabular-nums ${isCritical ? 'text-rose-500 dark:text-rose-400' : 'text-on-surface'}`}>{Math.round(pct)}%</span>
+                    <div className="w-14 h-1.5 bg-on-surface/[0.08] rounded-full overflow-hidden shrink-0">
+                        <div className={`h-full rounded-full ${isCritical ? 'bg-gradient-to-r from-rose-500 to-pink-500' : 'bg-gradient-to-r from-indigo-500 to-cyan-400'}`} style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                 </div>
             </td>
-            <td className="px-6 py-3.5 text-center whitespace-nowrap">
-                <CallChip
-                    label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
-                    variant={isCritical ? 'danger' : 'success'}
-                    pulse={isCritical}
-                />
+            <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                <span
+                    data-tooltip={
+                        isCritical
+                            ? `Attend the next ${needed} consecutive ${needed === 1 ? 'class' : 'classes'} to reach ${targetThreshold}%`
+                            : `You can safely miss ${canSkip} more ${canSkip === 1 ? 'class' : 'classes'} and remain at or above ${targetThreshold}%`
+                    }
+                >
+                    <CallChip
+                        label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks`}
+                        variant={isCritical ? 'danger' : 'success'}
+                        pulse={isCritical}
+                    />
+                </span>
             </td>
 
-            <td className="px-6 py-3.5 text-right">
-                <div className="flex items-center justify-end gap-2.5">
-                    <div className="flex items-center gap-1">
-                        <TactileMarkButton
-                            status="present"
-                            onMark={() => onQuickMark(subjectId, 'present')}
-                        />
-                        <TactileMarkButton
-                            status="absent"
-                            onMark={() => onQuickMark(subjectId, 'absent')}
-                        />
-                    </div>
-                    <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex justify-end gap-1 opacity-80 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <button
                             onClick={() => setEditingSubject(subject)}
-                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-transparent text-on-surface-variant/60 hover:border-outline/60 hover:bg-surface-container hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-all cursor-pointer"
+                            className="no-fluid h-8 w-8 inline-flex items-center justify-center rounded-full border border-on-surface/[0.08] bg-on-surface/[0.03] text-on-surface-variant hover:border-primary/35 hover:bg-primary/12 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-all cursor-pointer"
                             title={`Edit ${subject.name}`}
                             aria-label={`Edit ${subject.name}`}
                         >
-                            <Edit2 size={14} strokeWidth={1.8} />
+                            <Edit2 size={13} strokeWidth={1.9} />
                         </button>
                         <HoldButton
                             variant="danger"
                             holdDuration={750}
                             title={`Hold to delete ${subject.name}`}
                             onComplete={() => handleDeleteSubject(subjectId, subject.name)}
-                            className="h-8 w-8 p-0 flex items-center justify-center rounded-lg border border-transparent hover:border-red-500/20"
+                            className="h-8 w-8 p-0 flex items-center justify-center rounded-full"
                         >
-                            <Trash2 size={14} strokeWidth={1.8} />
+                            <Trash2 size={13} strokeWidth={1.9} />
                         </HoldButton>
                     </div>
                 </div>
@@ -217,7 +231,9 @@ const Dashboard: React.FC = () => {
                 const data = await attendanceService.getTimetable(currentSemester);
                 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 const currentDay = dayNames[new Date().getDay()];
-                const daySlots = data?.schedule?.[currentDay] || [];
+                const daySlots = (data?.schedule?.[currentDay] || []).filter(
+                    (slot) => !['break', 'lunch', 'gap', 'free'].includes(String(slot.type || '').toLowerCase())
+                );
                 
                 setTodayClasses(sortTimetableSlots(daySlots));
             } catch (err) {
@@ -228,6 +244,11 @@ const Dashboard: React.FC = () => {
         if (user) {
             void fetchTimetable();
         }
+        const onLocalDbChange = () => {
+            if (user) void fetchTimetable();
+        };
+        window.addEventListener('semester:local-db-changed', onLocalDbChange);
+        return () => window.removeEventListener('semester:local-db-changed', onLocalDbChange);
     }, [currentSemester, user]);
 
     const handleDeleteSubject = async (subjectId: string, subjectName: string) => {
@@ -254,7 +275,7 @@ const Dashboard: React.FC = () => {
             { subjectId, status },
             {
                 onSuccess: () => {
-                    showToast('success', status === 'present' ? 'âœ“ Marked Present' : 'âœ• Marked Absent');
+                    showToast('success', status === 'present' ? 'Marked Present' : 'Marked Absent');
                     if (status === 'present' && att >= 74.0) {
                         triggerCelebration();
                     }
@@ -294,13 +315,13 @@ const Dashboard: React.FC = () => {
     const targetDelta = att - targetThreshold;
     const hasAttendanceData = totalClasses > 0;
 
-    // Seed OpenTune-style ambient top glow dynamically from overall attendance health
+    // Seed ambient top glow with unified Silver-Iris / Amber / Rose palette
     useEffect(() => {
         const accent = !hasAttendanceData || att >= targetThreshold
-            ? '#10b981'
+            ? '#818cf8'
             : att >= Math.max(50, targetThreshold - 10)
-                ? '#f59e0b'
-                : '#ef4444';
+                ? '#fbbf24'
+                : '#fb7185';
         document.documentElement.style.setProperty('--semester-ambient-accent', accent);
     }, [att, targetThreshold, hasAttendanceData]);
 
@@ -338,74 +359,63 @@ const Dashboard: React.FC = () => {
     return (
         <div className="pb-24 w-full select-none relative">
             <AuroraGlow variant="multi" className="top-[-50px] left-1/2 -translate-x-1/2" intensity="subtle" />
-            {/* Header Section */}
-            <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">
-                        System / Overview
-                    </p>
-                    <h1 className="text-2xl font-bold text-on-surface tracking-tight">Dashboard</h1>
-                    <p className="text-xs text-on-surface-variant/40 mt-0.5">
-                        Manage and track subject attendance.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-3 self-start sm:self-auto">
-                    {/* GlideSelect Semester Dropdown */}
-                    <div className="w-28 shrink-0">
-                        <Select
-                            options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({
-                                value: s,
-                                label: `Sem ${s}`,
-                            }))}
-                            value={currentSemester}
-                            onChange={(e) => setCurrentSemester(parseInt(e.target.value) || 1)}
-                            className="py-1.5 px-3 text-xs"
-                        />
-                    </div>
-
-                    <FuseButton
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="py-1.5 px-3 text-xs"
-                    >
-                        <Plus size={14} className="mr-1 inline-block" /> Add Subject
-                    </FuseButton>
-                </div>
-            </div>
+            <PageHeader
+                title="Dashboard"
+                icon={LayoutDashboard}
+                badge={`Sem ${currentSemester}`}
+                actions={
+                    <>
+                        <div className="w-28 shrink-0">
+                            <Select
+                                options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({
+                                    value: s,
+                                    label: `Sem ${s}`,
+                                }))}
+                                value={currentSemester}
+                                onChange={(e) => setCurrentSemester(parseInt(e.target.value) || 1)}
+                                className="py-1.5 px-3 text-xs"
+                            />
+                        </div>
+                        <FuseButton
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="py-1.5 px-3.5 text-xs"
+                        >
+                            <Plus size={14} className="mr-1 inline-block" /> Add Subject
+                        </FuseButton>
+                    </>
+                }
+            />
 
             {isDevTestMode() && (
-                <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 backdrop-blur-xl">
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-2xl liquid-glass">
                     <div className="flex items-center gap-2.5">
-                        <span className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                        </span>
-                        <span className="text-xs font-bold tracking-wide">
-                            DEV TEST MODE ACTIVE — Interactive Mock Data Loaded
+                        <span className="h-2 w-2 rounded-full bg-primary" />
+                        <span className="text-xs font-semibold text-on-surface/85">
+                            Dev Preview Mode
                         </span>
                     </div>
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                         <HoldButton
-                            label="Hold to Reset Data"
+                            label="Hold to Reset"
                             completedLabel="Resetting..."
-                            holdTime={900}
+                            holdTime={800}
                             variant="primary"
                             className="py-1 px-3 text-[11px]"
                             onComplete={() => {
                                 resetDevTestData();
                                 loadDashboard();
-                                showToast('success', 'Dev test data reset to initial benchmark state');
+                                showToast('success', 'Dev preview data reset');
                             }}
                         />
                         <FuseButton
                             onClick={() => {
                                 disableDevTestMode();
-                                window.location.href = '/login';
+                                window.location.href = '/';
                             }}
                             variant="secondary"
                             className="py-1 px-3 text-[11px]"
                         >
-                            ✕ Exit Dev Mode
+                            Exit
                         </FuseButton>
                     </div>
                 </div>
@@ -421,244 +431,216 @@ const Dashboard: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {/* Semester Signature: Collapsible Horizontal Liquid Subjects Shelf */}
-                    <HorizontalLiquidSubjects
-                        subjects={sortSubs(subjects)}
-                        targetThreshold={targetThreshold}
-                        classesNeeded={classesNeeded}
-                        classesCanSkip={classesCanSkip}
-                        onQuickMark={handleQuickMark}
-                        onSelectAccent={(hex) => {
-                            document.documentElement.style.setProperty('--semester-ambient-accent', hex);
-                        }}
-                    />
+                    {/* Asymmetric Hero Bento Stage (12-Column Desktop Studio Layout) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        {/* Left Hero (5 cols): Tall Gradient Liquid Fill Reservoir */}
+                        <div className="lg:col-span-5 flex flex-col">
+                            <FullCardLiquidFill
+                                percentage={att}
+                                attended={physicalAttended}
+                                total={eligibleClasses}
+                                safeBunks={safeBunks}
+                                deficitCount={riskCount}
+                                medicalLeaveCount={medicalLeaveCount}
+                                attendanceWithoutMedical={attendanceWithoutMedical}
+                                targetThreshold={targetThreshold}
+                                className="flex-1 min-h-[410px]"
+                            />
+                        </div>
 
-                    {/* Bento Grid */}
-                    <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3 md:items-stretch">
-                        
-                        {/* Bento Card 1: Full Card Gradient Liquid Fill Reservoir */}
-                        <FullCardLiquidFill
-                            percentage={att}
-                            attended={physicalAttended}
-                            total={eligibleClasses}
-                            safeBunks={safeBunks}
-                            deficitCount={riskCount}
-                            medicalLeaveCount={medicalLeaveCount}
-                            attendanceWithoutMedical={attendanceWithoutMedical}
-                            targetThreshold={targetThreshold}
-                            className="md:h-full min-h-[380px]"
-                        />
-
-                        {/* Bento Card 2: Academic Profile & Target */}
-                        <FramerSpotlightCard glowColor="blue" className="p-5 sm:p-6 flex flex-col justify-between md:h-full">
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
-                                            <Target size={14} />
+                        {/* Right Column (7 cols): Luminous Academic Command Deck + Wide Tasks Panel */}
+                        <div className="lg:col-span-7 flex flex-col gap-6">
+                            {/* Top Command Banner */}
+                            <div className="liquid-hero-banner rounded-[26px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/14 border border-primary/25 text-[11px] font-bold text-primary">
+                                            <Target size={11} />
+                                            Goal {targetThreshold}%
                                         </span>
-                                        <span className="text-[10px] font-extrabold text-on-surface-variant/60 uppercase tracking-widest">
-                                            Academic Target
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold tabular-nums border ${
+                                            !hasAttendanceData
+                                                ? 'text-on-surface-variant bg-on-surface/[0.06] border-on-surface/[0.10]'
+                                                : targetDelta >= 0
+                                                    ? 'text-indigo-600 dark:text-cyan-300 bg-cyan-500/12 border-cyan-500/25'
+                                                    : 'text-rose-600 dark:text-rose-300 bg-rose-500/12 border-rose-500/25'
+                                        }`}>
+                                            {!hasAttendanceData
+                                                ? 'No logs yet'
+                                                : targetDelta >= 0
+                                                    ? `+${targetDelta.toFixed(1)}% above goal`
+                                                    : `${Math.abs(targetDelta).toFixed(1)}% below goal`}
                                         </span>
                                     </div>
-                                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400">
-                                        Sem {currentSemester}
-                                    </span>
-                                </div>
-                                
-                                {/* Target Meter with Orbital CometDial */}
-                                <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d12]/80 backdrop-blur-xl p-4 mb-4 flex items-center justify-between gap-4 shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]">
-                                    <div className="flex-1">
-                                        <p className="text-[9px] font-bold uppercase tracking-wider text-on-surface-variant/40">Minimum Goal</p>
-                                        <p className="text-3xl font-black tracking-tight text-white">{targetThreshold}%</p>
-                                        <div className="mt-2 text-[10px] font-bold">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono ${
-                                                !hasAttendanceData
-                                                    ? 'text-on-surface-variant/50 bg-white/[0.04]'
-                                                    : targetDelta >= 0
-                                                        ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                                                        : 'text-rose-400 bg-rose-500/10 border border-rose-500/20'
-                                            }`}>
-                                                {!hasAttendanceData
-                                                    ? 'No classes recorded'
-                                                    : targetDelta >= 0
-                                                        ? `+${targetDelta.toFixed(1)}% safe buffer`
-                                                        : `${Math.abs(targetDelta).toFixed(1)}% deficit`}
-                                            </span>
-                                        </div>
+
+                                    <h2 className="font-display text-2xl sm:text-[26px] font-extrabold tracking-tight text-on-surface leading-tight truncate">
+                                        {user?.name?.replace(/\s*\(Dev Mode\)/i, '') || 'Student'}
+                                    </h2>
+
+                                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-on-surface-variant">
+                                        <span className="font-mono text-on-surface/85">{user?.enrollment_number || 'Add enrollment in Settings'}</span>
+                                        <span className="opacity-35">·</span>
+                                        <span>Batch {user?.batch || '—'}</span>
+                                        <span className="opacity-35">·</span>
+                                        <span>Semester {currentSemester}</span>
                                     </div>
-                                    <div className="shrink-0 flex items-center justify-center">
-                                        <CometDial
-                                            value={hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}
-                                            size={88}
-                                            strokeWidth={8}
-                                            color={targetDelta < 0 ? '#f43f5e' : '#00f0ff'}
-                                            label="Attended"
-                                        />
+
+                                    <div className="mt-4">
+                                        <Link
+                                            to="/settings"
+                                            className="no-fluid inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full bg-surface/80 dark:bg-white/[0.08] hover:bg-primary/15 border border-primary/20 text-xs font-bold text-on-surface hover:text-primary transition-colors cursor-pointer"
+                                        >
+                                            <SettingsIcon size={12} />
+                                            Configure Targets
+                                        </Link>
                                     </div>
                                 </div>
 
-                                {/* Clean Bento Tiles for Student Attributes */}
-                                <div className="grid grid-cols-2 gap-2.5 pt-1">
-                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
-                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Student Name</p>
-                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">{user?.name || 'Alex Mercer'}</p>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
-                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40 font-mono">Enrollment</p>
-                                        <p className="text-xs font-bold text-on-surface truncate font-mono mt-0.5">{user?.enrollment_number || '04216403223'}</p>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
-                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Batch</p>
-                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">{user?.batch || '2023-2027'}</p>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-surface-container/30 border border-white/[0.06]">
-                                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-on-surface-variant/40">Current Term</p>
-                                        <p className="text-xs font-bold text-on-surface truncate mt-0.5">Semester {currentSemester}</p>
-                                    </div>
+                                <div className="shrink-0 flex items-center justify-center sm:pl-4 sm:border-l sm:border-primary/15">
+                                    <CometDial
+                                        value={hasAttendanceData ? Math.min(100, Math.max(0, att)) : 0}
+                                        size={104}
+                                        strokeWidth={8}
+                                        color={targetDelta < 0 ? '#f43f5e' : '#6366f1'}
+                                        secondaryColor={targetDelta < 0 ? '#f59e0b' : '#06b6d4'}
+                                        label="Attended"
+                                        tooltip={hasAttendanceData ? `${physicalAttended} of ${eligibleClasses} eligible classes (${att.toFixed(1)}%)` : 'No attendance logged yet'}
+                                    />
                                 </div>
                             </div>
 
-                            <div className="border-t border-outline/30 pt-3 mt-4">
-                                <Link
-                                    to="/settings"
-                                    className="w-full h-9 flex items-center justify-center gap-2 border border-white/[0.08] hover:border-white/[0.18] hover:bg-surface-container/50 rounded-xl text-xs font-bold text-on-surface transition-all cursor-pointer shadow-sm"
-                                >
-                                    <SettingsIcon size={13} />
-                                    Configure Settings & Targets
-                                </Link>
-                            </div>
-                        </FramerSpotlightCard>
+                            {/* Bottom Wide Tasks & Notes Widget */}
+                            <FramerSpotlightCard className="p-5 sm:p-6 flex-1 flex flex-col">
+                                <DashboardTodoWidget />
+                            </FramerSpotlightCard>
+                        </div>
+                    </div>
 
-                        {/* Bento Card 3: Tasks & Todo Box */}
-                        <FramerSpotlightCard glowColor="purple" className="p-5 sm:p-6 flex flex-col md:h-full">
-                            <DashboardTodoWidget />
-                        </FramerSpotlightCard>
-
-                        {/* Kinetic Interactive Section: Live Radar & What-If Simulator */}
-                        <div className="md:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-6 my-2">
+                    {/* Row 2: Asymmetric Interactive Live Radar (7 cols) & What-If Simulator (5 cols) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        <div className="lg:col-span-7">
                             <LivePeriodRadarWidget
                                 slots={todayClasses}
                                 subjects={subjects}
                                 onMarkAttendance={handleQuickMark}
                             />
+                        </div>
+                        <div className="lg:col-span-5">
                             <WhatIfBunkSimulator
                                 overallAttended={physicalAttended}
                                 overallTotal={eligibleClasses}
                                 targetThreshold={targetThreshold}
                             />
                         </div>
+                    </div>
 
-                        {/* Bento Card 5: Courses Breakdown */}
-                        <FramerSpotlightCard glowColor="cyan" className="overflow-hidden md:col-span-3 mt-2">
-                            <div className="px-6 py-5 border-b border-outline/30 bg-surface-container/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                <div>
-                                    <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest block">
-                                        Courses Breakdown
-                                    </span>
-                                    <p className="text-xs text-white/50 mt-0.5">
-                                        Interactive liquid-filled subject cards with category aurora styling.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
-                                    {/* View Mode Toggle */}
-                                    <RubberSegment<'gallery' | 'table'>
-                                        options={[
-                                            { id: 'gallery', label: '🎴 Gallery' },
-                                            { id: 'table', label: '☰ Table' },
-                                        ]}
-                                        value={subjectViewMode}
-                                        size="sm"
-                                        variant="white"
-                                        layoutId="subject-view-mode-rubber"
-                                        onChange={(mode) => {
-                                            setSubjectViewMode(mode);
-                                            localStorage.setItem('semester_dashboard_subject_view', mode);
-                                        }}
-                                    />
-
-                                    {/* Category filter tabs */}
-                                    <RubberSegment<'Theory' | 'Practical' | 'All'>
-                                        options={[
-                                            { id: 'All', label: 'All', count: subjects.length },
-                                            {
-                                                id: 'Theory',
-                                                label: 'Theory',
-                                                count: subjects.filter((s) => {
-                                                    const isPractical = s.categories?.includes('Practical') ||
-                                                                        s.type?.toLowerCase() === 'practical' ||
-                                                                        s.type?.toLowerCase() === 'lab' ||
-                                                                        s.name?.toLowerCase().includes('lab');
-                                                    return !isPractical;
-                                                }).length
-                                            },
-                                            {
-                                                id: 'Practical',
-                                                label: 'Practical',
-                                                count: subjects.filter((s) => {
-                                                    const isPractical = s.categories?.includes('Practical') ||
-                                                                        s.type?.toLowerCase() === 'practical' ||
-                                                                        s.type?.toLowerCase() === 'lab' ||
-                                                                        s.name?.toLowerCase().includes('lab');
-                                                    return isPractical;
-                                                }).length
-                                            },
-                                        ]}
-                                        value={categoryFilter}
-                                        size="sm"
-                                        variant="white"
-                                        layoutId="category-filter-rubber"
-                                        onChange={(val) => {
-                                            setCategoryFilter(val);
-                                            localStorage.setItem('semester_dashboard_subject_filter', val);
-                                        }}
-                                    />
-                                </div>
+                    {/* Row 3: Courses Liquid Gallery / Table */}
+                    <FramerSpotlightCard className="overflow-hidden">
+                        <div className="px-6 py-4 border-b border-primary/12 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                                <h2 className="font-display text-lg font-extrabold tracking-tight text-on-surface">
+                                    Enrolled Subjects
+                                </h2>
+                                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary/12 border border-primary/20 text-primary tabular-nums">
+                                    {subjects.length}
+                                </span>
                             </div>
-                            
-                            {(() => {
-                                const filteredSubjects = categoryFilter === 'All'
-                                    ? subjects
-                                    : subjects.filter((s) => {
-                                        const isPractical = s.categories?.includes('Practical') || 
-                                                            s.type?.toLowerCase() === 'practical' || 
-                                                            s.type?.toLowerCase() === 'lab' || 
-                                                            s.name?.toLowerCase().includes('lab');
-                                        return categoryFilter === 'Theory' ? !isPractical : isPractical;
-                                    });
-                                return filteredSubjects.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-20 bg-surface">
-                                    <Target size={24} className="text-on-surface-variant/20 mb-4" />
-                                    <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-widest">No subjects tracked yet</p>
+
+                            <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+                                <RubberSegment<'gallery' | 'table'>
+                                    options={[
+                                        { id: 'gallery', label: 'Liquid', icon: <LayoutGrid size={13} /> },
+                                        { id: 'table', label: 'Table', icon: <List size={13} /> },
+                                    ]}
+                                    value={subjectViewMode}
+                                    size="sm"
+                                    variant="white"
+                                    layoutId="subject-view-mode-rubber"
+                                    onChange={(mode) => {
+                                        setSubjectViewMode(mode);
+                                        localStorage.setItem('semester_dashboard_subject_view', mode);
+                                    }}
+                                />
+
+                                <RubberSegment<'Theory' | 'Practical' | 'All'>
+                                    options={[
+                                        { id: 'All', label: 'All', count: subjects.length },
+                                        {
+                                            id: 'Theory',
+                                            label: 'Theory',
+                                            count: subjects.filter((s) => {
+                                                const isPractical = s.categories?.includes('Practical') ||
+                                                                    s.type?.toLowerCase() === 'practical' ||
+                                                                    s.type?.toLowerCase() === 'lab' ||
+                                                                    s.name?.toLowerCase().includes('lab');
+                                                return !isPractical;
+                                            }).length
+                                        },
+                                        {
+                                            id: 'Practical',
+                                            label: 'Practical',
+                                            count: subjects.filter((s) => {
+                                                const isPractical = s.categories?.includes('Practical') ||
+                                                                    s.type?.toLowerCase() === 'practical' ||
+                                                                    s.type?.toLowerCase() === 'lab' ||
+                                                                    s.name?.toLowerCase().includes('lab');
+                                                return isPractical;
+                                            }).length
+                                        },
+                                    ]}
+                                    value={categoryFilter}
+                                    size="sm"
+                                    variant="white"
+                                    layoutId="category-filter-rubber"
+                                    onChange={(val) => {
+                                        setCategoryFilter(val);
+                                        localStorage.setItem('semester_dashboard_subject_filter', val);
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {(() => {
+                            const filteredSubjects = categoryFilter === 'All'
+                                ? subjects
+                                : subjects.filter((s) => {
+                                    const isPractical = s.categories?.includes('Practical') ||
+                                                        s.type?.toLowerCase() === 'practical' ||
+                                                        s.type?.toLowerCase() === 'lab' ||
+                                                        s.name?.toLowerCase().includes('lab');
+                                    return categoryFilter === 'Theory' ? !isPractical : isPractical;
+                                });
+                            return filteredSubjects.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20">
+                                <Target size={24} className="text-on-surface-variant/30 mb-3" />
+                                <p className="text-xs font-bold text-on-surface-variant/55 uppercase tracking-widest">No subjects tracked yet</p>
+                            </div>
+                            ) : subjectViewMode === 'gallery' ? (
+                                /* Theme-Aware Luminous Liquid Gallery Stage */
+                                <div className="p-5 sm:p-6">
+                                    <SubjectAccordionGallery
+                                        subjects={sortSubs(filteredSubjects)}
+                                        targetThreshold={targetThreshold}
+                                        classesNeeded={classesNeeded}
+                                        classesCanSkip={classesCanSkip}
+                                        onEditSubject={setEditingSubject}
+                                        onDeleteSubject={handleDeleteSubject}
+                                    />
                                 </div>
-                                ) : subjectViewMode === 'gallery' ? (
-                                    /* Bespoke Liquid Fill Accordion Gallery View */
-                                    <div className="p-5 sm:p-6 bg-slate-950/40">
-                                        <SubjectAccordionGallery
-                                            subjects={sortSubs(filteredSubjects)}
-                                            targetThreshold={targetThreshold}
-                                            classesNeeded={classesNeeded}
-                                            classesCanSkip={classesCanSkip}
-                                            onQuickMark={handleQuickMark}
-                                            onEditSubject={setEditingSubject}
-                                            onDeleteSubject={handleDeleteSubject}
-                                        />
-                                    </div>
-                                ) : (
+                            ) : (
                                 <>
                                     {/* Desktop View */}
                                     <div className="hidden md:block overflow-x-auto">
                                         <table className="w-full text-left border-collapse text-xs select-none min-w-[650px]">
                                             <thead>
-                                                <tr className="border-b border-outline/30 bg-surface-container/20 text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
-                                                    <th className="px-6 py-3.5">Code</th>
-                                                    <th className="px-6 py-3.5">Subject Name</th>
-                                                    <th className="px-6 py-3.5">Professor</th>
-                                                    <th className="px-6 py-3.5 text-center">Attended / Eligible Total</th>
-                                                    <th className="px-6 py-3.5 text-center">Percentage</th>
-                                                    <th className="px-6 py-3.5 text-center">Can Bunk / Needed</th>
-                                                    <th className="px-6 py-3.5 text-right">Actions</th>
+                                                <tr className="border-b border-on-surface/[0.08] bg-on-surface/[0.02] text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-wider">
+                                                    <th className="px-5 py-3.5 whitespace-nowrap">Code</th>
+                                                    <th className="px-5 py-3.5 whitespace-nowrap">Subject</th>
+                                                    <th className="px-5 py-3.5 whitespace-nowrap">Faculty</th>
+                                                    <th className="px-5 py-3.5 text-center whitespace-nowrap" data-tooltip="Attended vs. eligible classes (excluding approved medical leaves)">Attended</th>
+                                                    <th className="px-5 py-3.5 text-center whitespace-nowrap">Rate</th>
+                                                    <th className="px-5 py-3.5 text-center whitespace-nowrap" data-tooltip="Safe skips available or consecutive classes needed to hit target">Standing</th>
+                                                    <th className="px-5 py-3.5 text-right whitespace-nowrap">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-outline/20">
@@ -672,7 +654,6 @@ const Dashboard: React.FC = () => {
                                                         triggerBubbleMenu={triggerBubbleMenu}
                                                         setEditingSubject={setEditingSubject}
                                                         handleDeleteSubject={handleDeleteSubject}
-                                                        onQuickMark={handleQuickMark}
                                                     />
                                                 ))}
                                             </tbody>
@@ -751,17 +732,9 @@ const Dashboard: React.FC = () => {
                                                         />
 
                                                         <div className="flex items-center gap-1.5 shrink-0">
-                                                            <TactileMarkButton
-                                                                status="present"
-                                                                onMark={() => handleQuickMark(normalizeId(subject._id || subject.id), 'present')}
-                                                            />
-                                                            <TactileMarkButton
-                                                                status="absent"
-                                                                onMark={() => handleQuickMark(normalizeId(subject._id || subject.id), 'absent')}
-                                                            />
                                                             <button
                                                                 onClick={() => setEditingSubject(subject)}
-                                                                className="h-7 px-2.5 border border-outline hover:bg-surface-container rounded-lg flex items-center justify-center text-[10px] font-semibold text-on-surface transition-all cursor-pointer whitespace-nowrap"
+                                                                className="h-7 px-3 border border-on-surface/[0.10] hover:bg-on-surface/[0.08] rounded-full flex items-center justify-center text-[11px] font-semibold text-on-surface transition-all cursor-pointer whitespace-nowrap"
                                                             >
                                                                 Edit
                                                             </button>
@@ -771,7 +744,7 @@ const Dashboard: React.FC = () => {
                                                                 completedLabel="Deleted"
                                                                 holdDuration={750}
                                                                 onComplete={() => handleDeleteSubject(normalizeId(subject._id || subject.id), subject.name)}
-                                                                className="h-7 px-2.5 text-[10px] rounded-lg"
+                                                                className="h-7 px-3 text-[11px] rounded-full"
                                                             />
                                                         </div>
                                                     </div>
@@ -781,9 +754,8 @@ const Dashboard: React.FC = () => {
                                     </div>
                                 </>
                                 );
-                            })()}
-                        </FramerSpotlightCard>
-                    </div>
+                        })()}
+                    </FramerSpotlightCard>
                 </div>
             )}
 
@@ -804,23 +776,8 @@ const Dashboard: React.FC = () => {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             style={{ top: bubbleMenu.y, left: bubbleMenu.x }}
-                            className="fixed z-50 bg-surface border border-outline rounded-lg p-1.5 shadow-xl min-w-[150px] text-on-surface flex flex-col"
+                            className="fixed z-50 liquid-glass-overlay rounded-2xl p-2 shadow-xl min-w-[168px] text-on-surface flex flex-col gap-1"
                         >
-                            <button
-                                onClick={() => { handleQuickMark(bubbleMenu.subjectId, 'present'); setBubbleMenu(null); }}
-                                className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold hover:bg-surface-container rounded-md transition-colors cursor-pointer"
-                            >
-                                <Check size={12} className="text-primary" />
-                                Mark Present
-                            </button>
-                            <button
-                                onClick={() => { handleQuickMark(bubbleMenu.subjectId, 'absent'); setBubbleMenu(null); }}
-                                className="flex items-center gap-2 w-full text-left px-2.5 py-1.5 text-xs font-semibold hover:bg-surface-container rounded-md transition-colors cursor-pointer"
-                            >
-                                <X size={12} className="text-red-500" />
-                                Mark Absent
-                            </button>
-                            <div className="h-px bg-outline my-1" />
                             {(() => {
                                 const targetSub = subjects.find(s => (s._id || s.id) === bubbleMenu.subjectId);
                                 if (!targetSub) return null;

@@ -7,8 +7,13 @@ import { useSemester } from '@/contexts/semester-context';
 import { attendanceService } from '@/services/attendance.service';
 import api from '@/services/api';
 import { formatLocalDate } from '@/lib/date';
-import { Check, X, MoreHorizontal, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import {
+    Check, X, MoreHorizontal, Calendar as CalendarIcon, Trash2,
+    ChevronLeft, ChevronRight, Stethoscope, Ban, ArrowLeftRight, CalendarCheck2
+} from 'lucide-react';
 import { useConfirm } from '@/contexts/confirm-context';
+import { isTauriDesktop } from '@/utils/platform';
+import { desktopDb } from '@/services/desktopDb';
 import axios from 'axios';
 import type { AttendanceRecord, ScheduledClass, Subject } from '@/types';
 
@@ -44,22 +49,22 @@ interface AttendanceModalProps {
 }
 
 const ATTENDANCE_STATUS_META: Record<string, { label: string; className: string }> = {
-    present: { label: 'Present', className: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' },
-    absent: { label: 'Absent', className: 'bg-red-500/10 text-red-500 border-red-500/20' },
-    late: { label: 'Late', className: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
-    medical: { label: 'Medical', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-    approved_medical: { label: 'Medical', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-    duty: { label: 'Duty', className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
-    cancelled: { label: 'Cancelled', className: 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/25' },
-    substituted: { label: 'Substituted', className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' },
+    present: { label: 'Present', className: 'bg-primary/14 text-primary border-primary/25' },
+    absent: { label: 'Absent', className: 'bg-rose-500/12 text-rose-400 border-rose-500/25' },
+    late: { label: 'Late', className: 'bg-amber-500/12 text-amber-400 border-amber-500/25' },
+    medical: { label: 'Medical', className: 'bg-sky-500/12 text-sky-400 border-sky-500/25' },
+    approved_medical: { label: 'Medical', className: 'bg-sky-500/12 text-sky-400 border-sky-500/25' },
+    duty: { label: 'Duty', className: 'bg-sky-500/12 text-sky-400 border-sky-500/25' },
+    cancelled: { label: 'Cancelled', className: 'bg-on-surface/[0.06] text-on-surface-variant border-on-surface/[0.12]' },
+    substituted: { label: 'Substituted', className: 'bg-amber-500/12 text-amber-300 border-amber-500/25' },
 };
 
-const DETAIL_STATUS_OPTIONS: Array<{ id: DetailAttendanceStatus; label: string }> = [
-    { id: 'present', label: 'Present' },
-    { id: 'absent', label: 'Absent' },
-    { id: 'approved_medical', label: 'Medical Leave' },
-    { id: 'cancelled', label: 'Cancelled' },
-    { id: 'substituted', label: 'Substituted' },
+const DETAIL_STATUS_OPTIONS: Array<{ id: DetailAttendanceStatus; label: string; shortLabel: string; icon: React.ComponentType<{ size?: number }> }> = [
+    { id: 'present', label: 'Present', shortLabel: 'Present', icon: Check },
+    { id: 'absent', label: 'Absent', shortLabel: 'Absent', icon: X },
+    { id: 'approved_medical', label: 'Medical Leave', shortLabel: 'Medical', icon: Stethoscope },
+    { id: 'cancelled', label: 'Cancelled', shortLabel: 'Cancelled', icon: Ban },
+    { id: 'substituted', label: 'Substituted', shortLabel: 'Sub', icon: ArrowLeftRight },
 ];
 
 const isDetailAttendanceStatus = (status: string): status is DetailAttendanceStatus =>
@@ -92,8 +97,26 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     const debounceTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const debouncedOnSuccess = React.useCallback(() => {
         if (!onSuccess) return;
+        if (isTauriDesktop()) {
+            // Local SQLite writes finish in <1ms — update parent metrics immediately with zero artificial delay
+            onSuccess();
+            return;
+        }
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        debounceTimer.current = setTimeout(() => onSuccess(), 500);
+        debounceTimer.current = setTimeout(() => {
+            debounceTimer.current = null;
+            onSuccess();
+        }, 350);
+    }, [onSuccess]);
+
+    useEffect(() => {
+        return () => {
+            if (debounceTimer.current) {
+                clearTimeout(debounceTimer.current);
+                debounceTimer.current = null;
+                onSuccess?.();
+            }
+        };
     }, [onSuccess]);
 
     // Detailed marking state
@@ -146,8 +169,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     }, [currentSemester, showToast]);
 
-    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newDate = new Date(`${e.target.value}T00:00:00`);
+    const selectDate = (newDate: Date) => {
         if (!isNaN(newDate.getTime())) {
             setSelectedDate(newDate);
             setAttendanceLogs([]);
@@ -160,6 +182,16 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        selectDate(new Date(`${e.target.value}T00:00:00`));
+    };
+
+    const stepDate = (deltaDays: number) => {
+        const next = new Date(selectedDate);
+        next.setDate(next.getDate() + deltaDays);
+        selectDate(next);
+    };
+
     const fetchAttendanceLogs = React.useCallback(async (date: Date, clearFirst = false): Promise<AttendanceRecord[] | null> => {
         const requestId = ++logsRequestRef.current;
         const dateStr = formatLocalDate(date);
@@ -170,6 +202,13 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             setLoadedLogsDate(null);
         }
         try {
+            if (isTauriDesktop()) {
+                const logs = (await desktopDb.getLogsForDate(dateStr, currentSemester)) as AttendanceRecord[];
+                if (requestId !== logsRequestRef.current) return null;
+                setAttendanceLogs(logs);
+                setLoadedLogsDate(dateStr);
+                return logs;
+            }
             const response = await api.get(`/api/attendance/logs?date=${dateStr}&limit=100&semester=${currentSemester}`);
 
             // Backend returns success_response({"logs": [...], ...}) 
@@ -649,30 +688,63 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
 
 
 
+    const isToday = formatLocalDate(selectedDate) === formatLocalDate(new Date());
+
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
             title="Mark Attendance"
-            size="md"
+            subtitle="Quick-log daily classes, medical leaves, or substitutions"
+            icon={<CalendarCheck2 size={18} />}
+            size="lg"
         >
             <div className="space-y-5">
-                {/* Date Picker - Theme-aware and compact */}
-                <div className="flex items-center gap-3 p-2.5 bg-surface-container border border-outline rounded-xl">
-                    <div className="p-2 rounded-lg bg-primary/10 text-primary w-9 h-9 flex items-center justify-center shrink-0">
-                        <CalendarIcon size={18} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <label className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest block mb-0.5">
-                            Date Selection
+                {/* Sleek Pill Date Navigator Bar */}
+                <div className="flex items-center justify-between gap-2 p-2 rounded-2xl bg-on-surface/[0.035] dark:bg-white/[0.04] border border-on-surface/[0.09]">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <button
+                            type="button"
+                            onClick={() => stepDate(-1)}
+                            title="Previous day"
+                            className="no-fluid w-8 h-8 rounded-xl bg-on-surface/[0.05] hover:bg-primary/14 text-on-surface-variant hover:text-primary flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                        >
+                            <ChevronLeft size={15} />
+                        </button>
+
+                        <label className="relative flex-1 min-w-0 flex items-center justify-center gap-2 h-8 px-3 rounded-xl hover:bg-on-surface/[0.06] transition-colors cursor-pointer">
+                            <CalendarIcon size={14} className="text-primary shrink-0" />
+                            <span className="font-display text-xs sm:text-sm font-bold text-on-surface truncate">
+                                {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                            </span>
+                            <input
+                                type="date"
+                                aria-label="Choose date"
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                value={formatLocalDate(selectedDate)}
+                                onChange={handleDateChange}
+                            />
                         </label>
-                        <input
-                            type="date"
-                            className="bg-transparent border-none p-0 text-on-surface font-sans font-medium text-xs focus:ring-0 w-full"
-                            value={formatLocalDate(selectedDate)}
-                            onChange={handleDateChange}
-                        />
+
+                        <button
+                            type="button"
+                            onClick={() => stepDate(1)}
+                            title="Next day"
+                            className="no-fluid w-8 h-8 rounded-xl bg-on-surface/[0.05] hover:bg-primary/14 text-on-surface-variant hover:text-primary flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                        >
+                            <ChevronRight size={15} />
+                        </button>
                     </div>
+
+                    {!isToday && (
+                        <button
+                            type="button"
+                            onClick={() => selectDate(new Date())}
+                            className="no-fluid h-8 px-3 rounded-xl bg-primary/14 border border-primary/25 text-[11px] font-bold text-primary hover:bg-primary hover:text-white transition-colors shrink-0 cursor-pointer"
+                        >
+                            Today
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
@@ -699,18 +771,18 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                             {isMarkingAll ? <LoadingSpinner size="sm" /> : <MoreHorizontal size={15} />}
                                         </button>
                                         {isMarkAllOpen && (
-                                            <div className="absolute right-0 top-8 z-[70] w-44 overflow-hidden rounded-xl border border-outline bg-surface p-1.5 shadow-xl">
-                                                <div className="px-2 py-1.5 text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Mark all as</div>
+                                            <div className="absolute right-0 top-8 z-[70] w-48 overflow-hidden rounded-2xl liquid-glass-overlay p-1.5">
+                                                <div className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant/55">Mark all as</div>
                                                 {markedRecordsCount > 0 && (
-                                                    <p className="mx-1 mb-1 rounded-lg bg-amber-500/10 px-2 py-2 text-[9px] font-semibold leading-relaxed text-amber-600 dark:text-amber-400">
-                                                        Unmark all {markedRecordsCount} existing record{markedRecordsCount === 1 ? '' : 's'} before bulk marking.
+                                                    <p className="mx-1 mb-1 rounded-xl bg-amber-500/10 px-2.5 py-2 text-[10px] font-medium leading-relaxed text-amber-400">
+                                                        Unmark existing {markedRecordsCount} record{markedRecordsCount === 1 ? '' : 's'} before bulk marking.
                                                     </p>
                                                 )}
                                                 {[
-                                                    { status: 'present', label: 'Present', dot: 'bg-green-500' },
-                                                    { status: 'absent', label: 'Absent', dot: 'bg-red-500' },
-                                                    { status: 'approved_medical', label: 'Medical Leave', dot: 'bg-blue-500' },
-                                                    { status: 'cancelled', label: 'Cancelled', dot: 'bg-slate-400' },
+                                                    { status: 'present', label: 'Present', dot: 'bg-primary' },
+                                                    { status: 'absent', label: 'Absent', dot: 'bg-rose-400' },
+                                                    { status: 'approved_medical', label: 'Medical Leave', dot: 'bg-sky-400' },
+                                                    { status: 'cancelled', label: 'Cancelled', dot: 'bg-on-surface-variant/40' },
                                                 ].map(option => (
                                                     <button
                                                         key={option.status}
@@ -718,22 +790,22 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                         onClick={() => markAllScheduled(option.status as 'present' | 'absent' | 'approved_medical' | 'cancelled')}
                                                         disabled={scheduledClasses.length === 0 || !recordsReady || markedRecordsCount > 0}
                                                         title={markedRecordsCount > 0 ? 'Use Unmark all before bulk marking again' : `Mark all as ${option.label}`}
-                                                        className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs font-semibold text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                                                        className="no-fluid w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-on-surface-variant hover:bg-on-surface/[0.08] hover:text-on-surface disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
                                                     >
                                                         <span className={`h-2 w-2 rounded-full ${option.dot}`} />
                                                         {option.label}
                                                     </button>
                                                 ))}
-                                                <div className="my-1 border-t border-outline/60" />
+                                                <div className="my-1 border-t border-on-surface/[0.08]" />
                                                 <button
                                                     type="button"
                                                     onClick={unmarkAllScheduled}
                                                     disabled={!recordsReady || markedRecordsCount === 0}
-                                                    className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                                                    className="no-fluid w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-semibold text-rose-400 hover:bg-rose-500/12 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
                                                 >
                                                     <Trash2 size={13} />
                                                     Unmark all
-                                                    {markedRecordsCount > 0 && <span className="ml-auto text-[9px] opacity-60">{markedRecordsCount}</span>}
+                                                    {markedRecordsCount > 0 && <span className="ml-auto text-[10px] opacity-70">{markedRecordsCount}</span>}
                                                 </button>
                                             </div>
                                         )}
@@ -915,29 +987,50 @@ const SubjectRow = ({
 
     if (expanded) {
         return (
-            <div className="bg-surface border border-outline rounded-xl p-4 shadow-md">
-                <div className="flex justify-between items-center mb-3 border-b border-outline pb-2">
-                    <h4 className="font-bold text-on-surface text-sm">{subject.name}</h4>
-                    <button onClick={onCloseDetails} className="text-on-surface-variant/40 hover:text-on-surface p-1 rounded-lg hover:bg-surface-container transition-colors">
-                        <X size={16} />
+            <div className="rounded-2xl bg-on-surface/[0.03] dark:bg-white/[0.04] border border-primary/30 p-4 shadow-sm animate-fade-in">
+                <div className="flex justify-between items-center mb-3.5 pb-2.5 border-b border-on-surface/[0.08]">
+                    <div className="min-w-0 pr-2">
+                        <h4 className="font-display font-bold text-on-surface text-sm truncate">{subject.name}</h4>
+                        {subject.time && (
+                            <p className="text-[11px] font-medium text-on-surface-variant mt-0.5">{subject.time}</p>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onCloseDetails}
+                        className="no-fluid w-7 h-7 rounded-full bg-on-surface/[0.06] hover:bg-on-surface/[0.14] text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                    >
+                        <X size={14} />
                     </button>
                 </div>
 
-                <div className="space-y-3">
-                    {/* Status Grid */}
-                    <div className="grid grid-cols-2 gap-2">
-                        {DETAIL_STATUS_OPTIONS.map(opt => (
-                            <button
-                                key={opt.id}
-                                onClick={() => setDetailStatus(opt.id)}
-                                className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all border ${detailStatus === opt.id
-                                    ? attendanceStatusMeta(opt.id).className
-                                    : 'bg-surface border-outline text-on-surface-variant/60 hover:bg-surface-container hover:text-on-surface'
-                                    }`}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
+                <div className="space-y-3.5">
+                    {/* Balanced 5-Chip Segmented Status Selector */}
+                    <div>
+                        <label className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider block mb-2">
+                            Attendance Status
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                            {DETAIL_STATUS_OPTIONS.map(opt => {
+                                const Icon = opt.icon;
+                                const active = detailStatus === opt.id;
+                                return (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => setDetailStatus(opt.id)}
+                                        className={`no-fluid px-2.5 py-2 rounded-xl text-[11px] font-bold transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                                            active
+                                                ? `${attendanceStatusMeta(opt.id).className} shadow-xs`
+                                                : 'bg-on-surface/[0.035] border-on-surface/[0.08] text-on-surface-variant hover:bg-on-surface/[0.08] hover:text-on-surface'
+                                        }`}
+                                    >
+                                        <Icon size={12} />
+                                        <span className="truncate">{opt.shortLabel}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Substitution Dropdown */}
@@ -952,8 +1045,8 @@ const SubjectRow = ({
                             return sId === detailSubstitutedBy;
                         });
                         return (
-                            <div className="animate-fade-in p-2.5 bg-surface-container rounded-lg border border-outline">
-                                <label className="text-[9px] font-bold text-on-surface-variant/40 uppercase block mb-1">
+                            <div className="animate-fade-in p-3 bg-on-surface/[0.035] rounded-2xl border border-on-surface/[0.09]">
+                                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">
                                     Substituted By
                                 </label>
                                 <SubstitutionDropdown
@@ -968,85 +1061,101 @@ const SubjectRow = ({
 
                     {/* Notes */}
                     <div>
-                        <label className="text-[9px] font-semibold text-on-surface-variant/50 uppercase block mb-1">
+                        <label className="text-[10px] font-bold text-on-surface-variant/75 uppercase tracking-wider block mb-1.5">
                             Notes (Optional)
                         </label>
                         <textarea
-                            className="w-full bg-surface border border-outline focus:border-primary rounded-lg p-2 text-xs resize-none text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none transition-all"
-                            placeholder="Add details..."
+                            className="w-full bg-on-surface/[0.04] border border-on-surface/[0.10] focus:border-primary rounded-xl px-3 py-2 text-xs resize-none text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none transition-all"
+                            placeholder="Add reason or lecture details…"
                             rows={2}
                             value={detailNotes}
                             onChange={(e) => setDetailNotes(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex gap-2 pt-1">
-                        {isMarked && (
-                            <Button variant="text" className="text-red-500 hover:bg-red-500/10 hover:text-red-600 flex-1" onClick={() => onDelete(subject)}>
-                                Clear Mark
+                    {/* Balanced Action Footer */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-on-surface/[0.08]">
+                        <div>
+                            {isMarked && (
+                                <Button
+                                    type="button"
+                                    variant="text"
+                                    size="sm"
+                                    className="text-rose-500 hover:bg-rose-500/12 hover:text-rose-600"
+                                    onClick={() => onDelete(subject)}
+                                >
+                                    Clear Mark
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button type="button" variant="text" size="sm" onClick={onCloseDetails}>
+                                Cancel
                             </Button>
-                        )}
-                        <Button className="flex-1" onClick={onSubmitDetail}>
-                            Confirm Mark
-                        </Button>
+                            <Button type="button" size="sm" onClick={onSubmitDetail}>
+                                Save Mark
+                            </Button>
+                        </div>
                     </div>
                 </div>
-            </div >
+            </div>
         );
     }
 
     // Collapsed View
     return (
-        <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container/30 border border-outline hover:bg-surface-container-high transition-colors group">
-            <span className="font-bold text-xs text-on-surface">{subject.name}</span>
-            <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-on-surface/[0.03] dark:bg-white/[0.035] border border-on-surface/[0.08] hover:border-primary/30 transition-all group">
+            <div className="min-w-0 pr-3">
+                <span className="font-bold text-xs text-on-surface block truncate">{subject.name}</span>
+                {subject.time && (
+                    <span className="text-[10px] font-medium text-on-surface-variant/75 block">{subject.time}</span>
+                )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
                 {!isMarked ? (
                     <>
-                        <Button
-                            size="sm"
-                            variant="ghost"
+                        <button
+                            type="button"
                             onClick={() => onSimpleMark(subject, 'present')}
-                            className="h-7 w-7 p-0 rounded-lg text-on-surface-variant hover:text-green-500 hover:bg-green-500/10 cursor-pointer"
+                            className="no-fluid h-7 w-7 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                             title="Mark Present"
                         >
-                            <Check size={14} />
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="ghost"
+                            <Check size={13} strokeWidth={2.5} />
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => onSimpleMark(subject, 'absent')}
-                            className="h-7 w-7 p-0 rounded-lg text-red-400 hover:text-red-500 hover:bg-red-500/10 cursor-pointer"
+                            className="no-fluid h-7 w-7 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                             title="Mark Absent"
                         >
-                            <X size={14} />
-                        </Button>
+                            <X size={13} strokeWidth={2.5} />
+                        </button>
                     </>
                 ) : (
-                    <div className="flex items-center gap-1.5 mr-1">
-                        <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded border font-bold ${statusMeta.className}`}>
+                    <div className="flex items-center gap-1.5 mr-0.5">
+                        <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full border font-bold ${statusMeta.className}`}>
                             {statusMeta.label}
                         </span>
 
-                        <Button
-                            size="sm"
-                            variant="ghost"
+                        <button
+                            type="button"
                             onClick={() => onDelete(subject)}
-                            className="h-7 w-7 p-0 rounded-lg text-on-surface-variant hover:text-red-500 hover:bg-red-500/10 cursor-pointer"
+                            className="no-fluid h-7 w-7 rounded-full text-on-surface-variant hover:text-rose-500 hover:bg-rose-500/12 flex items-center justify-center transition-colors cursor-pointer"
                             title="Delete/Clear"
                         >
                             <Trash2 size={13} />
-                        </Button>
+                        </button>
                     </div>
                 )}
 
-                <Button
-                    size="sm"
-                    variant="ghost"
+                <button
+                    type="button"
                     onClick={() => onOpenDetails(subject._id, status, subject.notes)}
-                    className="h-7 w-7 p-0 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high cursor-pointer"
+                    className="no-fluid h-7 w-7 rounded-full bg-on-surface/[0.05] text-on-surface-variant hover:text-on-surface hover:bg-on-surface/[0.12] flex items-center justify-center transition-colors cursor-pointer"
+                    title="More options"
                 >
                     <MoreHorizontal size={14} />
-                </Button>
+                </button>
             </div>
         </div>
     );
@@ -1147,17 +1256,17 @@ const SubstitutionDropdown = ({ subjects, value, selectedName, onChange }: {
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="w-full bg-surface border border-outline text-on-surface rounded-lg px-3 py-2 text-xs text-left flex items-center justify-between hover:border-primary/50 transition-all"
+                className="no-fluid w-full bg-on-surface/[0.04] border border-on-surface/[0.10] text-on-surface rounded-xl px-3.5 py-2 text-xs font-medium text-left flex items-center justify-between hover:border-primary/45 transition-colors cursor-pointer"
             >
-                <span className={value ? 'text-on-surface' : 'text-on-surface-variant/40'}>{selectedName || 'Select Subject...'}</span>
-                <svg className={`w-4 h-4 text-on-surface-variant/40 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <span className={value ? 'text-on-surface' : 'text-on-surface-variant/45'}>{selectedName || 'Select Subject...'}</span>
+                <svg className={`w-3.5 h-3.5 text-on-surface-variant/50 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {open && (
-                <div className="absolute left-0 right-0 z-[60] mt-1 rounded-xl border border-outline bg-surface shadow-lg overflow-hidden max-h-[180px] overflow-y-auto custom-scrollbar">
+                <div className="absolute left-0 right-0 z-[60] mt-1.5 rounded-2xl liquid-glass-overlay p-1.5 max-h-[180px] overflow-y-auto custom-scrollbar space-y-0.5">
                     <button
                         type="button"
                         onClick={() => { onChange(''); setOpen(false); }}
-                        className={`w-full px-4 py-2 text-left text-xs transition-colors ${!value ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}
+                        className={`no-fluid w-full px-3 py-2 rounded-xl text-left text-xs font-medium transition-colors cursor-pointer ${!value ? 'bg-primary/14 text-primary font-semibold' : 'text-on-surface-variant hover:bg-on-surface/[0.07] hover:text-on-surface'}`}
                     >
                         Select Subject...
                     </button>
@@ -1169,7 +1278,7 @@ const SubstitutionDropdown = ({ subjects, value, selectedName, onChange }: {
                                 key={`sub-drop-${sId}`}
                                 type="button"
                                 onClick={() => { onChange(sId); setOpen(false); }}
-                                className={`w-full px-4 py-2 text-left text-xs transition-colors ${isSelected ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'}`}
+                                className={`no-fluid w-full px-3 py-2 rounded-xl text-left text-xs font-medium transition-colors cursor-pointer ${isSelected ? 'bg-primary/14 text-primary font-semibold' : 'text-on-surface-variant hover:bg-on-surface/[0.07] hover:text-on-surface'}`}
                             >
                                 {s.name}
                             </button>

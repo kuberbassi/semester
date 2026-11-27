@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Edit2, Trash2, Award, UserCheck, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useId, useRef, useCallback } from 'react';
+import {
+    Edit2, Trash2, Award, User, AlertCircle, MapPin, ChevronLeft, ChevronRight,
+    BookOpen, FlaskConical, ShieldCheck, AlertTriangle, Stethoscope
+} from 'lucide-react';
 import type { Subject } from '@/types';
 import { formatTeacherName } from '@/utils/formatters';
 import { haptics } from '@/utils/haptics';
-import { TactileMarkButton } from '@/components/dashboard/TactileMarkButton';
-import { CallChip } from '@/components/react-bits/CallChip';
 import { WarmTooltip } from '@/components/react-bits/WarmTooltip';
 import { HoldButton } from '@/components/react-bits/HoldButton';
 
@@ -14,7 +14,6 @@ interface SubjectAccordionGalleryProps {
     targetThreshold: number;
     classesNeeded: (attended: number, total: number) => number;
     classesCanSkip: (attended: number, total: number) => number;
-    onQuickMark: (subjectId: string, status: 'present' | 'absent') => void;
     onEditSubject: (subject: Subject) => void;
     onDeleteSubject: (subjectId: string, subjectName: string) => void;
     className?: string;
@@ -27,38 +26,33 @@ const getMedicalAdjustedCounts = (subject: Subject) => {
     const attended = Math.max(0, (subject.attended || 0) - medicalLeaveCount);
     const total = Math.max(0, (subject.total || 0) - medicalLeaveCount);
     const totalWithMedical = Math.max(0, subject.total || 0);
-    return {
-        attended,
-        total,
-        totalWithMedical,
-        medicalLeaveCount,
-    };
+    return { attended, total, totalWithMedical, medicalLeaveCount };
 };
 
-/**
- * Individual Liquid Card for Subject Accordion
- */
 const SubjectLiquidCard: React.FC<{
     subject: Subject;
     isActive: boolean;
+    scrollRailMode: boolean;
     targetThreshold: number;
     classesNeeded: (attended: number, total: number) => number;
     classesCanSkip: (attended: number, total: number) => number;
     onActivate: () => void;
-    onQuickMark: (subjectId: string, status: 'present' | 'absent') => void;
     onEditSubject: (subject: Subject) => void;
     onDeleteSubject: (subjectId: string, subjectName: string) => void;
+    cardRef?: (el: HTMLDivElement | null) => void;
 }> = ({
     subject,
     isActive,
+    scrollRailMode,
     targetThreshold,
     classesNeeded,
     classesCanSkip,
     onActivate,
-    onQuickMark,
     onEditSubject,
     onDeleteSubject,
+    cardRef,
 }) => {
+    const gradId = useId();
     const { attended, total, totalWithMedical, medicalLeaveCount } = getMedicalAdjustedCounts(subject);
     const pct = subject.attendance_percentage ?? (total > 0 ? (attended / total) * 100 : 0);
     const withMedicalAsAbsentPct = totalWithMedical > 0 ? (attended / totalWithMedical) * 100 : 0;
@@ -74,356 +68,243 @@ const SubjectLiquidCard: React.FC<{
         subject.type?.toLowerCase() === 'lab' ||
         subject.name?.toLowerCase().includes('lab');
 
-    const categoryLabel = isPractical ? 'Practical' : 'Theory';
-
-    // Dynamic Vibrant Palette based on Category & Attendance Health
-    const colorTheme = isPractical
-        ? isCritical
-            ? {
-                  gradientStart: '#f43f5e',
-                  gradientEnd: '#9f1239',
-                  waveColor: 'rgba(244, 63, 94, 0.45)',
-                  ambientGlow: 'rgba(244, 63, 94, 0.3)',
-                  borderColor: 'border-rose-500/40',
-                  badgeColor: 'rose',
-                  accentHex: '#f43f5e',
-              }
-            : isWarning
-            ? {
-                  gradientStart: '#d946ef',
-                  gradientEnd: '#f59e0b',
-                  waveColor: 'rgba(217, 70, 239, 0.4)',
-                  ambientGlow: 'rgba(217, 70, 239, 0.25)',
-                  borderColor: 'border-fuchsia-500/40',
-                  badgeColor: 'purple',
-                  accentHex: '#d946ef',
-              }
-            : {
-                  gradientStart: '#8b5cf6',
-                  gradientEnd: '#06b6d4',
-                  waveColor: 'rgba(139, 92, 246, 0.45)',
-                  ambientGlow: 'rgba(139, 92, 246, 0.3)',
-                  borderColor: 'border-purple-500/40',
-                  badgeColor: 'purple',
-                  accentHex: '#8b5cf6',
-              }
-        : isCritical
+    const tone = isCritical
         ? {
-              gradientStart: '#f43f5e',
-              gradientEnd: '#e11d48',
-              waveColor: 'rgba(244, 63, 94, 0.45)',
-              ambientGlow: 'rgba(244, 63, 94, 0.3)',
-              borderColor: 'border-rose-500/40',
-              badgeColor: 'rose',
-              accentHex: '#f43f5e',
-          }
+            stopA: '#f43f5e',
+            stopB: '#ec4899',
+            text: 'text-rose-600 dark:text-rose-300',
+            dot: 'bg-gradient-to-r from-rose-500 to-pink-500',
+            ring: 'border-rose-500/45 shadow-[0_14px_34px_-14px_rgba(244,63,94,0.45)]',
+            pill: 'bg-rose-500/14 border-rose-500/30 text-rose-600 dark:text-rose-300',
+        }
         : isWarning
         ? {
-              gradientStart: '#f59e0b',
-              gradientEnd: '#ea580c',
-              waveColor: 'rgba(245, 158, 11, 0.4)',
-              ambientGlow: 'rgba(245, 158, 11, 0.25)',
-              borderColor: 'border-amber-500/40',
-              badgeColor: 'amber',
-              accentHex: '#f59e0b',
-          }
+            stopA: '#f59e0b',
+            stopB: '#f97316',
+            text: 'text-amber-600 dark:text-amber-300',
+            dot: 'bg-gradient-to-r from-amber-500 to-orange-500',
+            ring: 'border-amber-500/45 shadow-[0_14px_34px_-14px_rgba(245,158,11,0.40)]',
+            pill: 'bg-amber-500/14 border-amber-500/30 text-amber-600 dark:text-amber-300',
+        }
         : {
-              gradientStart: '#10b981',
-              gradientEnd: '#06b6d4',
-              waveColor: 'rgba(16, 185, 129, 0.45)',
-              ambientGlow: 'rgba(16, 185, 129, 0.3)',
-              borderColor: 'border-emerald-500/40',
-              badgeColor: 'emerald',
-              accentHex: '#10b981',
-          };
-
-    // Animated SVG Liquid Wave
-    const wave1Ref = useRef<SVGPathElement>(null);
-    const wave2Ref = useRef<SVGPathElement>(null);
-    const cardContainerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        let frameId: number;
-        let time = 0;
-        const clampedPct = Math.min(100, Math.max(0, pct));
-
-        const animate = () => {
-            time += 0.04;
-            const targetY = 100 - clampedPct;
-            const amp = isActive ? 5 : 3;
-
-            const w1_y1 = targetY + Math.sin(time * 1.5) * amp;
-            const w1_y2 = targetY + Math.sin(time * 1.5 + Math.PI * 0.5) * amp;
-            const w1_y3 = targetY + Math.sin(time * 1.5 + Math.PI) * amp;
-
-            const w2_y1 = targetY + Math.cos(time * 1.2) * (amp * 0.8);
-            const w2_y2 = targetY + Math.cos(time * 1.2 + Math.PI * 0.7) * (amp * 0.8);
-            const w2_y3 = targetY + Math.cos(time * 1.2 + Math.PI * 1.4) * (amp * 0.8);
-
-            if (wave1Ref.current) {
-                wave1Ref.current.setAttribute(
-                    'd',
-                    `M 0 100 L 0 ${w1_y1} Q 25 ${w1_y2} 50 ${targetY} T 100 ${w1_y3} L 100 100 Z`
-                );
-            }
-
-            if (wave2Ref.current) {
-                wave2Ref.current.setAttribute(
-                    'd',
-                    `M 0 100 L 0 ${w2_y1} Q 25 ${w2_y2} 50 ${targetY} T 100 ${w2_y3} L 100 100 Z`
-                );
-            }
-
-            frameId = requestAnimationFrame(animate);
+            stopA: '#6366f1',
+            stopB: '#06b6d4',
+            text: 'text-indigo-600 dark:text-cyan-300',
+            dot: 'bg-gradient-to-r from-indigo-500 to-cyan-400',
+            ring: 'border-primary/45 shadow-[0_14px_34px_-14px_rgba(99,102,241,0.45)]',
+            pill: 'bg-indigo-500/14 border-indigo-500/30 text-indigo-600 dark:text-cyan-200',
         };
 
-        frameId = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(frameId);
-    }, [pct, isActive]);
+    const fillHeight = `${Math.max(12, Math.min(92, pct))}%`;
+
+    const sizeClass = scrollRailMode
+        ? isActive
+            ? `md:w-[356px] md:shrink-0 min-h-[330px] snap-center ${tone.ring}`
+            : 'md:w-[64px] md:shrink-0 min-h-[66px] md:min-h-[330px] snap-start opacity-85 hover:opacity-100'
+        : isActive
+        ? `md:flex-[4.6] md:min-w-[330px] min-h-[330px] ${tone.ring}`
+        : 'md:flex-[1] md:min-w-[58px] min-h-[66px] md:min-h-[330px] opacity-85 hover:opacity-100';
 
     return (
-        <motion.div
-            ref={cardContainerRef}
-            layout
-            transition={{
-                type: 'spring',
-                stiffness: 340,
-                damping: 28,
-            }}
+        <div
+            ref={cardRef}
             onClick={onActivate}
-            onMouseEnter={onActivate}
-            className={`relative rounded-3xl overflow-hidden cursor-pointer select-none transition-all duration-300 border ${
-                isActive
-                    ? `md:flex-[3.8] bg-slate-900/90 shadow-2xl ${colorTheme.borderColor} min-h-[380px]`
-                    : `md:flex-[1] bg-slate-900/50 hover:bg-slate-900/75 border-white/10 opacity-75 hover:opacity-100 min-h-[72px] md:min-h-[380px]`
-            }`}
-            style={{
-                boxShadow: isActive ? `0 20px 40px -15px ${colorTheme.ambientGlow}` : undefined,
-            }}
+            data-tooltip={!isActive ? `${subject.name} · ${pct.toFixed(1)}% (${attended}/${total}) — Click to expand` : undefined}
+            style={{ contain: 'layout style paint', willChange: 'width, flex-grow' }}
+            className={`liquid-glass relative rounded-[26px] overflow-hidden cursor-pointer select-none transition-[width,flex-grow,opacity,border-color] duration-220 ease-[cubic-bezier(0.22,1,0.36,1)] ${sizeClass}`}
         >
-            {/* Ambient Aurora Glow in Expanded Mode */}
+            {/* Multi-Stop Gradient Liquid Fill */}
             <div
-                className="pointer-events-none absolute inset-0 transition-opacity duration-500"
-                style={{
-                    background: `radial-gradient(circle at 50% 100%, ${colorTheme.ambientGlow} 0%, transparent 75%)`,
-                    opacity: isActive ? 1 : 0.25,
-                }}
-            />
-
-            {/* Background Liquid Wave Reservoir */}
-            <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-                <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className="absolute inset-0 w-full h-full"
-                >
-                    <defs>
-                        <linearGradient id={`grad-sub-1-${subjectId}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={colorTheme.gradientStart} stopOpacity={isActive ? 0.45 : 0.3} />
-                            <stop offset="100%" stopColor={colorTheme.gradientEnd} stopOpacity={isActive ? 0.15 : 0.08} />
-                        </linearGradient>
-                        <linearGradient id={`grad-sub-2-${subjectId}`} x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor={colorTheme.gradientEnd} stopOpacity={isActive ? 0.35 : 0.2} />
-                            <stop offset="100%" stopColor={colorTheme.gradientStart} stopOpacity={isActive ? 0.1 : 0.05} />
-                        </linearGradient>
-                    </defs>
-
-                    {/* Base water line path */}
-                    <path
-                        ref={wave2Ref}
-                        fill={`url(#grad-sub-2-${subjectId})`}
-                        className="transition-opacity duration-300"
-                    />
-                    <path
-                        ref={wave1Ref}
-                        fill={`url(#grad-sub-1-${subjectId})`}
-                        filter={`drop-shadow(0 -2px 6px ${colorTheme.accentHex}44)`}
-                    />
-                </svg>
-
-                {/* Subtle frothy bubbles rising when active */}
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-0 transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                style={{ height: fillHeight, contain: 'paint' }}
+            >
                 {isActive && (
-                    <div className="absolute inset-x-0 bottom-4 flex justify-around opacity-40">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" style={{ animationDuration: '3s' }} />
-                        <span className="w-1 h-1 rounded-full bg-white animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }} />
-                        <span className="w-2 h-2 rounded-full bg-white animate-ping" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }} />
+                    <div className="absolute -top-3.5 left-0 right-0 h-4 overflow-hidden">
+                        <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="liquid-wave-track h-full">
+                            <defs>
+                                <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor={tone.stopA} stopOpacity="0.32" />
+                                    <stop offset="50%" stopColor={tone.stopB} stopOpacity="0.35" />
+                                    <stop offset="100%" stopColor={tone.stopA} stopOpacity="0.32" />
+                                </linearGradient>
+                            </defs>
+                            <path
+                                d="M0 10 Q 25 18 50 10 T 100 10 T 150 10 T 200 10 L 200 20 L 0 20 Z"
+                                fill={`url(#${gradId})`}
+                            />
+                        </svg>
                     </div>
                 )}
+                <div
+                    className="w-full h-full"
+                    style={{
+                        background: `linear-gradient(160deg, ${tone.stopA}${isActive ? '3d' : '26'} 0%, ${tone.stopB}${isActive ? '26' : '18'} 60%, ${tone.stopA}0a 100%)`,
+                    }}
+                />
             </div>
 
-            {/* Specular Top Sheen */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent z-10" />
-
-            {/* Card Content Layer */}
-            <div className="relative z-10 h-full w-full p-5 flex flex-col justify-between">
+            <div className={`relative z-10 h-full w-full ${isActive ? 'p-5' : 'px-2.5 py-4'} flex flex-col justify-between`}>
                 {isActive ? (
-                    /* ── Expanded Full Card View ── */
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.28 }}
-                        className="h-full flex flex-col justify-between"
-                    >
-                        {/* Top Metadata Row */}
+                    <div className="h-full min-w-[290px] flex flex-col justify-between animate-fade-in">
                         <div>
-                            <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-mono text-xs font-bold text-white/70 bg-white/10 px-2.5 py-0.5 rounded-lg border border-white/15">
-                                        {subject.code || 'COURSE'}
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                    <span
+                                        className="font-mono text-[11px] font-bold text-on-surface bg-surface/90 dark:bg-[#141722]/90 px-2.5 py-1 rounded-full border border-on-surface/[0.10] whitespace-nowrap shrink-0"
+                                        data-tooltip={subject.code ? `Course code: ${subject.code}` : 'No course code set'}
+                                    >
+                                        {subject.code || 'SUB'}
                                     </span>
                                     <span
-                                        className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border ${
-                                            isPractical
-                                                ? 'bg-purple-500/15 border-purple-500/30 text-purple-300'
-                                                : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300'
-                                        }`}
+                                        className="w-7 h-7 rounded-full bg-surface/70 dark:bg-white/[0.06] border border-on-surface/[0.10] flex items-center justify-center text-primary shrink-0"
+                                        data-tooltip={isPractical ? 'Practical / Lab subject' : 'Theory subject'}
                                     >
-                                        {categoryLabel}
+                                        {isPractical ? <FlaskConical size={13} /> : <BookOpen size={13} />}
                                     </span>
                                     {subject.credits !== null && subject.credits !== undefined && (
-                                        <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-white/60 flex items-center gap-1">
-                                            <Award size={10} />
-                                            {subject.credits} Credits
+                                        <span
+                                            className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface/70 dark:bg-white/[0.06] border border-on-surface/[0.10] text-on-surface-variant inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                                            data-tooltip={`${subject.credits} ${subject.credits === 1 ? 'Credit' : 'Credits'} (synced automatically to Results GPA)`}
+                                        >
+                                            <Award size={11} className="text-primary shrink-0" />
+                                            <span>{subject.credits} Cr</span>
                                         </span>
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 shrink-0">
                                     <button
                                         type="button"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onEditSubject(subject);
                                         }}
-                                        className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer"
+                                        className="no-fluid h-8 w-8 inline-flex items-center justify-center rounded-full border border-on-surface/[0.10] bg-surface/75 dark:bg-white/[0.06] hover:bg-primary/15 text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
                                         title={`Edit ${subject.name}`}
                                     >
                                         <Edit2 size={13} />
                                     </button>
                                     <HoldButton
                                         variant="danger"
-                                        holdDuration={750}
+                                        holdDuration={700}
                                         title={`Hold to delete ${subject.name}`}
                                         onComplete={() => onDeleteSubject(subjectId, subject.name)}
-                                        className="h-8 w-8 p-0 flex items-center justify-center rounded-lg"
+                                        className="h-8 w-8 p-0 flex items-center justify-center rounded-full"
                                     >
                                         <Trash2 size={13} />
                                     </HoldButton>
                                 </div>
                             </div>
 
-                            <h3 className="text-xl font-black text-white tracking-tight leading-snug truncate">
+                            <h3
+                                className="font-display text-xl sm:text-2xl font-extrabold text-on-surface tracking-tight leading-snug truncate"
+                                data-tooltip={subject.name}
+                            >
                                 {subject.name}
                             </h3>
                             {subject.professor && (
-                                <p className="text-xs text-white/50 font-medium mt-0.5 flex items-center gap-1.5 truncate">
-                                    <UserCheck size={12} className="text-white/40" />
-                                    Prof. {formatTeacherName(subject.professor)}
+                                <p
+                                    className="text-xs text-on-surface-variant font-medium mt-1 flex items-center gap-1.5 truncate"
+                                    data-tooltip={`Faculty: ${formatTeacherName(subject.professor)}`}
+                                >
+                                    <User size={12} className="shrink-0 text-primary/70" />
+                                    <span className="truncate">{formatTeacherName(subject.professor)}</span>
                                 </p>
                             )}
                         </div>
 
-                        {/* Mid Section: Hero Liquid Health Metrics */}
-                        <div className="my-5 p-4 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md">
-                            <div className="flex items-end justify-between gap-4">
-                                <div>
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 block">
-                                        Subject Attendance
+                        <div className="my-4 p-3.5 sm:p-4 rounded-2xl bg-surface/92 dark:bg-[#141722]/92 border border-on-surface/[0.09]">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-baseline gap-2 min-w-0">
+                                    <span
+                                        className="font-display text-3xl sm:text-[34px] font-extrabold text-on-surface tracking-tight tabular-nums leading-none whitespace-nowrap"
+                                        data-tooltip={`Eligible attendance: ${attended} attended out of ${total} classes`}
+                                    >
+                                        {pct.toFixed(1)}%
                                     </span>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-3xl font-black text-white tracking-tight drop-shadow-md">
-                                            {pct.toFixed(1)}%
-                                        </span>
-                                        <span className="text-xs font-semibold text-white/50">
-                                            ({attended}/{total} classes)
-                                        </span>
-                                    </div>
+                                    <span className="text-xs font-bold text-on-surface-variant tabular-nums whitespace-nowrap">
+                                        {attended}/{total}
+                                    </span>
                                 </div>
 
-                                <div className="text-right">
-                                    <CallChip
-                                        label={isCritical ? `Need ${needed} cls` : `${canSkip} Bunks Safe`}
-                                        variant={colorTheme.badgeColor as any}
-                                        pulse={isCritical}
-                                    />
-                                </div>
+                                <span
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold tabular-nums whitespace-nowrap shrink-0 ${tone.pill}`}
+                                    data-tooltip={
+                                        isCritical
+                                            ? `Attend the next ${needed} consecutive ${needed === 1 ? 'class' : 'classes'} to reach ${targetThreshold}%`
+                                            : `You can safely miss ${canSkip} more ${canSkip === 1 ? 'class' : 'classes'} and stay at or above ${targetThreshold}%`
+                                    }
+                                >
+                                    {isCritical ? <AlertTriangle size={11} className="shrink-0" /> : <ShieldCheck size={11} className="shrink-0" />}
+                                    <span>{isCritical ? `Need ${needed}` : `+${canSkip} Safe`}</span>
+                                </span>
                             </div>
 
-                            {/* Medical Exclusion Note */}
                             {medicalLeaveCount > 0 && (
-                                <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-white/60">
-                                    <span>Medical Leave Count:</span>
-                                    <WarmTooltip content={`Counted absent: ${attended}/${totalWithMedical} (${Math.round(withMedicalAsAbsentPct)}%)`}>
-                                        <span className="font-semibold text-cyan-300 underline decoration-dotted cursor-help">
-                                            +{medicalLeaveCount} excluded from total
+                                <div className="mt-2.5 pt-2 border-t border-on-surface/[0.08] flex items-center justify-between gap-2">
+                                    <span className="text-[10px] font-semibold text-on-surface-variant/70">
+                                        Medical adjusted
+                                    </span>
+                                    <WarmTooltip content={`${medicalLeaveCount} approved medical leaves excluded · Counted as absent: ${attended}/${totalWithMedical} (${Math.round(withMedicalAsAbsentPct)}%)`}>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] font-bold text-sky-700 dark:text-cyan-300 cursor-help whitespace-nowrap">
+                                            <Stethoscope size={11} />
+                                            +{medicalLeaveCount} med
                                         </span>
                                     </WarmTooltip>
                                 </div>
                             )}
                         </div>
 
-                        {/* Bottom Row: Quick 1-Tap Attendance Marking */}
-                        <div className="pt-2 flex items-center justify-between gap-3 border-t border-white/10">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
-                                Quick Mark:
-                            </span>
-
-                            <div className="flex items-center gap-2">
-                                <TactileMarkButton
-                                    status="present"
-                                    label="Present"
-                                    onMark={() => onQuickMark(subjectId, 'present')}
-                                />
-                                <TactileMarkButton
-                                    status="absent"
-                                    label="Absent"
-                                    onMark={() => onQuickMark(subjectId, 'absent')}
-                                />
+                        <div className="pt-2.5 flex items-center justify-between gap-2 border-t border-on-surface/[0.09]">
+                            <div
+                                className="flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant truncate"
+                                data-tooltip={subject.classroom ? `Classroom: ${subject.classroom}` : undefined}
+                            >
+                                {subject.classroom ? (
+                                    <>
+                                        <MapPin size={12} className="text-primary/70 shrink-0" />
+                                        <span className="truncate">{subject.classroom}</span>
+                                    </>
+                                ) : (
+                                    <span className="truncate">{isCritical ? `Attend next ${needed} to reach ${targetThreshold}%` : `Buffer: ${canSkip} safe ${canSkip === 1 ? 'skip' : 'skips'}`}</span>
+                                )}
                             </div>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditSubject(subject);
+                                }}
+                                data-tooltip="Open subject details, syllabus & counters"
+                                className="no-fluid h-7 px-3 rounded-full bg-surface/75 dark:bg-white/[0.07] hover:bg-primary/15 border border-on-surface/[0.10] hover:border-primary/35 text-[11px] font-bold text-on-surface hover:text-primary inline-flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer whitespace-nowrap"
+                            >
+                                <Edit2 size={11} />
+                                Details
+                            </button>
                         </div>
-                    </motion.div>
+                    </div>
                 ) : (
-                    /* ── Collapsed Vertical Strip View ── */
-                    <div className="h-full flex flex-row md:flex-col items-center justify-between py-2 text-center w-full">
-                        {/* Subject Code & Category Indicator */}
-                        <div className="flex items-center md:flex-col gap-1.5">
-                            <span className="font-mono text-[10px] font-extrabold text-white/80 bg-white/10 px-2 py-0.5 rounded border border-white/15">
+                    <div className="h-full flex flex-row md:flex-col items-center justify-between py-1 text-center w-full gap-2">
+                        <div className="flex items-center md:flex-col gap-1.5 shrink-0">
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${tone.dot}`} />
+                            <span className="font-mono text-[9.5px] font-bold text-on-surface-variant whitespace-nowrap">
                                 {subject.code ? subject.code.substring(0, 7) : 'SUB'}
                             </span>
-                            <span
-                                className={`w-2 h-2 rounded-full ${
-                                    isCritical ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'
-                                }`}
-                                title={isCritical ? 'Deficit Risk' : 'Safe Attendance'}
-                            />
                         </div>
 
-                        {/* Rotated Subject Name on Desktop, Inline on Mobile */}
-                        <div className="my-auto truncate max-w-[140px] md:max-w-none">
-                            <span className="text-xs font-bold text-white/80 block md:[writing-mode:vertical-rl] md:rotate-180 truncate md:max-h-[160px]">
+                        <div className="my-auto truncate max-w-[150px] md:max-w-none">
+                            <span className="text-xs font-bold text-on-surface block md:[writing-mode:vertical-rl] md:rotate-180 truncate md:max-h-[168px]">
                                 {subject.name}
                             </span>
                         </div>
 
-                        {/* Compact Percentage Fill Pill */}
-                        <div className="flex items-center md:flex-col gap-1">
-                            <span
-                                className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                                    isCritical
-                                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                }`}
-                            >
-                                {Math.round(pct)}%
-                            </span>
-                            <span className="text-[8px] font-semibold text-white/40 hidden md:block">
-                                {attended}/{total}
-                            </span>
-                        </div>
+                        <span className={`font-display text-xs sm:text-[13px] font-extrabold tabular-nums whitespace-nowrap shrink-0 ${tone.text}`}>
+                            {Math.round(pct)}%
+                        </span>
                     </div>
                 )}
             </div>
-        </motion.div>
+        </div>
     );
 };
 
@@ -432,7 +313,6 @@ export const SubjectAccordionGallery: React.FC<SubjectAccordionGalleryProps> = (
     targetThreshold,
     classesNeeded,
     classesCanSkip,
-    onQuickMark,
     onEditSubject,
     onDeleteSubject,
     className = '',
@@ -440,50 +320,134 @@ export const SubjectAccordionGallery: React.FC<SubjectAccordionGalleryProps> = (
     const [activeSubjectId, setActiveSubjectId] = useState<string>(() => {
         return subjects[0] ? normalizeId(subjects[0]._id || subjects[0].id) : '';
     });
+    const railRef = useRef<HTMLDivElement | null>(null);
+    const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // Switch automatically to smooth horizontal scroll-snap rail when there are > 8 subjects
+    // so strips never get crushed or clipped off the right edge.
+    const scrollRailMode = subjects.length > 8;
 
     useEffect(() => {
-        if (!activeSubjectId && subjects.length > 0) {
+        if (subjects.length === 0) return;
+        const exists = subjects.some((s) => normalizeId(s._id || s.id) === activeSubjectId);
+        if (!exists) {
             setActiveSubjectId(normalizeId(subjects[0]._id || subjects[0].id));
         }
     }, [subjects, activeSubjectId]);
 
+    const activeIdx = Math.max(
+        0,
+        subjects.findIndex((s) => normalizeId(s._id || s.id) === activeSubjectId)
+    );
+
+    const activateByIndex = useCallback(
+        (nextIdx: number) => {
+            if (subjects.length === 0) return;
+            const bounded = (nextIdx + subjects.length) % subjects.length;
+            const target = subjects[bounded];
+            const id = normalizeId(target._id || target.id);
+            haptics.crownTick();
+            setActiveSubjectId(id);
+            window.requestAnimationFrame(() => {
+                cardRefs.current[id]?.scrollIntoView({
+                    behavior: 'smooth',
+                    inline: 'center',
+                    block: 'nearest',
+                });
+            });
+        },
+        [subjects]
+    );
+
     if (subjects.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 bg-surface rounded-2xl border border-white/5">
-                <AlertCircle size={28} className="text-white/20 mb-3" />
-                <p className="text-xs font-bold text-white/40 uppercase tracking-widest">
-                    No subjects in this category
-                </p>
+            <div className="flex flex-col items-center justify-center py-16">
+                <AlertCircle size={24} className="text-on-surface-variant/35 mb-2" />
+                <p className="text-xs font-medium text-on-surface-variant/60">No courses</p>
             </div>
         );
     }
 
     return (
-        <div className={`flex flex-col md:flex-row gap-3 w-full min-h-[390px] select-none ${className}`}>
-            {subjects.map((subject) => {
-                const id = normalizeId(subject._id || subject.id);
-                const isActive = id === activeSubjectId;
+        <div className={`space-y-3 select-none ${className}`}>
+            {scrollRailMode && (
+                <div className="hidden md:flex items-center justify-between gap-3 px-1">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-on-surface-variant">
+                        <span className="px-2.5 py-0.5 rounded-full bg-primary/12 border border-primary/25 text-primary font-mono font-bold tabular-nums">
+                            {activeIdx + 1} / {subjects.length}
+                        </span>
+                        <span className="truncate max-w-[300px] text-on-surface font-bold">
+                            {subjects[activeIdx]?.name}
+                        </span>
+                        <span className="text-on-surface-variant/55">· Scroll or use arrows to browse all subjects</span>
+                    </div>
 
-                return (
-                    <SubjectLiquidCard
-                        key={id}
-                        subject={subject}
-                        isActive={isActive}
-                        targetThreshold={targetThreshold}
-                        classesNeeded={classesNeeded}
-                        classesCanSkip={classesCanSkip}
-                        onActivate={() => {
-                            if (activeSubjectId !== id) {
-                                haptics.selection();
-                                setActiveSubjectId(id);
-                            }
-                        }}
-                        onQuickMark={onQuickMark}
-                        onEditSubject={onEditSubject}
-                        onDeleteSubject={onDeleteSubject}
-                    />
-                );
-            })}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => activateByIndex(activeIdx - 1)}
+                            data-tooltip="Previous subject"
+                            className="no-fluid h-7 w-7 rounded-full border border-on-surface/[0.11] bg-on-surface/[0.04] hover:border-primary/40 hover:text-primary flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <ChevronLeft size={14} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => activateByIndex(activeIdx + 1)}
+                            data-tooltip="Next subject"
+                            className="no-fluid h-7 w-7 rounded-full border border-on-surface/[0.11] bg-on-surface/[0.04] hover:border-primary/40 hover:text-primary flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <div
+                ref={railRef}
+                className={
+                    scrollRailMode
+                        ? 'flex flex-col md:flex-row gap-3 w-full min-h-[340px] md:overflow-x-auto md:snap-x md:snap-proximity custom-scrollbar md:pb-2.5 md:pr-2'
+                        : 'flex flex-col md:flex-row gap-3.5 w-full min-h-[340px]'
+                }
+            >
+                {subjects.map((subject) => {
+                    const id = normalizeId(subject._id || subject.id);
+                    const isActive = id === activeSubjectId;
+
+                    return (
+                        <SubjectLiquidCard
+                            key={id}
+                            cardRef={(el) => {
+                                cardRefs.current[id] = el;
+                            }}
+                            subject={subject}
+                            isActive={isActive}
+                            scrollRailMode={scrollRailMode}
+                            targetThreshold={targetThreshold}
+                            classesNeeded={classesNeeded}
+                            classesCanSkip={classesCanSkip}
+                            onActivate={() => {
+                                if (activeSubjectId !== id) {
+                                    haptics.crownTick();
+                                    setActiveSubjectId(id);
+                                    if (scrollRailMode) {
+                                        window.requestAnimationFrame(() => {
+                                            cardRefs.current[id]?.scrollIntoView({
+                                                behavior: 'smooth',
+                                                inline: 'center',
+                                                block: 'nearest',
+                                            });
+                                        });
+                                    }
+                                }
+                            }}
+                            onEditSubject={onEditSubject}
+                            onDeleteSubject={onDeleteSubject}
+                        />
+                    );
+                })}
+            </div>
         </div>
     );
 };

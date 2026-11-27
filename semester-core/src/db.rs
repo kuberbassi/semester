@@ -430,8 +430,7 @@ impl Database {
 }
 
 fn chrono_stub_iso8601() -> String {
-    // Generate ISO timestamp format
-    "2026-11-20T00:00:00Z".to_string()
+    chrono::Utc::now().to_rfc3339()
 }
 
 #[cfg(test)]

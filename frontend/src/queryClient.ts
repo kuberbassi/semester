@@ -1,6 +1,7 @@
 import { QueryClient, MutationCache, QueryCache } from '@tanstack/react-query';
 import axios from 'axios';
 import { dispatchGlobalToast } from '@/components/ui/toast-context';
+import { isTauriDesktop } from '@/utils/platform';
 
 interface ApiErrorBody {
     error?: string;
@@ -64,18 +65,17 @@ export const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             // ── Cache lifetime ───────────────────────────────────────────
-            // Data is considered fresh for 3 minutes — avoids hammering the
-            // server when multiple components mount simultaneously.
-            staleTime: 3 * 60 * 1000,
+            // On Tauri desktop, reads hit local SQLite in <1ms so keep staleTime=0
+            // for instantaneous UI updates after any write; on web keep 3 min cache.
+            staleTime: isTauriDesktop() ? 0 : 3 * 60 * 1000,
 
-            // Keep unused query data in memory for 20 minutes so navigating
-            // back to a page shows instant data while revalidating in background.
+            // Keep unused query data in memory for smooth instant transitions while revalidating.
             gcTime: 20 * 60 * 1000,
 
             // ── Retry strategy ───────────────────────────────────────────
-            // Only retry transient server errors (5xx). Never retry 4xx —
-            // they are deterministic and retrying wastes user time.
+            // Local SQLite calls never need network backoff retries; on web retry 5xx only.
             retry: (failureCount, error) => {
+                if (isTauriDesktop()) return false;
                 const status = axios.isAxiosError(error) ? error.response?.status : undefined;
                 if (status && status < 500) return false; // 4xx → no retry
                 return failureCount < 2; // 5xx → max 2 retries

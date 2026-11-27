@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Loader from './Loader';
 
@@ -15,6 +15,14 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     variant = 'spinner',
     skeletonClassName = 'h-24 w-full',
 }) => {
+    useEffect(() => {
+        if (!fullScreen) return;
+        window.dispatchEvent(new Event('semester:hide-tooltips'));
+        return () => {
+            window.dispatchEvent(new Event('semester:hide-tooltips'));
+        };
+    }, [fullScreen]);
+
     if (variant === 'skeleton') {
         return (
             <div className={`animate-pulse bg-surface-container-high rounded-xl ${skeletonClassName}`} />
@@ -31,8 +39,11 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
     if (fullScreen) {
         return createPortal(
-            <div className="fixed inset-0 flex items-center justify-center bg-background/30 backdrop-blur-md z-50 animate-fade-in">
-                <div className="bg-surface/75 border border-outline/20 backdrop-blur-xl p-6 rounded-2xl shadow-2xl flex flex-col items-center justify-center gap-3">
+            <div
+                data-tooltip-blocker="true"
+                className="fixed inset-0 flex items-center justify-center bg-background/45 backdrop-blur-md z-[10080] pointer-events-auto animate-fade-in"
+            >
+                <div className="bg-surface/80 border border-outline/25 backdrop-blur-xl p-6 rounded-2xl shadow-2xl flex flex-col items-center justify-center gap-3">
                     {spinner}
                 </div>
             </div>,

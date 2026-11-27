@@ -19,7 +19,16 @@
     "test:unit": "tsx --test tests/quality.test.ts",
     "quality": "npm run lint && npm run test:unit && npm run build",
     "typecheck": "npm run build",
-    "smoke:api": "npm run smoke:api --workspace api-node"
+    "smoke:api": "npm run smoke:api --workspace api-node",
+    "android:setup": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 setup",
+    "android:build": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 build",
+    "android:run": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 run",
+    "android:run:ui": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 run -SkipRust",
+    "android:logs": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 logs",
+    "android:crash": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 crash",
+    "android:smoke": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 smoke",
+    "android:wireless": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 wireless",
+    "android:mirror": "powershell -ExecutionPolicy Bypass -File scripts/android-dev.ps1 mirror"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

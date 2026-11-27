@@ -5,23 +5,24 @@ import { useSemester } from '@/contexts/semester-context';
 import type { DashboardData, User } from '@/types';
 import axios from 'axios';
 import { formatLocalDate } from '@/lib/date';
+import { isTauriDesktop } from '@/utils/platform';
 
 
 export const useDashboard = () => {
     const { currentSemester } = useSemester();
     const queryClient = useQueryClient();
+    const desktop = isTauriDesktop();
 
     const query = useQuery({
         queryKey: ['dashboard', currentSemester],
-        // React Query controls browser freshness. Keep the normal API URL so
-        // the server's short private view cache can also absorb repeat loads.
+        // React Query controls browser freshness. On Tauri desktop, SQLite reads
+        // complete in <1ms so staleTime=0 guarantees instantaneous live metrics.
         queryFn: () => attendanceService.getDashboardData(currentSemester, true),
-        staleTime: 60 * 1000,
+        staleTime: desktop ? 0 : 60 * 1000,
         gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: true,
-        placeholderData: () => {
-            return attendanceService.getDashboardLocalCache(currentSemester) || undefined;
-        }
+        placeholderData: (prev) =>
+            prev ?? attendanceService.getDashboardLocalCache(currentSemester) ?? undefined,
     });
 
     const prefetchDashboard = (semester: number) => {
@@ -118,11 +119,11 @@ export const useMarkAttendance = () => {
             }
         },
         onSettled: () => {
-            // Invalidate ALL attendance-related queries across every page
-            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-            queryClient.invalidateQueries({ queryKey: ['analytics'] });
-            queryClient.invalidateQueries({ queryKey: ['calendar'] });
-            queryClient.invalidateQueries({ queryKey: ['subjects'] });
+            // Invalidate & immediately refetch active queries so local SQLite metrics snap in <5ms
+            void queryClient.invalidateQueries({ queryKey: ['dashboard'], refetchType: 'active' });
+            void queryClient.invalidateQueries({ queryKey: ['analytics'], refetchType: 'active' });
+            void queryClient.invalidateQueries({ queryKey: ['calendar'], refetchType: 'active' });
+            void queryClient.invalidateQueries({ queryKey: ['subjects'], refetchType: 'active' });
         },
     });
 };

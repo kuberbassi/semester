@@ -10,7 +10,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['Semester-logo-96.png', 'favicon-64.png', 'pwa-icon-192.png', 'pwa-icon-512.png'],
+      injectRegister: false,
+      includeAssets: ['brand-logo.svg', 'favicon-64.png', 'pwa-icon-192.png', 'pwa-icon-512.png'],
       manifest: {
         name: 'Semester',
         short_name: 'Semester',

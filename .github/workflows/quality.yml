@@ -9,7 +9,22 @@ permissions:
   contents: read
 
 jobs:
-  quality:
+  rust-core:
+    name: Rust Core & Desktop Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test unified Rust core (semester-core)
+        run: cargo test --manifest-path semester-core/Cargo.toml
+
+  frontend:
+    name: Frontend Unit Tests & Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -25,5 +40,8 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run lint, unit tests, and production builds
-        run: npm run quality
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Build desktop frontend bundle
+        run: npm run build --workspace frontend

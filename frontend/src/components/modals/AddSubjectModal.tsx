@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BookPlus } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -71,11 +72,14 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Subject" size="sm">
-            <p className="text-xs text-on-surface-variant/60 mb-6">
-                Create a new subject to track attendance for.
-            </p>
-
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Add Subject"
+            subtitle="Create a new course to track attendance & credits"
+            icon={<BookPlus size={18} />}
+            size="md"
+        >
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <Input
                     label="Subject Name"
@@ -105,8 +109,8 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
                     />
 
                     <div className="col-span-2 space-y-2">
-                        <label className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest ml-1">Categories</label>
-                        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-outline bg-surface-container p-2 min-h-[46px]">
+                        <label className="text-[11px] font-semibold text-on-surface-variant/75 ml-0.5">Categories</label>
+                        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-on-surface/[0.08] bg-on-surface/[0.03] p-2 min-h-[46px]">
                             {['Theory', 'Practical', 'Assignment'].map((cat) => (
                                 <button
                                     key={cat}
@@ -118,10 +122,10 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
                                             setCategories([...categories, cat]);
                                         }
                                     }}
-                                    className={`px-3 py-1.5 rounded-md text-[10px] font-bold border transition-all
+                                    className={`no-fluid px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer
                                         ${categories.includes(cat)
-                                            ? 'bg-primary/10 border-primary text-primary'
-                                            : 'bg-surface border-transparent text-on-surface-variant/50 hover:bg-surface-container hover:text-on-surface'
+                                            ? 'bg-primary/16 border-primary/35 text-primary'
+                                            : 'bg-on-surface/[0.04] border-transparent text-on-surface-variant hover:bg-on-surface/[0.08] hover:text-on-surface'
                                         }
                                     `}
                                 >
@@ -132,7 +136,7 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-4">
+                <div className="flex items-center justify-end gap-2.5 pt-4 mt-2 border-t border-on-surface/[0.08]">
                     <Button
                         type="button"
                         variant="text"

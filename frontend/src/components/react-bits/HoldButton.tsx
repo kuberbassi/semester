@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Check, RotateCcw, ShieldAlert, Timer } from 'lucide-react';
 import { haptics } from '@/utils/haptics';
 
 interface HoldButtonProps {
@@ -16,6 +17,11 @@ interface HoldButtonProps {
     disabled?: boolean;
 }
 
+/**
+ * Tactile Press-and-Hold Safety Pill:
+ * Uses crisp intentional Lucide icons (zero emojis), theme-aware high contrast,
+ * and a smooth liquid progress fill bar.
+ */
 export const HoldButton: React.FC<HoldButtonProps> = ({
     children,
     label,
@@ -56,7 +62,7 @@ export const HoldButton: React.FC<HoldButtonProps> = ({
                 setIsTriggered(true);
                 setProgress(0);
                 triggerAction();
-                setTimeout(() => setIsTriggered(false), 1500);
+                setTimeout(() => setIsTriggered(false), 1400);
             } else {
                 timerRef.current = requestAnimationFrame(tick);
             }
@@ -79,22 +85,28 @@ export const HoldButton: React.FC<HoldButtonProps> = ({
     }, []);
 
     const variantStyles = {
-        danger: 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:border-rose-500/50 hover:bg-rose-500/20',
-        warning: 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/20',
-        primary: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-500/20',
-        emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-500/20',
-        secondary: 'bg-white/5 text-white/80 border-white/10 hover:border-white/20 hover:bg-white/10',
-        default: 'bg-white/10 text-white border-white/20 hover:border-white/30',
+        danger: 'bg-rose-500/12 text-rose-600 dark:text-rose-300 border-rose-500/30 hover:border-rose-500/55 hover:bg-rose-500/18',
+        warning: 'bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:border-amber-500/55 hover:bg-amber-500/18',
+        primary: 'bg-primary/12 text-primary border-primary/25 hover:border-primary/50 hover:bg-primary/18',
+        emerald: 'bg-primary/12 text-primary border-primary/25 hover:border-primary/50 hover:bg-primary/18',
+        secondary: 'bg-on-surface/[0.06] text-on-surface border-on-surface/15 hover:border-on-surface/30 hover:bg-on-surface/[0.10]',
+        default: 'bg-on-surface/[0.08] text-on-surface border-on-surface/15 hover:border-on-surface/30',
     }[variant];
 
     const meterBg = {
-        danger: 'rgba(244, 63, 94, 0.45)',
-        warning: 'rgba(245, 158, 11, 0.45)',
-        primary: 'rgba(16, 185, 129, 0.45)',
-        emerald: 'rgba(16, 185, 129, 0.45)',
-        secondary: 'rgba(255, 255, 255, 0.25)',
-        default: 'rgba(255, 255, 255, 0.3)',
+        danger: 'rgba(244, 63, 94, 0.35)',
+        warning: 'rgba(245, 158, 11, 0.35)',
+        primary: 'rgba(99, 102, 241, 0.35)',
+        emerald: 'rgba(99, 102, 241, 0.35)',
+        secondary: 'rgba(148, 163, 184, 0.30)',
+        default: 'rgba(148, 163, 184, 0.30)',
     }[variant];
+
+    const renderLeadingIcon = () => {
+        if (variant === 'danger') return <ShieldAlert size={13} className="shrink-0" />;
+        if (label?.toLowerCase().includes('reset')) return <RotateCcw size={12} className="shrink-0" />;
+        return <Timer size={12} className="shrink-0" />;
+    };
 
     return (
         <button
@@ -105,11 +117,11 @@ export const HoldButton: React.FC<HoldButtonProps> = ({
             onPointerUp={stopHolding}
             onPointerLeave={stopHolding}
             onClick={(e) => e.stopPropagation()}
-            className={`relative overflow-hidden rounded-xl border font-bold transition-all select-none cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles} ${className}`}
+            className={`no-fluid relative overflow-hidden rounded-full border font-bold transition-all select-none cursor-pointer active:scale-[0.97] disabled:opacity-45 disabled:cursor-not-allowed ${variantStyles} ${className}`}
         >
-            {/* Liquid Fill Meter */}
+            {/* Liquid Progress Fill */}
             <motion.div
-                className="absolute inset-y-0 left-0 -z-10 rounded-xl pointer-events-none"
+                className="absolute inset-y-0 left-0 pointer-events-none"
                 style={{
                     width: `${progress * 100}%`,
                     backgroundColor: meterBg,
@@ -120,12 +132,15 @@ export const HoldButton: React.FC<HoldButtonProps> = ({
             {/* Content Display */}
             <span className="relative z-10 flex items-center justify-center gap-1.5 h-full w-full pointer-events-none">
                 {isTriggered ? (
-                    completedLabel || '✓ Done!'
+                    <>
+                        <Check size={13} strokeWidth={2.6} />
+                        <span>{completedLabel || 'Done'}</span>
+                    </>
                 ) : children ? (
                     children
                 ) : (
                     <>
-                        <span className="opacity-70 text-[10px]">⏳</span>
+                        {renderLeadingIcon()}
                         <span>{label || 'Hold'}</span>
                     </>
                 )}

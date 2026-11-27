@@ -15,7 +15,6 @@ import { ConfirmProvider } from './contexts/ConfirmContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { attendanceService } from './services/attendance.service';
-import { GlobalClickSpark } from './components/react-bits';
 import './index.css';
 
 // Hooks
@@ -25,11 +24,12 @@ import { useHaptics } from './hooks/useHaptics';
 
 // Layout
 import PageTransition from './components/ui/PageTransition';
+import GlobalTooltipHost from './components/ui/GlobalTooltipHost';
+import { isTauriDesktop } from './utils/platform';
 
-// Keep the landing page in the entry bundle and split everything else by route.
-// This prevents dashboard-only editors, charts and PDF tools from delaying the
-// public page's first render.
+// Keep the landing/desktop launch page fast and split authenticated workspace routes.
 import Landing from './pages/Landing';
+import DesktopLaunch from './pages/DesktopLaunch';
 const loadAppLayout = () => import('./components/layout/AppLayout');
 const loadDashboard = () => import('./pages/Dashboard');
 const AppLayout = lazy(loadAppLayout);
@@ -63,6 +63,8 @@ const PublicRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =
 // ── Main App Routes ───────────────────────────────────────────────────────────
 
 const AppRoutes: React.FC = () => {
+  const isDesktop = isTauriDesktop();
+
   return (
     <Routes>
 
@@ -70,7 +72,13 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/"
         element={
-          <Landing />
+          isDesktop ? (
+            <PublicRoute>
+              <DesktopLaunch />
+            </PublicRoute>
+          ) : (
+            <Landing />
+          )
         }
       />
       <Route
@@ -78,7 +86,7 @@ const AppRoutes: React.FC = () => {
         element={
           <PublicRoute>
             <PageTransition>
-              <Login />
+              {isDesktop ? <DesktopLaunch /> : <Login />}
             </PageTransition>
           </PublicRoute>
         }
@@ -231,11 +239,11 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
-      <GlobalClickSpark />
       <Suspense fallback={<LoadingSpinner fullScreen />}>
         <AppRoutes />
       </Suspense>
-      {import.meta.env.PROD && !['localhost', '127.0.0.1'].includes(window.location.hostname) && <VercelAnalytics />}
+      <GlobalTooltipHost />
+      {import.meta.env.PROD && !isTauriDesktop() && !['localhost', '127.0.0.1'].includes(window.location.hostname) && <VercelAnalytics />}
     </div>
   );
 };

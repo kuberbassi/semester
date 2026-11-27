@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Semester",
-  "version": "0.1.0",
+  "mainBinaryName": "Semester",
+  "version": "1.0.0",
   "identifier": "com.semester.app",
   "build": {
     "frontendDist": "../frontend/dist",
@@ -13,26 +14,40 @@
     "windows": [
       {
         "title": "Semester",
-        "width": 1200,
-        "height": 800,
+        "width": 1240,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 640,
         "resizable": true,
         "fullscreen": false
       }
     ],
+    "withGlobalTauri": false,
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ipc: http://ipc.localhost https://ipc.localhost; frame-src https://www.youtube-nocookie.com https://www.youtube.com; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Kuber Bassi",
+    "copyright": "Copyright © 2025–2026 Kuber Bassi",
+    "shortDescription": "Native Academic Workspace",
+    "longDescription": "Semester is a fast, private, offline-first academic workspace for attendance tracking, timetables, IPU results, and study notes by Kuber Bassi.",
+    "homepage": "https://kuberbassi.com",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

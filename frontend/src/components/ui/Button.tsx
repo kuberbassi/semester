@@ -19,29 +19,29 @@ const Button: React.FC<ButtonProps> = ({
     disabled,
     ...props
 }) => {
-    const baseClasses = "inline-flex items-center justify-center font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden shrink-0 whitespace-nowrap flex-nowrap";
+    const baseClasses = "no-fluid inline-flex items-center justify-center font-bold transition-all duration-150 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer shrink-0 whitespace-nowrap flex-nowrap active:scale-[0.97]";
 
     const variantClasses: Record<string, string> = {
-        primary: "bg-primary text-on-primary hover:shadow-md hover:bg-primary/90 active:bg-primary/80 border border-transparent shadow-sm",
-        filled: "bg-primary text-on-primary hover:shadow-md hover:bg-primary/90 active:bg-primary/80 border border-transparent shadow-sm",
+        primary: "btn-gradient",
+        filled: "btn-gradient",
 
-        secondary: "bg-secondary-container text-on-secondary-container hover:shadow-sm hover:bg-secondary-container/80 active:bg-secondary-container/70 border border-transparent",
-        tonal: "bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80 active:bg-secondary-container/70 border border-transparent shadow-none",
+        secondary: "bg-on-surface/[0.06] text-on-surface hover:bg-on-surface/[0.11] border border-on-surface/15",
+        tonal: "bg-primary/14 text-primary hover:bg-primary/22 border border-primary/25",
 
-        outlined: "border border-outline text-primary hover:bg-primary/10 active:bg-primary/20",
-        outline: "border border-outline text-primary hover:bg-primary/10 active:bg-primary/20",
+        outlined: "border border-on-surface/15 text-on-surface hover:bg-on-surface/[0.06]",
+        outline: "border border-on-surface/15 text-on-surface hover:bg-on-surface/[0.06]",
 
-        ghost: "text-primary hover:bg-primary/10 active:bg-primary/20 border-transparent",
-        text: "text-primary hover:bg-primary/10 active:bg-primary/20 border-transparent",
+        ghost: "text-on-surface-variant hover:text-on-surface hover:bg-on-surface/[0.07] border border-transparent",
+        text: "text-on-surface-variant hover:text-on-surface hover:bg-on-surface/[0.07] border border-transparent",
 
-        danger: "bg-error text-on-error hover:bg-error/90 active:bg-error/80 shadow-sm",
+        danger: "bg-gradient-to-r from-rose-500 to-pink-500 text-white hover:brightness-110 border border-transparent shadow-sm",
         link: "text-primary underline-offset-4 hover:underline p-0 h-auto bg-transparent",
     };
 
     const sizeClasses = {
-        sm: "px-3 h-8 text-xs rounded-md gap-1.5",
-        md: "px-4 h-10 text-xs rounded-md gap-2",
-        lg: "px-6 h-12 text-sm rounded-lg gap-2.5",
+        sm: "px-3.5 h-8 text-xs rounded-full gap-1.5",
+        md: "px-5 h-10 text-xs rounded-full gap-2",
+        lg: "px-6 h-11 text-sm rounded-full gap-2.5",
     };
 
     return (
@@ -50,18 +50,15 @@ const Button: React.FC<ButtonProps> = ({
             disabled={disabled || isLoading}
             {...props}
         >
-            {/* State Layer (Ripple effect placeholder) */}
-            <span className="absolute inset-0 bg-current opacity-0 hover:opacity-[0.08] active:opacity-[0.12] transition-opacity duration-200" />
-
             {isLoading ? (
                 <div className="flex items-center gap-2">
-                    <Loader size={16} />
-                    <span className="relative z-10">Loading...</span>
+                    <Loader size={15} />
+                    <span>Loading…</span>
                 </div>
             ) : (
                 <>
-                    {icon && <span className="relative z-10">{icon}</span>}
-                    <span className="relative z-10 whitespace-nowrap">{children}</span>
+                    {icon && <span className="shrink-0">{icon}</span>}
+                    <span className="whitespace-nowrap">{children}</span>
                 </>
             )}
         </button>

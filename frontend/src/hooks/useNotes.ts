@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import api from '@/services/api';
+import { notesHttp } from '@/services/notesHttp';
 import { isDevTestMode, getDevInitialNotes } from '@/utils/devTestData';
 
 export interface TodoItem {
@@ -35,7 +35,7 @@ export const useNotes = () => {
                 localStorage.setItem('semester_dev_test_notes', JSON.stringify(initial));
                 return initial;
             }
-            const res = await api.get('/api/notes');
+            const res = await notesHttp.get('/api/notes');
             return res.data?.data || [];
         },
         staleTime: 0,

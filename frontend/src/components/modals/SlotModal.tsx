@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Trash2 } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -103,20 +103,12 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
             isOpen={isOpen}
             onClose={onClose}
             title={slot ? 'Edit Class Slot' : 'Add Class Slot'}
-            size="sm"
+            subtitle={`${day || slot?.day || 'Schedule'} · ${period?.startTime || slot?.start_time || 'Period'}`}
+            icon={<Clock size={18} />}
+            size="md"
         >
-            <div className="space-y-6">
-                <div className="flex items-center gap-4 p-4 bg-surface-container border border-outline rounded-xl">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                        <Clock size={20} />
-                    </div>
-                    <div>
-                        <p className="text-xs font-semibold text-on-surface-variant/70 uppercase tracking-wider">Date & Time</p>
-                        <p className="text-sm font-bold text-on-surface">{day} • {period?.startTime || slot?.start_time}</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Select label="Type" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as TimetableSlot['type'] })} options={[
                         { value: 'class', label: 'Class' },
                         { value: 'break', label: 'Break' },
@@ -130,20 +122,23 @@ const SlotModal: React.FC<SlotModalProps> = ({ isOpen, onClose, onSuccess, slot,
                     )}
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-outline">
-                    {slot && (
-                        <HoldButton
-                            variant="danger"
-                            holdDuration={750}
-                            title="Hold to delete slot"
-                            onComplete={handleDelete}
-                            className="h-9 px-3 flex items-center justify-center rounded-lg"
-                        >
-                            <Trash2 size={16} />
-                        </HoldButton>
-                    )}
-                    <Button variant="text" onClick={onClose} className="flex-1">Cancel</Button>
-                    <Button onClick={handleSave} isLoading={loading} className="flex-[2] shadow-sm">Save</Button>
+                <div className="flex items-center justify-between gap-3 pt-4 border-t border-on-surface/[0.08]">
+                    <div>
+                        {slot && (
+                            <HoldButton
+                                variant="danger"
+                                holdDuration={750}
+                                title="Hold to delete slot"
+                                onComplete={handleDelete}
+                                className="h-9 px-3.5 text-xs"
+                                label="Hold to Remove"
+                            />
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                        <Button variant="text" onClick={onClose}>Cancel</Button>
+                        <Button onClick={handleSave} isLoading={loading}>Save Slot</Button>
+                    </div>
                 </div>
             </div>
         </Modal>

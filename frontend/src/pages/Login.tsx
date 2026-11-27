@@ -6,8 +6,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { useTheme } from '@/contexts/theme-context';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { getCopyrightYears } from '@/utils/copyright';
-import { Sun, Moon, ArrowLeft, Sparkles } from 'lucide-react';
+import { Sun, Moon, ArrowLeft, Terminal } from 'lucide-react';
 import { getErrorMessage } from '@/utils/errors';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 const Login: React.FC = () => {
     const { loginWithGoogle, loginAsDevTestUser } = useAuth();
@@ -16,26 +17,36 @@ const Login: React.FC = () => {
 
     usePageMeta({
         title: 'Semester | Student Center',
-        description: 'Sign in to Semester â€” your all-in-one student dashboard for IPU. Track attendance, sync results, manage timetables, and develop your skills.',
+        description: 'Sign in to Semester — your all-in-one student workspace for IPU. Track attendance, sync results, manage timetables, and develop your skills.',
         indexable: false,
     });
 
     return (
         <div className="min-h-screen w-full flex flex-col justify-between items-center relative overflow-hidden bg-background text-on-background font-sans py-8">
-
+            {/* Subtle Ambient Orbs */}
+            <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
+                <div
+                    className="aurora-orb-1 absolute -top-24 -left-24 w-[480px] h-[480px] rounded-full opacity-[0.20] dark:opacity-[0.12]"
+                    style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.52) 0%, transparent 70%)' }}
+                />
+                <div
+                    className="aurora-orb-2 absolute bottom-[-120px] -right-24 w-[480px] h-[480px] rounded-full opacity-[0.18] dark:opacity-[0.10]"
+                    style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.50) 0%, transparent 70%)' }}
+                />
+            </div>
 
             {/* Floating Top Header / Theme Toggle & Navigation */}
             <header className="w-full max-w-7xl px-6 flex justify-between items-center z-10">
-                <Link 
-                    to="/" 
-                    className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors duration-200"
+                <Link
+                    to="/"
+                    className="no-fluid flex items-center gap-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface transition-colors duration-200"
                 >
                     <ArrowLeft size={14} />
                     <span>Back to Home</span>
                 </Link>
                 <button
                     onClick={toggleTheme}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg border border-outline bg-surface hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-all duration-200 cursor-pointer shadow-sm"
+                    className="no-fluid w-9 h-9 flex items-center justify-center rounded-2xl border border-on-surface/10 bg-surface/80 dark:bg-white/[0.06] hover:bg-primary/15 text-on-surface-variant hover:text-primary transition-all duration-200 cursor-pointer"
                     title="Toggle theme"
                 >
                     {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
@@ -45,125 +56,127 @@ const Login: React.FC = () => {
             {/* Main Login Card Container */}
             <main className="flex-1 flex items-center justify-center w-full max-w-md px-4 z-10 my-8">
                 <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                    className="w-full text-center p-8 md:p-10 rounded-xl bg-surface border border-outline shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] select-none"
+                    initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    className="w-full text-center rounded-[28px] liquid-glass overflow-hidden select-none"
                 >
-                    {/* Logo Icon */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.1, duration: 0.4 }}
-                        className="mb-8 flex justify-center"
-                    >
-                        <div className="w-24 h-24 rounded-xl overflow-hidden bg-surface-variant border border-outline shadow-sm flex items-center justify-center">
-                            <img src="/Semester-logo-96.png" alt="Semester Logo" width="72" height="72" className="w-[72px] h-[72px] object-contain invert dark:invert-0" />
-                        </div>
-                    </motion.div>
+                    <div className="h-[3px] w-full bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-400" />
 
-                    {/* Branding Titles */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.18, duration: 0.4 }}
-                        className="mb-8"
-                    >
-                        <h1 className="text-3xl font-extrabold text-on-background tracking-tight mb-2">
-                            Semester
-                        </h1>
-                        <p className="text-sm text-on-surface-variant font-semibold tracking-wide uppercase">
-                            Student Portal
-                        </p>
-                        <p className="text-xs text-on-surface-variant/50 mt-1.5 font-medium">
-                            Sign in with your Google account to get started
-                        </p>
-                    </motion.div>
+                    <div className="p-8 md:p-10">
+                        {/* Refreshed Brand Logo */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.06, duration: 0.3 }}
+                            className="mb-6 flex justify-center"
+                        >
+                            <BrandLogo size={64} className="drop-shadow-[0_12px_22px_rgba(79,70,229,0.45)]" />
+                        </motion.div>
 
-                    {/* Google Login Component */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25, duration: 0.4 }}
-                        className="flex flex-col items-center gap-4 relative z-20"
-                    >
-                        <div className="hover:scale-[1.01] transition-transform duration-200">
-                            <GoogleLogin
-                                onSuccess={async (credentialResponse) => {
-                                    setError(null);
-                                    try {
-                                        if (!credentialResponse.credential) throw new Error('No credential received');
-                                        await loginWithGoogle(credentialResponse.credential);
-                                    } catch (err: unknown) {
-                                        console.error('âŒ Backend login failed:', err);
-                                        const errMsg = getErrorMessage(err, 'Login failed. Please try again.');
-                                        setError(errMsg);
+                        {/* Branding Titles */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.12, duration: 0.3 }}
+                            className="mb-7"
+                        >
+                            <h1 className="font-display text-3xl font-extrabold gradient-text tracking-tight mb-1.5">
+                                Semester
+                            </h1>
+                            <p className="text-[11px] text-primary font-bold tracking-[0.16em] uppercase">
+                                Student Workspace
+                            </p>
+                            <p className="text-xs text-on-surface-variant mt-2 font-medium">
+                                Sign in with your Google account to sync your workspace
+                            </p>
+                        </motion.div>
+
+                        {/* Google Login Component */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.18, duration: 0.3 }}
+                            className="flex flex-col items-center gap-4 relative z-20"
+                        >
+                            <div className="hover:scale-[1.01] transition-transform duration-200">
+                                <GoogleLogin
+                                    onSuccess={async (credentialResponse) => {
+                                        setError(null);
+                                        try {
+                                            if (!credentialResponse.credential) throw new Error('No credential received');
+                                            await loginWithGoogle(credentialResponse.credential);
+                                        } catch (err: unknown) {
+                                            console.error('Backend login failed:', err);
+                                            const errMsg = getErrorMessage(err, 'Login failed. Please try again.');
+                                            setError(errMsg);
+                                        }
+                                    }}
+                                    onError={() => {
+                                        console.error('Google Login Failed');
+                                        setError('Auth provider failed. Please try again.');
+                                    }}
+                                    theme={theme === 'dark' ? 'filled_black' : 'outline'}
+                                    size="large"
+                                    width={280}
+                                    text="continue_with"
+                                    shape="circle"
+                                />
+                            </div>
+                            {error && (
+                                <motion.p
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-rose-500 text-xs font-semibold mt-1 bg-rose-500/10 border border-rose-500/20 py-2.5 px-4 rounded-2xl w-full text-center"
+                                >
+                                    {error}
+                                </motion.p>
+                            )}
+
+                            <div className="w-full flex items-center gap-3 my-1">
+                                <div className="flex-1 h-px bg-on-surface/10" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">Local Preview</span>
+                                <div className="flex-1 h-px bg-on-surface/10" />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (loginAsDevTestUser) {
+                                        loginAsDevTestUser();
                                     }
                                 }}
-                                onError={() => {
-                                    console.error('âŒ Google Login Failed');
-                                    setError('Auth provider failed. Please try again.');
-                                }}
-                                theme={theme === 'dark' ? 'filled_black' : 'outline'}
-                                size="large"
-                                width={280}
-                                text="continue_with"
-                                shape="circle"
-                            />
-                        </div>
-                        {error && (
-                            <motion.p
-                                initial={{ opacity: 0, y: -8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-error text-xs font-semibold mt-1 bg-error/5 border border-error/15 py-2.5 px-4 rounded-xl w-full text-center"
+                                className="no-fluid w-full h-11 flex items-center justify-center gap-2 px-5 rounded-full btn-gradient font-bold text-xs cursor-pointer"
                             >
-                                {error}
-                            </motion.p>
-                        )}
+                                <Terminal size={14} />
+                                <span>Enter Dev Test Mode</span>
+                            </button>
+                            <p className="text-[11px] text-on-surface-variant/75 -mt-1.5">
+                                Offline mock workspace with live radar, timetable, notes &amp; results
+                            </p>
+                        </motion.div>
 
-                        <div className="w-full flex items-center gap-3 my-1 opacity-40">
-                            <div className="flex-1 h-px bg-outline" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Developer & UI/UX Testing</span>
-                            <div className="flex-1 h-px bg-outline" />
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (loginAsDevTestUser) {
-                                    loginAsDevTestUser();
-                                }
-                            }}
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer"
+                        {/* Policies Agreement Info */}
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.25, duration: 0.3 }}
+                            className="mt-8 text-[11px] font-medium text-on-surface-variant/65 leading-relaxed pt-5 border-t border-on-surface/[0.08]"
                         >
-                            <Sparkles size={15} className="animate-spin text-emerald-500" style={{ animationDuration: '3s' }} />
-                            <span>⚡ Enter Dev Test Mode (Instant Full Data)</span>
-                        </button>
-                        <p className="text-[10px] text-on-surface-variant/60 -mt-2">
-                            Offline mock database with live radar, timetable, notes & IPU results
-                        </p>
-                    </motion.div>
-
-                    {/* Policies Agreement Info */}
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.35, duration: 0.4 }}
-                        className="mt-10 text-[11px] font-medium text-on-surface-variant/40 leading-relaxed pt-6 border-t border-outline"
-                    >
-                        By signing in, you accept the{' '}
-                        <a href="/terms" className="text-on-surface-variant/60 hover:text-on-surface transition-colors underline underline-offset-4 font-semibold">Terms of Service</a>
-                        {' '}&{' '}
-                        <a href="/privacy" className="text-on-surface-variant/60 hover:text-on-surface transition-colors underline underline-offset-4 font-semibold">Privacy Policy</a>
-                    </motion.p>
+                            By signing in, you accept the{' '}
+                            <a href="/terms" className="text-on-surface-variant hover:text-primary transition-colors underline underline-offset-4 font-semibold">Terms of Service</a>
+                            {' '}&amp;{' '}
+                            <a href="/privacy" className="text-on-surface-variant hover:text-primary transition-colors underline underline-offset-4 font-semibold">Privacy Policy</a>
+                        </motion.p>
+                    </div>
                 </motion.div>
             </main>
 
-            {/* Footer â€” synced with Landing page */}
+            {/* Footer */}
             <footer className="w-full max-w-7xl px-6 z-10">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-outline">
-                    <p className="text-[10px] text-on-surface-variant/40 font-medium">
-                        &copy; {getCopyrightYears(2025)} Semester &mdash; made something cool by{' '}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-on-surface/[0.08]">
+                    <p className="text-[11px] text-on-surface-variant/60 font-medium">
+                        &copy; {getCopyrightYears(2025)} Semester &mdash; built by{' '}
                         <a
                             href="https://kuberbassi.com"
                             target="_blank"
@@ -174,8 +187,8 @@ const Login: React.FC = () => {
                         </a>
                     </p>
                     <div className="flex gap-4">
-                        <a href="/terms" className="text-[10px] text-on-surface-variant/40 hover:text-on-surface hover:underline transition-colors font-medium">Terms</a>
-                        <a href="/privacy" className="text-[10px] text-on-surface-variant/40 hover:text-on-surface hover:underline transition-colors font-medium">Privacy</a>
+                        <a href="/terms" className="text-[11px] text-on-surface-variant/60 hover:text-on-surface hover:underline transition-colors font-medium">Terms</a>
+                        <a href="/privacy" className="text-[11px] text-on-surface-variant/60 hover:text-on-surface hover:underline transition-colors font-medium">Privacy</a>
                     </div>
                 </div>
             </footer>

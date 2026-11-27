@@ -1,0 +1,21 @@
+<svg width="1024" height="1024" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="52%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="top" x1="16" y1="14" x2="48" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <linearGradient id="bot" x1="16" y1="30" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#cffafe"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="17" fill="url(#bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="16" stroke="#ffffff" stroke-opacity="0.30" stroke-width="1.5"/>
+  <path d="M44.5 21.5C44.5 17.6 40.2 15 33.6 15C26.2 15 21 18.7 21 23.8C21 28.5 24.9 31.1 32.2 32.3L36.2 33C40.4 33.7 42.5 35.1 42.5 37.8C42.5 40.9 39.2 43 33.4 43C28.4 43 24.9 41.3 23.7 38.6" stroke="url(#top)" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20.5 48.2C24.8 50.6 31.6 51.3 39.2 48.6C41.8 47.7 43.8 46.3 45.2 44.8" stroke="url(#bot)" stroke-opacity="0.78" stroke-width="3.2" stroke-linecap="round"/>
+</svg>

@@ -46,8 +46,8 @@ self.addEventListener('push', (event) => {
     let data = {
         title: 'Semester Notification',
         body: 'New update available',
-        icon: '/Semester-logo.png',
-        badge: '/Semester-logo.png',
+        icon: '/pwa-icon-192.png',
+        badge: '/pwa-icon-192.png',
         tag: 'default',
         data: {}
     };
@@ -63,8 +63,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: data.body,
-        icon: data.icon || '/Semester-logo.png',
-        badge: data.badge || '/Semester-logo.png',
+        icon: data.icon || '/pwa-icon-192.png',
+        badge: data.badge || '/pwa-icon-192.png',
         tag: data.tag,
         data: data.data,
         vibrate: [200, 100, 200],
@@ -73,7 +73,7 @@ self.addEventListener('push', (event) => {
             {
                 action: 'open',
                 title: 'View',
-                icon: '/Semester-logo.png'
+                icon: '/pwa-icon-192.png'
             }
         ]
     };

@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum SemesterCoreError {
-    #[error("Database error: {message}")]
-    DatabaseError { message: String },
-    #[error("Parse error: {message}")]
-    ParseError { message: String },
-    #[error("Sync error: {message}")]
-    SyncError { message: String },
+    #[error("Database error: {reason}")]
+    DatabaseError { reason: String },
+    #[error("Parse error: {reason}")]
+    ParseError { reason: String },
+    #[error("Sync error: {reason}")]
+    SyncError { reason: String },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, uniffi::Enum)]

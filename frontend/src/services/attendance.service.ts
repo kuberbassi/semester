@@ -21,11 +21,26 @@ import type {
     User,
     SemesterResult
 } from '@/types';
-import { isDevTestMode, loadDevDashboardData, devMarkAttendance, getDevTodayTimetableSlots, getDevInitialResults } from '@/utils/devTestData';
+import {
+    isDevTestMode,
+    loadDevDashboardData,
+    devMarkAttendance,
+    getDevInitialResults,
+    getDevTimetablePeriods,
+    getDevWeeklySchedule,
+    getDevManualCourses,
+    saveDevManualCourses,
+    getDevCalendarRecords,
+    getDevSystemLogs,
+    DEV_TEST_DATA_KEY,
+} from '@/utils/devTestData';
 
 type JsonObject = Record<string, unknown>;
 type TimetablePayload = { schedule?: TimetableSchedule; periods?: GridPeriod[] };
 import { formatLocalDate } from '@/lib/date';
+import { isTauriDesktop } from '@/utils/platform';
+import { desktopDb } from './desktopDb';
+import { queryClient } from '@/queryClient';
 
 const extractApiData = <T>(response: { data?: unknown }, fallback: T): T => {
     const body = response?.data;
@@ -111,7 +126,7 @@ const clearDerivedCaches = () => {
     clearCacheByPrefix('manualCourses');
 };
 
-export const attendanceService = {
+const webService = {
     // Preferences & Profile
     getPreferences: async (): Promise<Preferences> => {
         const response = await api.get('/api/profile/preferences');
@@ -240,6 +255,9 @@ export const attendanceService = {
     },
 
     getCalendarData: async (year: number, month: number, semester?: number): Promise<AttendanceRecord[]> => {
+        if (isDevTestMode()) {
+            return getDevCalendarRecords(year, month) as unknown as AttendanceRecord[];
+        }
         const m = String(month).padStart(2, '0');
         const monthStr = `${year}-${m}`;
         const url = semester
@@ -287,6 +305,36 @@ export const attendanceService = {
     },
 
     getClassesForDate: async (date: string, semester?: number): Promise<ScheduledClass[]> => {
+        if (isDevTestMode()) {
+            const [y, m, d] = date.split('-').map(Number);
+            const dt = new Date(y, (m || 1) - 1, d || 1);
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = dayNames[dt.getDay()];
+            const schedule = getDevWeeklySchedule();
+            const slots = schedule[dayName] || [];
+            const records = getDevCalendarRecords(y || new Date().getFullYear(), m || (new Date().getMonth() + 1)).filter(
+                (r: any) => r.date === date
+            );
+            return slots.map((slot, idx) => {
+                const match = records.find((r: any) => String(r.subject_id) === String(slot.subject_id));
+                return {
+                    _id: String(slot.subject_id || `dev-slot-${idx}`),
+                    subject_id: String(slot.subject_id || `dev-slot-${idx}`),
+                    name: slot.subject_name || slot.label || 'Class',
+                    time: `${slot.start_time || ''} - ${slot.end_time || ''}`,
+                    type: slot.type || 'Lecture',
+                    attendance_type: 'Lecture',
+                    slot_id: String(slot.id || idx),
+                    semester: semester || 5,
+                    marked: Boolean(match),
+                    marked_status: match ? match.status : 'pending',
+                    log_id: match ? String(match._id) : null,
+                    notes: '',
+                    attended: 0,
+                    total: 0,
+                } as unknown as ScheduledClass;
+            });
+        }
         const url = semester ? `/api/attendance/classes-for-date?date=${date}&semester=${semester}` : `/api/attendance/classes-for-date?date=${date}`;
         const response = await api.get(url);
         const data = response.data.data;
@@ -331,6 +379,9 @@ export const attendanceService = {
 
     // Subjects
     getSubjects: async (semester: number = 1): Promise<Subject[]> => {
+        if (isDevTestMode()) {
+            return (loadDevDashboardData().subjects || []) as Subject[];
+        }
         const cacheKey = `subjects:${semester}`;
         const cached = getAnyCached<Subject[]>(cacheKey);
         if (cached) return cached;
@@ -349,11 +400,20 @@ export const attendanceService = {
     },
 
     getFullSubjectsData: async (semester: number = 1): Promise<Subject[]> => {
+        if (isDevTestMode()) {
+            return (loadDevDashboardData().subjects || []) as Subject[];
+        }
         const response = await api.get(`/api/academic/full_subjects_data?semester=${semester}`);
         return response.data.data;
     },
 
     getSubjectDetails: async (subjectId: string): Promise<Subject> => {
+        if (isDevTestMode()) {
+            const found = (loadDevDashboardData().subjects || []).find(
+                (s: any) => String(s._id || s.id) === String(subjectId)
+            );
+            if (found) return found as Subject;
+        }
         const response = await api.get(`/api/academic/subjects/${subjectId}`);
         return response.data.data;
     },
@@ -367,6 +427,30 @@ export const attendanceService = {
         classroom?: string,
         credits?: number
     ): Promise<void> => {
+        if (isDevTestMode()) {
+            const data = loadDevDashboardData();
+            const newSub = {
+                _id: `sub-dev-${Date.now()}`,
+                id: `sub-dev-${Date.now()}`,
+                name: subjectName,
+                code: code || 'NEW-101',
+                professor: professor || '',
+                classroom: classroom || '',
+                semester,
+                type: categories?.includes('Practical') ? 'practical' : 'theory',
+                credits: credits ?? 4,
+                target: 75,
+                attended: 0,
+                total: 0,
+                attendance_percentage: 0,
+                status_message: 'New',
+                categories: categories || ['Theory'],
+            };
+            data.subjects = [...(data.subjects || []), newSub as any];
+            data.total_subjects = data.subjects.length;
+            localStorage.setItem(DEV_TEST_DATA_KEY, JSON.stringify(data));
+            return;
+        }
         // Use modern REST endpoint
         await api.post('/api/academic/subjects', {
             name: subjectName, // Backend expects 'name', not 'subject_name'
@@ -381,6 +465,13 @@ export const attendanceService = {
     },
 
     deleteSubject: async (subjectId: string): Promise<void> => {
+        if (isDevTestMode()) {
+            const data = loadDevDashboardData();
+            data.subjects = (data.subjects || []).filter((s: any) => String(s._id || s.id) !== String(subjectId));
+            data.total_subjects = data.subjects.length;
+            localStorage.setItem(DEV_TEST_DATA_KEY, JSON.stringify(data));
+            return;
+        }
         await api.delete(`/api/academic/subjects/${subjectId}`);
         clearDerivedCaches();
     },
@@ -402,7 +493,18 @@ export const attendanceService = {
         subjectId: string,
         data: Partial<Subject>
     ): Promise<void> => {
-
+        if (isDevTestMode()) {
+            const dev = loadDevDashboardData();
+            dev.subjects = (dev.subjects || []).map((s: any) => {
+                if (String(s._id || s.id) !== String(subjectId)) return s;
+                const nextAttended = typeof data.attended === 'number' ? data.attended : s.attended;
+                const nextTotal = typeof data.total === 'number' ? data.total : s.total;
+                const pct = nextTotal > 0 ? Math.round((nextAttended / nextTotal) * 10000) / 100 : 0;
+                return { ...s, ...data, attended: nextAttended, total: nextTotal, attendance_percentage: pct };
+            });
+            localStorage.setItem(DEV_TEST_DATA_KEY, JSON.stringify(dev));
+            return;
+        }
         await api.put(`/api/academic/subjects/${subjectId}`, data);
         clearDerivedCaches();
     },
@@ -424,7 +526,17 @@ export const attendanceService = {
         subjectId: string,
         data: { total?: number; completed?: number; hardcopy?: boolean }
     ): Promise<Subject> => {
-
+        if (isDevTestMode()) {
+            const dev = loadDevDashboardData();
+            let updatedSub: any = null;
+            dev.subjects = (dev.subjects || []).map((s: any) => {
+                if (String(s._id || s.id) !== String(subjectId)) return s;
+                updatedSub = { ...s, practicals: { total: 10, completed: 0, hardcopy: false, ...(s.practicals || {}), ...data } };
+                return updatedSub;
+            });
+            localStorage.setItem(DEV_TEST_DATA_KEY, JSON.stringify(dev));
+            return updatedSub as Subject;
+        }
         const response = await api.put(`/api/academic/subjects/${subjectId}`, { practicals: data });
         clearDerivedCaches();
         return response.data?.data?.subject;
@@ -434,7 +546,17 @@ export const attendanceService = {
         subjectId: string,
         data: { total?: number; completed?: number; hardcopy?: boolean }
     ): Promise<Subject> => {
-
+        if (isDevTestMode()) {
+            const dev = loadDevDashboardData();
+            let updatedSub: any = null;
+            dev.subjects = (dev.subjects || []).map((s: any) => {
+                if (String(s._id || s.id) !== String(subjectId)) return s;
+                updatedSub = { ...s, assignments: { total: 4, completed: 0, hardcopy: false, ...(s.assignments || {}), ...data } };
+                return updatedSub;
+            });
+            localStorage.setItem(DEV_TEST_DATA_KEY, JSON.stringify(dev));
+            return updatedSub as Subject;
+        }
         const response = await api.put(`/api/academic/subjects/${subjectId}`, { assignments: data });
         clearDerivedCaches();
         return response.data?.data?.subject;
@@ -443,20 +565,10 @@ export const attendanceService = {
     // Timetable
     getTimetable: async (semester: number = 1): Promise<{ schedule: TimetableSchedule; periods?: GridPeriod[] }> => {
         if (isDevTestMode()) {
-            const slots = getDevTodayTimetableSlots();
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const currentDay = days[new Date().getDay()];
-            const sched: TimetableSchedule = {
-                Monday: slots,
-                Tuesday: slots,
-                Wednesday: slots,
-                Thursday: slots,
-                Friday: slots,
-                Saturday: [],
-                Sunday: [],
+            return {
+                schedule: getDevWeeklySchedule() as TimetableSchedule,
+                periods: getDevTimetablePeriods() as GridPeriod[],
             };
-            sched[currentDay] = slots;
-            return { schedule: sched, periods: [] };
         }
         const cacheKey = `timetable:${semester}`;
         const cached = getAnyCached<{ schedule: TimetableSchedule; periods?: GridPeriod[] }>(cacheKey);
@@ -598,6 +710,10 @@ export const attendanceService = {
 
     // System logs
     getSystemLogs: async (limit = 7, offset = 0, snapshot?: string): Promise<{ items: SystemLog[]; has_more: boolean; next_offset: number; snapshot: string }> => {
+        if (isDevTestMode()) {
+            const logs = getDevSystemLogs() as unknown as SystemLog[];
+            return { items: logs.slice(offset, offset + limit), has_more: false, next_offset: logs.length, snapshot: snapshot || new Date().toISOString() };
+        }
         const requestedLimit = systemLogsUsesLegacyApi ? offset + limit : limit;
         const params = new URLSearchParams({ limit: String(requestedLimit) });
         if (!systemLogsUsesLegacyApi) params.set('offset', String(offset));
@@ -659,6 +775,9 @@ export const attendanceService = {
 
     // Manual Course Manager
     getManualCourses: async () => {
+        if (isDevTestMode()) {
+            return getDevManualCourses() as unknown as ManualCourse[];
+        }
         const cacheKey = 'manualCourses';
         const cached = getAnyCached<ManualCourse[]>(cacheKey);
         if (cached) return cached;
@@ -683,18 +802,36 @@ export const attendanceService = {
     },
 
     addManualCourse: async (course: ManualCourse) => {
+        if (isDevTestMode()) {
+            const list = getDevManualCourses();
+            const created = { ...course, _id: `dev-mc-${Date.now()}`, id: `dev-mc-${Date.now()}` };
+            saveDevManualCourses([created, ...list]);
+            return created;
+        }
         const response = await api.post('/api/academic/courses/manual', course);
         clearDerivedCaches();
         return response.data;
     },
 
     updateManualCourse: async (id: string, course: Partial<ManualCourse>) => {
+        if (isDevTestMode()) {
+            const list = getDevManualCourses().map((c: any) =>
+                String(c._id || c.id) === String(id) ? { ...c, ...course } : c
+            );
+            saveDevManualCourses(list);
+            return { success: true };
+        }
         const response = await api.put(`/api/academic/courses/manual/${id}`, course);
         clearDerivedCaches();
         return response.data;
     },
 
     deleteManualCourse: async (id: string) => {
+        if (isDevTestMode()) {
+            const list = getDevManualCourses().filter((c: any) => String(c._id || c.id) !== String(id));
+            saveDevManualCourses(list);
+            return { success: true };
+        }
         const response = await api.delete(`/api/academic/courses/manual/${id}`);
         clearDerivedCaches();
         return response.data;
@@ -765,6 +902,13 @@ export const attendanceService = {
     },
 
     getDriveStatus: async (): Promise<DriveStatus> => {
+        if (isDevTestMode()) {
+            return {
+                google_drive_linked: false,
+                google_drive_backup_frequency: 'weekly',
+                google_drive_last_backup: null,
+            } as unknown as DriveStatus;
+        }
         const response = await api.get('/api/data/drive/status');
         return response.data?.data ?? response.data;
     },
@@ -790,3 +934,183 @@ export const attendanceService = {
         }
     },
 };
+
+/**
+ * Desktop (Tauri) overrides: every operation hits the local multi-core SQLite backend.
+ * Smart Drive sync is triggered by Rust after each write; the UI never waits on the network.
+ */
+const num = (v: unknown, d = 1) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+
+/**
+ * Instant local SQLite reactivity: immediately refreshes every active Dashboard,
+ * Calendar, Subject, Timetable, and Analytics view across the desktop app (<5ms)
+ * without waiting on debounce timers or page reloads.
+ */
+export const notifyDesktopMutation = () => {
+    clearDerivedCaches();
+    void queryClient.invalidateQueries({ queryKey: ['dashboard'], refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: ['subjects'], refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: ['calendar'], refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: ['timetable'], refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: ['analytics'], refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: ['results'], refetchType: 'active' });
+    void queryClient.invalidateQueries({ queryKey: ['notes'], refetchType: 'active' });
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('semester:local-db-changed'));
+    }
+};
+
+const desktopService = {
+    getPreferences: () => desktopDb.getPreferences(),
+    updatePreferences: async (data: Partial<Preferences>) => {
+        await desktopDb.updatePreferences(data);
+        notifyDesktopMutation();
+    },
+    getDashboardLocalCache: () => null,
+    getDashboardData: async (semester: number = 1) => desktopDb.getDashboard(num(semester)),
+    getDashboardSummary: async (semester: number = 1) => desktopDb.getDashboard(num(semester)),
+    markAttendance: async (
+        subjectId: string, status: string, date?: string, notes?: string,
+        substitutedById?: string, semester?: number, type?: string
+    ): Promise<AttendanceMutationResult> => {
+        const res = await desktopDb.markAttendance({
+            subjectId, status, date: date || formatLocalDate(), notes,
+            substitutedBy: substitutedById, semester, logType: type,
+        });
+        notifyDesktopMutation();
+        return res;
+    },
+    markAllAttendance: async (
+        classes: Array<{ subject_id: string; type: string }>, status: string, date: string, semester: number
+    ) => {
+        const res = await desktopDb.markAllAttendance(classes, status, date, semester);
+        notifyDesktopMutation();
+        return res;
+    },
+    unmarkAttendanceLogs: async (logIds: string[]) => {
+        const res = await desktopDb.unmarkAttendanceLogs(logIds);
+        notifyDesktopMutation();
+        return res;
+    },
+    getCalendarData: async (year: number, month: number, semester?: number) =>
+        desktopDb.getCalendarData(year, month, semester),
+    editAttendance: async (logId: string, status: string, notes?: string, date?: string) => {
+        const res = await desktopDb.editAttendance(logId, status, notes, date);
+        notifyDesktopMutation();
+        return res;
+    },
+    deleteAttendance: async (logId: string) => {
+        const res = await desktopDb.deleteAttendance(logId);
+        notifyDesktopMutation();
+        return res;
+    },
+    getTodaysClasses: async () => desktopDb.getClassesForDate(formatLocalDate(), 1) as unknown as Subject[],
+    getClassesForDate: async (date: string, semester?: number) =>
+        desktopDb.getClassesForDate(date, num(semester)),
+    getLogsForDate: async (date: string, semester?: number) => desktopDb.getLogsForDate(date, semester),
+    getSubjects: async (semester: number = 1) => desktopDb.getSubjects(semester),
+    getFullSubjectsData: async (semester: number = 1) => desktopDb.getSubjects(semester),
+    getSubjectDetails: async (subjectId: string) => {
+        const s = await desktopDb.getSubject(subjectId);
+        if (!s) throw new Error('Subject not found');
+        return s;
+    },
+    addSubject: async (
+        subjectName: string, semester: number, categories?: string[], code?: string,
+        professor?: string, classroom?: string, credits?: number
+    ) => {
+        await desktopDb.addSubject({ name: subjectName, semester, categories, code, professor, classroom, credits });
+        notifyDesktopMutation();
+    },
+    deleteSubject: async (subjectId: string) => {
+        await desktopDb.deleteSubject(subjectId);
+        notifyDesktopMutation();
+    },
+    updateSubjectDetails: async (subjectId: string, professor?: string, classroom?: string) => {
+        await desktopDb.updateSubject(subjectId, { professor, classroom });
+        notifyDesktopMutation();
+    },
+    updateSubjectFullDetails: async (subjectId: string, data: Partial<Subject>) => {
+        await desktopDb.updateSubject(subjectId, data);
+        notifyDesktopMutation();
+    },
+    updateAttendanceCount: async (subjectId: string, attended: number, total: number) => {
+        await desktopDb.updateSubject(subjectId, { attended, total });
+        notifyDesktopMutation();
+    },
+    updatePracticals: async (subjectId: string, data: { total?: number; completed?: number; hardcopy?: boolean }) => {
+        const res = await desktopDb.updateSubject(subjectId, { practicals: data as Subject['practicals'] });
+        notifyDesktopMutation();
+        return res;
+    },
+    updateAssignments: async (subjectId: string, data: { total?: number; completed?: number; hardcopy?: boolean }) => {
+        const res = await desktopDb.updateSubject(subjectId, { assignments: data as Subject['assignments'] });
+        notifyDesktopMutation();
+        return res;
+    },
+    getTimetable: async (semester: number = 1) => desktopDb.getTimetable(num(semester)),
+    saveTimetableStructure: async (periods: GridPeriod[], semester: number = 1) => {
+        const res = await desktopDb.saveTimetableStructure(num(semester), periods);
+        notifyDesktopMutation();
+        return res;
+    },
+    addTimetableSlot: async (slotData: TimetableSlot, semester: number = 1) => {
+        await desktopDb.saveTimetableSlot(num(semester), slotData);
+        notifyDesktopMutation();
+    },
+    updateTimetableSlot: async (slotId: string, slotData: Partial<TimetableSlot>, semester: number = 1) => {
+        await desktopDb.saveTimetableSlot(num(semester), { ...slotData, id: slotId });
+        notifyDesktopMutation();
+    },
+    deleteTimetableSlot: async (slotId: string, semester: number = 1, fallback?: { day?: string; start_time?: string }) => {
+        await desktopDb.deleteTimetableSlot(slotId, num(semester), fallback?.day, fallback?.start_time);
+        notifyDesktopMutation();
+    },
+    getManualCourses: async () => desktopDb.getManualCourses(),
+    addManualCourse: async (course: ManualCourse) => desktopDb.upsertManualCourse(null, course),
+    updateManualCourse: async (id: string, course: Partial<ManualCourse>) => desktopDb.upsertManualCourse(id, course),
+    deleteManualCourse: async (id: string) => desktopDb.deleteManualCourse(id),
+    getSavedIPUResults: async () => desktopDb.getResults(),
+    saveResults: async (payload: { semester: number; subjects: SemesterResult['subjects']; student_info?: JsonObject }) =>
+        desktopDb.saveResults({
+            enrollmentNumber: String(payload.student_info?.enrollment_number || ''),
+            studentInfo: payload.student_info || {},
+            semesters: [{ semester: payload.semester, subjects: payload.subjects }],
+            source: 'manual',
+        }),
+    getProfile: async () => desktopDb.getProfile(),
+    updateProfile: async (data: Partial<User>) => {
+        const res = await desktopDb.updateProfile(data);
+        notifyDesktopMutation();
+        return res;
+    },
+    getSystemLogs: async (limit = 7, offset = 0) => desktopDb.getSystemLogs(limit, offset),
+    exportData: async () =>
+        new Blob([JSON.stringify(await desktopDb.exportBackup(), null, 2)], { type: 'application/json' }),
+    importData: async (data: unknown) => {
+        await desktopDb.importBackup(data);
+        notifyDesktopMutation();
+    },
+    deleteAllData: async () => {
+        const r = await desktopDb.wipeAllData();
+        notifyDesktopMutation();
+        return { success: true, ...r };
+    },
+    createBackup: async () => ({ backup_id: 'local-safety', expires_at: '' }),
+    performDriveBackup: async () => desktopDb.driveSyncNow(),
+    listDriveBackups: async () => ({ backups: await desktopDb.driveListBackups() }),
+    restoreDriveBackup: async (fileId: string) => {
+        const res = await desktopDb.driveRestoreBackup(fileId);
+        notifyDesktopMutation();
+        return res;
+    },
+    downloadDriveBackup: async (fileId: string) =>
+        new Blob([JSON.stringify(await desktopDb.driveDownloadBackup(fileId), null, 2)], { type: 'application/json' }),
+    getDriveStatus: async (): Promise<DriveStatus> => desktopDb.driveGetStatus(),
+    disconnectDrive: async () => { await desktopDb.driveDisconnect(); return { message: 'disconnected' }; },
+    getDayOfWeekAnalytics: async () => ({ days: [] }) as DayOfWeekAnalytics,
+};
+
+export const attendanceService: typeof webService = isTauriDesktop()
+    ? ({ ...webService, ...desktopService } as unknown as typeof webService)
+    : webService;

@@ -1,33 +1,36 @@
+import { isTauriDesktop } from './utils/platform';
+
 /**
- * In development: unregister any stale service workers left over from previous
- * sessions (VitePWA dev-sw, custom sw.js, etc.). Stale SWs intercept navigation
- * requests and cause "Could not establish connection" errors.
- *
- * In production: VitePWA handles SW registration automatically via registerType: 'autoUpdate'.
+ * Service Worker manager:
+ * - In dev OR native Tauri desktop: actively unregister any Service Workers and clear
+ *   CacheStorage so WebView2 always serves the fresh locally bundled UI with zero reload needed.
+ * - On production web: registers `/sw.js` with auto-update behavior.
  */
 export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return
+  if (!('serviceWorker' in navigator)) return;
 
-  const isDev = import.meta.env.DEV
+  const isDev = import.meta.env.DEV;
+  const isDesktop = isTauriDesktop();
 
-  if (isDev) {
-    // Unregister ALL service workers in dev to prevent stale caching issues
+  if (isDev || isDesktop) {
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       for (const registration of registrations) {
-        registration.unregister().then((success) => {
-          if (success) console.log('[SW] Unregistered stale service worker:', registration.scope)
-        })
+        registration.unregister().catch(() => {});
       }
-    })
+    });
 
-    // Clear all caches left by previous SW registrations
     if ('caches' in window) {
       caches.keys().then((names) => {
         for (const name of names) {
-          caches.delete(name)
+          caches.delete(name).catch(() => {});
         }
-        if (names.length) console.log('[SW] Cleared stale caches:', names.join(', '))
-      })
+      });
     }
+    return;
   }
+
+  // Production web deployment: register VitePWA service worker
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
+  });
 }

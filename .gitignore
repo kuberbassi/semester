@@ -1,56 +1,61 @@
 # ============================================================
-# Zenith — .gitignore
+# Semester — .gitignore
 # ============================================================
 
 # ── Node / npm ───────────────────────────────────────────────
 node_modules/
+**/node_modules/
 package-lock.json.bak
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# ── TypeScript build info ────────────────────────────────────
 *.tsbuildinfo
 
-# ── Backend (api-node) ───────────────────────────────────────
-api-node/dist/
-api-node/node_modules/
-api-node/.env
-api-node/*.html
-api-node/test-*.js
-
-# ── Frontend (Vite) ──────────────────────────────────────────
-frontend/dist/
-frontend/node_modules/
-frontend/dev-dist/
-
-# Auto-generated at build/dev time — never commit these
-frontend/public/version.json
-
-# ── Environment files ────────────────────────────────────────
-.env
-.env.local
-.env.production
-.env.development
-.env.staging
-.env.docker
-.envrc
-
-# ── Build / dist artifacts ───────────────────────────────────
+# ── Frontend & API builds ────────────────────────────────────
 dist/
 build/
 dist-installers/
+api-node/dist/
+api-node/*.html
+api-node/test-*.js
+frontend/dist/
+frontend/dev-dist/
+frontend/public/version.json
 
-# ── Logs ─────────────────────────────────────────────────────
+# ── Environment & Secrets ────────────────────────────────────
+.env
+.env.*
+!.env.example
+**/.env
+!**/.env.example
+*.jks
+*.keystore
+google-services.json
+
+# ── Local SQLite Databases & Backups ─────────────────────────
+*.db
+*.db-wal
+*.db-shm
+safety_backups/
+
+# ── Rust & Tauri Builds ──────────────────────────────────────
+target/
+**/target/
+
+# ── Android & Gradle Builds ──────────────────────────────────
+.gradle/
+**/.gradle/
+**/build/
+local.properties
+**/local.properties
+*.apk
+*.aab
+*.so
+
+# ── Logs, Temp & User Exports ────────────────────────────────
 logs/
 *.log
-frontend/build_output.log
-
-# ── PDF uploads / user data files ───────────────────────────
-# These are runtime uploads, not source — keep out of git
 *.pdf
-
-# ── Temporary / editor files ─────────────────────────────────
 *.tmp
 *.temp
 *.swp
@@ -59,7 +64,7 @@ frontend/build_output.log
 *.bak
 *.backup
 
-# ── IDE — VSCode ─────────────────────────────────────────────
+# ── IDEs & OS ────────────────────────────────────────────────
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -67,77 +72,15 @@ frontend/build_output.log
 !.vscode/extensions.json
 *.code-workspace
 .history/
-
-# ── IDE — JetBrains ──────────────────────────────────────────
 .idea/
 *.iml
 *.iws
 *.ipr
-
-# ── IDE — Cursor ─────────────────────────────────────────────
 .cursorignore
 .cursorindexingignore
-
-# ── OS files ─────────────────────────────────────────────────
 .DS_Store
 .AppleDouble
 .LSOverride
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-# ── Python (legacy Flask API) ────────────────────────────────
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-*.egg
-MANIFEST
-.Python
-pip-log.txt
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-coverage.xml
-.hypothesis/
-.pytest_cache/
-*.pyc
-.venv
-venv/
-env/
-.python-version
-
-# ── Vercel ───────────────────────────────────────────────────
-.vercel
-.vercel_build_output/
-
-# ── Docker ───────────────────────────────────────────────────
-.dockerignore.local
-
-# ── Next.js (legacy) ─────────────────────────────────────────
-.next/
-
-# ── Archive / legacy junk ────────────────────────────────────
-archive/legacy/web/build*.log
-archive/legacy/web/.env.local
-archive/legacy/mobile/google-services.json
-archive/legacy/mobile/.expo/
-archive/legacy/mobile/android/app/build/
-
-# ── Mobile builds ────────────────────────────────────────────
-*.apk
-*.aab
-
-# ─── Rust builds ──────────────────────────────────────────────
-target/
-**/target/
-
-# ─── Gradle & Android builds ──────────────────────────────────
-.gradle/
-**/.gradle/
-build/
-**/build/

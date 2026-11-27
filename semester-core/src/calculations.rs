@@ -1,6 +1,8 @@
 use crate::models::{AttendanceSummary, BunkGuard, SGPAResult, Subject, SubjectResult};
 
-/// Official IPU Grade to Grade Point mapping
+/// Official GGSIPU Ordinance 11 (CBCS 10-Point Scale) Grade Points:
+/// O=10 (90-100), A+=9 (75-89), A=8 (65-74), B+=7 (55-64), B=6 (50-54),
+/// C=5 (45-49), P=4 (40-44), F=0 (<40).
 pub fn ipu_grade_to_points(grade: &str) -> u32 {
     match grade.trim().to_uppercase().as_str() {
         "O" => 10,
@@ -8,11 +10,59 @@ pub fn ipu_grade_to_points(grade: &str) -> u32 {
         "A" => 8,
         "B+" => 7,
         "B" => 6,
-        "C+" => 5,
-        "C" => 4,
+        "C" | "C+" => 5,
         "P" => 4,
         _ => 0,
     }
+}
+
+pub fn score_to_ipu_grade(pct: f64) -> &'static str {
+    if pct >= 90.0 {
+        "O"
+    } else if pct >= 75.0 {
+        "A+"
+    } else if pct >= 65.0 {
+        "A"
+    } else if pct >= 55.0 {
+        "B+"
+    } else if pct >= 50.0 {
+        "B"
+    } else if pct >= 45.0 {
+        "C"
+    } else if pct >= 40.0 {
+        "P"
+    } else {
+        "F"
+    }
+}
+
+/// Calculates medical-adjusted BunkGuard: removes approved medical leaves from both
+/// numerator and denominator before evaluating safe bunks / classes needed.
+pub fn calculate_medical_adjusted_bunk_guard(
+    attended: u32,
+    total: u32,
+    medical_count: u32,
+    target: u32,
+) -> BunkGuard {
+    let adj_att = attended.saturating_sub(medical_count);
+    let adj_tot = total.saturating_sub(medical_count);
+    calculate_bunk_guard(adj_att, adj_tot, target)
+}
+
+/// Computes the exact SGPA required in the upcoming semester to hit `target_cgpa`
+/// under official GGSIPU Ordinance 11 credit-weighted cumulative GPA.
+pub fn calculate_required_sgpa(
+    earned_credits: u32,
+    earned_grade_points: f64,
+    next_sem_credits: u32,
+    target_cgpa: f64,
+) -> f64 {
+    if next_sem_credits == 0 {
+        return 0.0;
+    }
+    let total_cr = (earned_credits + next_sem_credits) as f64;
+    let raw = (target_cgpa * total_cr - earned_grade_points) / (next_sem_credits as f64);
+    (raw * 100.0).round() / 100.0
 }
 
 /// Calculate attendance percentage rounded to two decimal places

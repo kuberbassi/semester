@@ -65,11 +65,11 @@ const SystemLogsSection: React.FC = () => {
     const getLogIcon = (action: string) => {
         const value = action.toLowerCase();
         if (value.includes('profile')) return <User size={14} className="text-on-surface" />;
-        if (value.includes('submission') || value.includes('tracker')) return <CheckCircle2 size={14} className="text-emerald-500" />;
-        if (value.includes('delete') || value.includes('reset') || value.includes('wipe') || value.includes('cleared')) return <Trash2 size={14} className="text-red-500" />;
-        if (value.includes('attendance') || value.includes('subject') || value.includes('schedule')) return <Activity size={14} className="text-blue-500" />;
+        if (value.includes('submission') || value.includes('tracker')) return <CheckCircle2 size={14} className="text-primary" />;
+        if (value.includes('delete') || value.includes('reset') || value.includes('wipe') || value.includes('cleared')) return <Trash2 size={14} className="text-rose-400" />;
+        if (value.includes('attendance') || value.includes('subject') || value.includes('schedule')) return <Activity size={14} className="text-primary" />;
         if (value.includes('setting') || value.includes('preference')) return <SettingsIcon size={14} className="text-on-surface" />;
-        return <FileText size={14} className="text-on-surface-variant/50" />;
+        return <FileText size={14} className="text-on-surface-variant/60" />;
     };
 
     const formatTime = (log: SystemLog) => parseTimestamp(log)?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) || 'Unknown time';
@@ -79,38 +79,38 @@ const SystemLogsSection: React.FC = () => {
     const dates = Object.keys(groupedLogs);
     return (
         <div className="space-y-4">
-            <div className="border border-outline rounded-xl bg-surface p-4">
-                <h3 className="text-xs font-bold text-on-surface tracking-wide uppercase">Activity history</h3>
-                <p className="mt-1 text-[11px] text-on-surface-variant/60">Verified account actions, newest first. Times use your device timezone.</p>
+            <div className="liquid-glass rounded-[24px] p-5 sm:p-6">
+                <h3 className="font-display text-sm font-extrabold text-on-surface tracking-tight">Activity History</h3>
+                <p className="mt-1 text-xs text-on-surface-variant">Verified account actions, newest first. Times use your device timezone.</p>
             </div>
-            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-[11px] font-medium text-red-500">{error}</div>}
+            {error && <div role="alert" className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-xs font-medium text-rose-400">{error}</div>}
             {dates.length === 0 ? (
-                <div className="border border-outline rounded-xl bg-surface p-12 flex flex-col items-center justify-center text-center">
-                    <Clock size={28} className="text-on-surface-variant/20 mb-3" />
-                    <h3 className="text-xs font-bold text-on-surface tracking-wide uppercase mb-1">No activity yet</h3>
-                    <p className="text-[11px] text-on-surface-variant/50 max-w-xs">Verified account actions will appear here with their exact time and unique event ID.</p>
+                <div className="liquid-glass rounded-[24px] p-12 flex flex-col items-center justify-center text-center">
+                    <Clock size={24} className="text-on-surface-variant/35 mb-3" />
+                    <h3 className="font-display text-sm font-bold text-on-surface mb-1">No activity yet</h3>
+                    <p className="text-xs text-on-surface-variant/70 max-w-xs">Verified account actions will appear here with their exact time and event ID.</p>
                 </div>
             ) : dates.map(date => (
-                <div key={date} className="border border-outline rounded-xl overflow-hidden bg-surface">
-                    <div className="flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-outline bg-surface-container/50">
-                        <Clock size={14} className="text-on-surface-variant/50" />
-                        <span className="text-xs font-semibold text-on-surface">{date}</span>
+                <div key={date} className="liquid-glass rounded-[24px] overflow-hidden">
+                    <div className="flex items-center gap-2 px-6 py-3.5 border-b border-on-surface/[0.08] bg-on-surface/[0.015]">
+                        <Clock size={14} className="text-primary" />
+                        <span className="font-display text-xs font-bold text-on-surface">{date}</span>
                     </div>
                     <AnimatedList
                         items={groupedLogs[date]}
                         keyExtractor={(log) => log.id}
                         staggerDelay={0.03}
-                        className="divide-y divide-outline/30"
+                        className="divide-y divide-on-surface/[0.07]"
                         renderItem={(log) => (
-                            <div key={log.id} className="flex gap-3 sm:gap-4 p-4 sm:p-5 hover:bg-surface-container/10 transition-colors">
-                                <div className="w-9 h-9 rounded-lg bg-surface-container border border-outline/65 flex items-center justify-center shrink-0">{getLogIcon(log.action)}</div>
+                            <div key={log.id} className="flex gap-3.5 p-4 sm:px-6 hover:bg-on-surface/[0.025] transition-colors">
+                                <div className="w-9 h-9 rounded-xl bg-on-surface/[0.05] border border-on-surface/[0.09] flex items-center justify-center shrink-0">{getLogIcon(log.action)}</div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                                        <h4 className="text-xs font-bold text-on-surface tracking-tight uppercase">{log.action}</h4>
-                                        <time className="text-[10px] font-semibold text-on-surface-variant/50 tabular-nums" dateTime={parseTimestamp(log)?.toISOString()}>{formatTime(log)}</time>
+                                        <h4 className="text-xs font-bold text-on-surface tracking-tight">{log.action}</h4>
+                                        <time className="text-[11px] font-semibold text-on-surface-variant/70 tabular-nums" dateTime={parseTimestamp(log)?.toISOString()}>{formatTime(log)}</time>
                                     </div>
-                                    <p className="text-[11px] text-on-surface-variant/70 font-medium leading-relaxed break-words">{log.description}</p>
-                                    <p className="mt-1.5 text-[9px] font-mono text-on-surface-variant/40 break-all" title={log.id}>Event {log.id}</p>
+                                    <p className="text-xs text-on-surface-variant font-medium leading-relaxed break-words">{log.description}</p>
+                                    <p className="mt-1.5 text-[10px] font-mono text-on-surface-variant/50 break-all" title={log.id}>Event {log.id}</p>
                                 </div>
                             </div>
                         )}
@@ -119,8 +119,8 @@ const SystemLogsSection: React.FC = () => {
             ))}
             {hasMore && (
                 <button type="button" onClick={() => void loadMore()} disabled={loadingMore}
-                    className="w-full h-11 rounded-xl border border-outline bg-surface text-[11px] font-bold uppercase tracking-wide text-on-surface hover:bg-surface-container disabled:opacity-50">
-                    {loadingMore ? 'Loading…' : 'Load more activity'}
+                    className="no-fluid w-full h-10 rounded-full border border-on-surface/[0.11] bg-on-surface/[0.04] text-xs font-bold text-on-surface hover:bg-primary/12 hover:border-primary/35 hover:text-primary disabled:opacity-50 transition-colors cursor-pointer">
+                    {loadingMore ? 'Loading…' : 'Load More Activity'}
                 </button>
             )}
         </div>

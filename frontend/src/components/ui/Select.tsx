@@ -19,6 +19,11 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
     onChange?: (e: { target: { value: string } }) => void;
 }
 
+/**
+ * Viewport-aware Liquid Glass Popover Select:
+ * Guaranteed `fixed` positioning, flips above if near viewport bottom,
+ * clamps horizontally, and glows with gradient accents.
+ */
 const Select: React.FC<SelectProps> = ({
     label,
     error,
@@ -32,135 +37,120 @@ const Select: React.FC<SelectProps> = ({
     ...props
 }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const selectedOption = options.find((o) => String(o.value) === String(value));
     const displayLabel = selectedOption?.label || (options.length > 0 ? options[0].label : '');
 
-    const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+    const [coords, setCoords] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null);
 
-    // Close on outside click
+    const computeCoords = () => {
+        if (!triggerRef.current) return null;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const menuWidth = Math.max(rect.width, 148);
+        const estimatedHeight = Math.min(260, options.length * 38 + 16);
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const openUp = spaceBelow < estimatedHeight + 16 && rect.top > estimatedHeight + 16;
+        const left = Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12));
+        const top = openUp ? Math.max(12, rect.top - estimatedHeight - 6) : rect.bottom + 6;
+        return { top, left, width: menuWidth, openUp };
+    };
+
     useEffect(() => {
+        if (!isOpen) return;
         const handler = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                if (dropdownRef.current && dropdownRef.current.contains(e.target as Node)) {
-                    return;
-                }
-                setIsOpen(false);
-            }
+            if (triggerRef.current?.contains(e.target as Node)) return;
+            if (dropdownRef.current?.contains(e.target as Node)) return;
+            setIsOpen(false);
         };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    // Track coordinates in viewport
-    useEffect(() => {
-        if (isOpen && containerRef.current) {
-            const updateCoords = () => {
-                if (!containerRef.current) return;
-                const rect = containerRef.current.getBoundingClientRect();
-                setCoords({
-                    top: rect.bottom + window.scrollY,
-                    left: rect.left + window.scrollX,
-                    width: rect.width,
-                });
-            };
-            updateCoords();
-            window.addEventListener('resize', updateCoords);
-            window.addEventListener('scroll', updateCoords, true);
-            return () => {
-                window.removeEventListener('resize', updateCoords);
-                window.removeEventListener('scroll', updateCoords, true);
-            };
-        }
-    }, [isOpen]);
-
-    // Close on ESC
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
+        const escHandler = (e: KeyboardEvent) => {
             if (e.key === 'Escape') setIsOpen(false);
         };
-        if (isOpen) document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
+        document.addEventListener('mousedown', handler);
+        document.addEventListener('keydown', escHandler);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            document.removeEventListener('keydown', escHandler);
+        };
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!isOpen) return;
+        const updateCoords = () => {
+            const next = computeCoords();
+            if (next) setCoords(next);
+        };
+        updateCoords();
+        window.addEventListener('resize', updateCoords);
+        window.addEventListener('scroll', updateCoords, true);
+        return () => {
+            window.removeEventListener('resize', updateCoords);
+            window.removeEventListener('scroll', updateCoords, true);
+        };
+    }, [isOpen, options.length]);
+
     const handleSelect = (optValue: string | number) => {
-        haptics.selection();
-        if (onChange) {
-            onChange({ target: { value: String(optValue) } });
-        }
+        haptics.crownTick();
+        onChange?.({ target: { value: String(optValue) } });
         setIsOpen(false);
     };
 
     return (
-        <div ref={containerRef} className={`${fullWidth ? 'w-full' : 'w-auto'} flex flex-col gap-1.5 relative select-none`}>
+        <div className={`${fullWidth ? 'w-full' : 'w-auto'} flex flex-col gap-1.5 relative select-none`}>
             {label && (
-                <label className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest ml-1">
+                <label className="text-[11px] font-semibold text-on-surface-variant ml-0.5">
                     {label}
                 </label>
             )}
 
-            {/* Custom GlideSelect Trigger Button */}
             <button
+                ref={triggerRef}
                 type="button"
                 disabled={disabled}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
                 onClick={() => {
-                    if (!disabled) {
-                        if (!isOpen && containerRef.current) {
-                            const rect = containerRef.current.getBoundingClientRect();
-                            setCoords({
-                                top: rect.bottom + window.scrollY,
-                                left: rect.left + window.scrollX,
-                                width: rect.width,
-                            });
-                        }
-                        setIsOpen(!isOpen);
+                    if (disabled) return;
+                    if (!isOpen) {
+                        const next = computeCoords();
+                        if (next) setCoords(next);
                     }
+                    setIsOpen((prev) => !prev);
                 }}
-                className={`
-                    w-full px-4 py-2.5 rounded-xl text-left
-                    bg-surface/80 dark:bg-slate-900/80 backdrop-blur-xl
-                    border transition-all duration-200
-                    text-on-surface text-sm font-semibold
-                    disabled:opacity-40 disabled:cursor-not-allowed
-                    focus:outline-none cursor-pointer flex items-center justify-between gap-2 shadow-xs
-                    ${
-                        error
-                            ? 'border-rose-500/50 shadow-rose-500/10'
-                            : isOpen
-                            ? 'border-cyan-500/60 ring-2 ring-cyan-500/15 shadow-[0_0_20px_rgba(6,182,212,0.15)]'
-                            : 'border-outline/40 hover:border-outline hover:bg-surface-container/30'
-                    }
-                    ${className}
-                `}
+                className={`no-fluid w-full px-3.5 py-2 rounded-full text-left bg-surface/80 dark:bg-white/[0.06] hover:bg-primary/[0.08] border text-on-surface text-xs font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none cursor-pointer flex items-center justify-between gap-2 shadow-xs ${
+                    error
+                        ? 'border-rose-500/60'
+                        : isOpen
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'border-primary/20 hover:border-primary/40'
+                } ${className}`}
             >
-                <span className={`truncate flex items-center gap-2 ${selectedOption ? 'text-on-surface' : 'text-on-surface-variant/40'}`}>
+                <span className={`truncate flex items-center gap-2 ${selectedOption ? 'text-on-surface' : 'text-on-surface-variant/60'}`}>
                     {selectedOption?.icon && <span className="shrink-0">{selectedOption.icon}</span>}
                     {displayLabel}
                 </span>
                 <ChevronDown
-                    size={16}
-                    className={`text-on-surface-variant/50 transition-transform duration-250 ease-out ${
-                        isOpen ? 'rotate-180 text-cyan-400' : ''
+                    size={14}
+                    className={`text-primary transition-transform duration-150 shrink-0 ${
+                        isOpen ? 'rotate-180' : ''
                     }`}
                 />
             </button>
 
-            {/* GlideSelect Framer Portal Dropdown */}
             {createPortal(
                 <AnimatePresence>
                     {isOpen && coords && (
                         <motion.div
                             ref={dropdownRef}
-                            initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 4, scale: 1 }}
-                            exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                            onMouseLeave={() => setHoveredIndex(null)}
-                            className="fixed rounded-2xl border border-white/15 bg-slate-950/95 dark:bg-slate-900/95 backdrop-blur-2xl p-1.5 shadow-[0_25px_60px_rgba(0,0,0,0.4)] z-[999999] overflow-hidden"
+                            role="listbox"
+                            initial={{ opacity: 0, y: coords.openUp ? 4 : -4, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: coords.openUp ? 4 : -4, scale: 0.97 }}
+                            transition={{ duration: 0.13, ease: [0.22, 1, 0.36, 1] }}
+                            className="fixed liquid-glass-overlay rounded-2xl p-1.5 z-[999999] custom-scrollbar"
                             style={{
+                                position: 'fixed',
                                 top: `${coords.top}px`,
                                 left: `${coords.left}px`,
                                 width: `${coords.width}px`,
@@ -168,61 +158,28 @@ const Select: React.FC<SelectProps> = ({
                                 overflowY: 'auto',
                             }}
                         >
-                            {/* Ambient Top Glow Line */}
-                            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent pointer-events-none" />
-
                             <div className="flex flex-col gap-0.5">
                                 {options.map((opt, idx) => {
                                     const isSelected = String(opt.value) === String(value);
-                                    const isHovered = hoveredIndex === idx;
-
                                     return (
-                                        <div
+                                        <button
                                             key={`${opt.value}-${idx}`}
-                                            onMouseEnter={() => setHoveredIndex(idx)}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={isSelected}
                                             onClick={() => handleSelect(opt.value)}
-                                            className="relative cursor-pointer"
+                                            className={`no-fluid w-full px-3 py-2 rounded-xl text-left text-xs font-semibold flex items-center justify-between gap-2 transition-colors duration-100 cursor-pointer ${
+                                                isSelected
+                                                    ? 'bg-gradient-to-r from-indigo-500/18 via-violet-500/14 to-cyan-500/14 text-primary border border-primary/20'
+                                                    : 'text-on-surface hover:bg-primary/[0.08] border border-transparent'
+                                            }`}
                                         >
-                                            {/* Gliding Spring Hover Indicator */}
-                                            {isHovered && (
-                                                <motion.div
-                                                    layoutId="glide-dropdown-hover"
-                                                    className="absolute inset-0 rounded-xl bg-white/[0.08] border border-white/10 pointer-events-none"
-                                                    transition={{
-                                                        type: 'spring',
-                                                        stiffness: 450,
-                                                        damping: 32,
-                                                    }}
-                                                />
-                                            )}
-
-                                            <div
-                                                className={`
-                                                    relative z-10 w-full px-3.5 py-2.5 rounded-xl text-left text-xs font-bold
-                                                    flex items-center justify-between transition-colors
-                                                    ${
-                                                        isSelected
-                                                            ? 'text-cyan-400 bg-cyan-500/10'
-                                                            : 'text-slate-200 hover:text-white'
-                                                    }
-                                                `}
-                                            >
-                                                <div className="flex items-center gap-2 truncate">
-                                                    {opt.icon && <span className="shrink-0">{opt.icon}</span>}
-                                                    <span className="truncate">{opt.label}</span>
-                                                </div>
-
-                                                {isSelected && (
-                                                    <motion.span
-                                                        initial={{ scale: 0.5, opacity: 0 }}
-                                                        animate={{ scale: 1, opacity: 1 }}
-                                                        className="shrink-0 text-cyan-400"
-                                                    >
-                                                        <Check size={14} strokeWidth={2.5} />
-                                                    </motion.span>
-                                                )}
-                                            </div>
-                                        </div>
+                                            <span className="flex items-center gap-2 truncate">
+                                                {opt.icon && <span className="shrink-0">{opt.icon}</span>}
+                                                <span className="truncate">{opt.label}</span>
+                                            </span>
+                                            {isSelected && <Check size={13} strokeWidth={2.6} className="shrink-0 text-primary" />}
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -232,7 +189,6 @@ const Select: React.FC<SelectProps> = ({
                 document.body
             )}
 
-            {/* Hidden native select for form accessibility */}
             <select className="sr-only" value={value} onChange={() => {}} tabIndex={-1} {...props}>
                 {options.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -242,7 +198,7 @@ const Select: React.FC<SelectProps> = ({
             </select>
 
             {(error || helperText) && (
-                <p className={`text-xs ml-1 ${error ? 'text-rose-500 font-medium' : 'text-on-surface-variant/50'}`}>
+                <p className={`text-xs ml-1 ${error ? 'text-rose-500 font-medium' : 'text-on-surface-variant/65'}`}>
                     {error || helperText}
                 </p>
             )}

@@ -7,9 +7,10 @@ import android.os.Vibrator
 import android.os.VibratorManager
 
 /**
- * Native Hardware Haptic Engine
- * Utilizes the device's Linear Resonant Actuator (LRA) motor
- * to emulate Apple Watch Digital Crown rotary detents and UI tactile clicks.
+ * Precision Linear Resonant Actuator (LRA) Haptic Engine.
+ * Uses Android 11+ VibrationEffect.Composition hardware primitives (PRIMITIVE_LOW_TICK,
+ * PRIMITIVE_TICK, PRIMITIVE_CLICK, PRIMITIVE_THUD) for crisp, zero-mushiness tactile feedback
+ * across navigation, rotary dials, toggles, back gestures, and confirmations.
  */
 class HapticCrownEngine(context: Context) {
 
@@ -21,53 +22,140 @@ class HapticCrownEngine(context: Context) {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
+    private val supportsComposition: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+        (vibrator?.areAllPrimitivesSupported(
+            VibrationEffect.Composition.PRIMITIVE_TICK,
+            VibrationEffect.Composition.PRIMITIVE_CLICK,
+        ) == true)
+
+    private val supportsLowTick: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        (vibrator?.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_LOW_TICK) == true)
+
+    private val supportsThud: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        (vibrator?.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_THUD) == true)
+
+    private var lastTickMs: Long = 0L
+
     /**
-     * 1. Digital Crown Detent (~7.2° rotary notch while dragging the radial bubble menu)
+     * Ultra-crisp rotary/scroll/slider micro-detent (throttled at 24ms to prevent motor muddiness).
      */
     fun crownTick() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator?.vibrate(10)
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastTickMs < 24L) return
+        lastTickMs = now
+
+        val v = vibrator ?: return
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && supportsLowTick -> {
+                v.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.52f)
+                        .compose(),
+                )
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && supportsComposition -> {
+                v.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.45f)
+                        .compose(),
+                )
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK))
+            }
+            else -> {
+                @Suppress("DEPRECATION")
+                v.vibrate(8)
+            }
         }
     }
 
     /**
-     * 2. Item Focus Detent (Snapping to a subject or menu page)
+     * Tactile magnetic detent for tab focus, toggle switches, and radial bubble hover lock.
      */
     fun focusSnap() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator?.vibrate(25)
+        val v = vibrator ?: return
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && supportsComposition -> {
+                v.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.72f)
+                        .compose(),
+                )
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            }
+            else -> {
+                @Suppress("DEPRECATION")
+                v.vibrate(16)
+            }
         }
     }
 
     /**
-     * 3. Selection Confirmation (Lifting finger or confirming action)
+     * Crisp authoritative confirmation for primary actions, bubble release, and destructive steps.
      */
     fun selectionConfirm() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            vibrator?.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator?.vibrate(45)
+        val v = vibrator ?: return
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && supportsComposition -> {
+                v.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.92f)
+                        .compose(),
+                )
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
+            }
+            else -> {
+                @Suppress("DEPRECATION")
+                v.vibrate(28)
+            }
         }
     }
 
     /**
-     * 4. Double Pop for Attendance Success
+     * Signature rising double-pulse for marking attendance present, saving, or sync completion.
      */
     fun attendanceSuccess() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator?.vibrate(
-                VibrationEffect.createWaveform(longArrayOf(0, 15, 40, 25), intArrayOf(0, 180, 0, 255), -1)
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator?.vibrate(50)
+        val v = vibrator ?: return
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && supportsComposition -> {
+                v.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.55f, 0)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.95f, 48)
+                        .compose(),
+                )
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                v.vibrate(
+                    VibrationEffect.createWaveform(longArrayOf(0, 12, 42, 20), intArrayOf(0, 160, 0, 240), -1),
+                )
+            }
+            else -> {
+                @Suppress("DEPRECATION")
+                v.vibrate(35)
+            }
+        }
+    }
+
+    /**
+     * Soft grounded pulse for back navigation, dismissals, or skipped classes.
+     */
+    fun softDismiss() {
+        val v = vibrator ?: return
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && supportsThud -> {
+                v.vibrate(
+                    VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 0.55f)
+                        .compose(),
+                )
+            }
+            else -> crownTick()
         }
     }
 }

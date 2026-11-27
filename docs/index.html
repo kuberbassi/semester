@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Semester — Native Academic Workspace for Windows &amp; Android</title>
+  <meta name="description" content="Download Semester for Windows (x64) and Android. Offline-first Rust + SQLite attendance engine, timetable radar, IPU ExamWeb result sync, and private Google Drive AppData backups." />
+  <meta name="theme-color" content="#07080d" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Semester — Native Academic Workspace" />
+  <meta property="og:description" content="Fast, local-first academic workspace for attendance, timetables, IPU results, and study notes. Built with Rust, SQLite, and Tauri v2." />
+  <meta property="og:image" content="./brand-logo.svg" />
+
+  <link rel="icon" type="image/svg+xml" href="./brand-logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Outfit:wght@700;800&display=swap" rel="stylesheet" />
+
+  <script src="./theme.js"></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient-backdrop" aria-hidden="true"></div>
+
+  <!-- Top Navigation -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="#top" class="brand" aria-label="Semester home">
+        <img src="./brand-logo.svg" alt="Semester logo" width="28" height="28" />
+        <span>Semester</span>
+        <span class="brand-tag tabular" id="nav-version">v1.0.0</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#downloads">Downloads</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#security">Security</a>
+        <a href="#install">Install Guide</a>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" class="icon-btn" id="theme-toggle" aria-label="Toggle dark or light theme" title="Toggle theme">
+          <svg id="theme-icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+          <svg id="theme-icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          </svg>
+        </button>
+
+        <a href="https://github.com/kuberbassi/semester" target="_blank" rel="noopener noreferrer" class="icon-btn" aria-label="GitHub repository" title="Source on GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z"></path>
+          </svg>
+        </a>
+
+        <a href="#downloads" class="btn btn-primary btn-sm">Download</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-head">
+          <a href="https://github.com/kuberbassi/semester/releases/latest" target="_blank" rel="noopener noreferrer" class="release-pill" id="hero-release-pill">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="hero-release-text">Latest release v1.0.0 · Windows x64 &amp; Android</span>
+          </a>
+
+          <h1>
+            Your semester,<br />
+            <span class="gradient-text">engineered locally.</span>
+          </h1>
+
+          <p class="hero-sub">
+            A native, offline-first academic workspace built on Rust and local SQLite. Track attendance with sub-millisecond updates, manage schedules, sync IPU ExamWeb results, and back up privately to your own Google Drive.
+          </p>
+
+          <div class="hero-cta-row">
+            <a id="primary-download-btn" href="https://github.com/kuberbassi/semester/releases/latest" class="btn btn-primary btn-lg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span id="primary-download-label">Download for Windows (x64)</span>
+            </a>
+            <a href="#downloads" class="btn btn-secondary btn-lg">All Installers</a>
+          </div>
+
+          <div class="hero-meta-strip tabular">
+            <span id="primary-download-meta">Windows 10 / 11 (x64) · NSIS Setup (~5.8 MB)</span>
+            <span class="meta-sep" aria-hidden="true"></span>
+            <span>Local SQLite (&lt;1 ms)</span>
+            <span class="meta-sep" aria-hidden="true"></span>
+            <span>Zero Telemetry</span>
+            <span class="meta-sep" aria-hidden="true"></span>
+            <span>MIT License</span>
+          </div>
+        </div>
+
+        <!-- Interactive Native App Window Preview -->
+        <div class="app-showcase-wrap">
+          <div class="app-window" role="region" aria-label="Interactive Semester desktop workspace preview">
+            <div class="app-titlebar">
+              <div class="window-dots" aria-hidden="true">
+                <i></i><i></i><i></i>
+              </div>
+              <div class="window-title">
+                <span>Semester — Native Desktop</span>
+                <span class="sqlite-badge">SQLite WAL · 0.4ms</span>
+              </div>
+              <div class="window-title mono" style="font-size:10.5px;">Sem 3</div>
+            </div>
+
+            <div class="app-body">
+              <aside class="app-sidebar">
+                <div class="app-nav" role="tablist" aria-label="Preview sections">
+                  <button type="button" class="app-nav-item active" data-preview-tab="dashboard" role="tab" aria-selected="true">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg>
+                    Dashboard
+                  </button>
+                  <button type="button" class="app-nav-item" data-preview-tab="timetable" role="tab" aria-selected="false">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    Timetable
+                  </button>
+                  <button type="button" class="app-nav-item" data-preview-tab="results" role="tab" aria-selected="false">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"></circle><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path></svg>
+                    IPU Results
+                  </button>
+                  <button type="button" class="app-nav-item" data-preview-tab="notes" role="tab" aria-selected="false">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    Notes &amp; AI
+                  </button>
+                </div>
+
+                <div class="sidebar-sync-card">
+                  <div class="sidebar-sync-row">
+                    <span>Drive AppData</span>
+                    <span style="color:var(--emerald);">Synced</span>
+                  </div>
+                  <div class="sidebar-sync-sub">Delta hash · Private folder</div>
+                </div>
+              </aside>
+
+              <div class="app-pane">
+                <!-- Preview Tab 1: Interactive Dashboard -->
+                <div class="preview-view active" id="preview-dashboard">
+                  <div class="pane-top">
+                    <h3 class="pane-heading">Attendance Overview</h3>
+                    <span class="pane-hint">Interactive preview — click + or &minus; to simulate live SQLite updates</span>
+                  </div>
+
+                  <div class="preview-dashboard-grid">
+                    <div class="mini-card hero-metric-card">
+                      <div class="dial-wrap">
+                        <svg viewBox="0 0 100 100" aria-hidden="true">
+                          <defs>
+                            <linearGradient id="previewDialGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stop-color="#6366f1"></stop>
+                              <stop offset="55%" stop-color="#7c3aed"></stop>
+                              <stop offset="100%" stop-color="#06b6d4"></stop>
+                            </linearGradient>
+                          </defs>
+                          <circle class="dial-track" cx="50" cy="50" r="42"></circle>
+                          <circle class="dial-arc" id="preview-dial-arc" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="58"></circle>
+                        </svg>
+                        <div class="dial-value tabular" id="preview-overall-pct">78%</div>
+                      </div>
+
+                      <div class="metric-stats">
+                        <h4>Overall Standing</h4>
+                        <p class="tabular" id="preview-overall-count">97 / 124 eligible classes · Goal 75%</p>
+                        <div class="pill-row">
+                          <span class="stat-pill good tabular" id="preview-bunk-pill">5 Safe Bunks</span>
+                          <span class="stat-pill tabular" id="preview-risk-pill">1 Below Target</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mini-card">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <strong style="font-size:13px;">Today&apos;s Radar</strong>
+                        <span class="mono" style="font-size:10.5px;color:var(--accent);">LIVE</span>
+                      </div>
+                      <div class="radar-timeline">
+                        <div class="radar-slot live">
+                          <div>
+                            <div style="font-weight:700;">Data Structures</div>
+                            <div class="radar-time">10:30 AM &ndash; 11:25 AM · Room 102</div>
+                          </div>
+                          <span class="stat-pill" style="color:var(--accent);border-color:var(--accent-border);">28m left</span>
+                        </div>
+                        <div class="radar-slot">
+                          <div>
+                            <div style="font-weight:700;">Digital Logic &amp; Design</div>
+                            <div class="radar-time">11:50 AM &ndash; 12:45 PM · Room 204</div>
+                          </div>
+                          <span class="radar-time">Upcoming</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mini-card">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                      <strong style="font-size:13px;">Subjects (Live Bunk Guard)</strong>
+                      <span class="pane-hint">Click + Present or &minus; Absent</span>
+                    </div>
+                    <div class="interactive-list" id="preview-subject-list"></div>
+                  </div>
+                </div>
+
+                <!-- Preview Tab 2: Timetable -->
+                <div class="preview-view" id="preview-timetable">
+                  <div class="pane-top">
+                    <h3 class="pane-heading">Weekly Schedule</h3>
+                    <span class="pane-hint">Chronological AM/PM slot engine + multi-period lab grouping</span>
+                  </div>
+                  <div class="mini-card">
+                    <div class="radar-timeline">
+                      <div class="radar-slot">
+                        <div><div style="font-weight:700;">ES-201 · Computational Methods</div><div class="radar-time">08:30 AM &ndash; 09:25 AM · Theory</div></div>
+                        <span class="stat-pill good">Marked Present</span>
+                      </div>
+                      <div class="radar-slot live">
+                        <div><div style="font-weight:700;">CIC-209 · Data Structures</div><div class="radar-time">10:30 AM &ndash; 11:25 AM · Theory</div></div>
+                        <span class="stat-pill" style="color:var(--accent);border-color:var(--accent-border);">In Progress</span>
+                      </div>
+                      <div class="radar-slot">
+                        <div><div style="font-weight:700;">CIC-255 · Data Structures Lab (2-slot block)</div><div class="radar-time">01:15 PM &ndash; 03:05 PM · Practical</div></div>
+                        <span class="radar-time">Lab 04</span>
+                      </div>
+                      <div class="radar-slot">
+                        <div><div style="font-weight:700;">ECC-207 · Digital Logic &amp; Computer Design</div><div class="radar-time">03:05 PM &ndash; 04:00 PM · Theory</div></div>
+                        <span class="radar-time">Room 204</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Preview Tab 3: IPU Results -->
+                <div class="preview-view" id="preview-results">
+                  <div class="pane-top">
+                    <h3 class="pane-heading">Offline IPU Results Vault</h3>
+                    <span class="pane-hint">Direct ExamWeb sync · Printable PDF transcript export</span>
+                  </div>
+                  <div class="mini-card" style="overflow-x:auto;">
+                    <table class="results-table tabular">
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Subject</th>
+                          <th>Internal</th>
+                          <th>External</th>
+                          <th>Total</th>
+                          <th>Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td class="mono">BS-105</td>
+                          <td><strong>Applied Physics</strong></td>
+                          <td>23</td>
+                          <td>68</td>
+                          <td><strong>91</strong></td>
+                          <td><span class="grade-chip">O</span></td>
+                        </tr>
+                        <tr>
+                          <td class="mono">ES-102</td>
+                          <td><strong>Programming in C</strong></td>
+                          <td>24</td>
+                          <td>64</td>
+                          <td><strong>88</strong></td>
+                          <td><span class="grade-chip">A+</span></td>
+                        </tr>
+                        <tr>
+                          <td class="mono">BS-111</td>
+                          <td><strong>Applied Mathematics II</strong></td>
+                          <td>21</td>
+                          <td>61</td>
+                          <td><strong>82</strong></td>
+                          <td><span class="grade-chip">A+</span></td>
+                        </tr>
+                        <tr>
+                          <td class="mono">ES-119</td>
+                          <td><strong>Manufacturing Processes</strong></td>
+                          <td>22</td>
+                          <td>54</td>
+                          <td><strong>76</strong></td>
+                          <td><span class="grade-chip">A+</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Preview Tab 4: Notes & BYOK AI -->
+                <div class="preview-view" id="preview-notes">
+                  <div class="pane-top">
+                    <h3 class="pane-heading">Study Notes &amp; Local AI</h3>
+                    <span class="pane-hint">Offline SQLite assistant + optional BYOK Gemini or Groq</span>
+                  </div>
+                  <div class="preview-dashboard-grid">
+                    <div class="mini-card">
+                      <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Pinned Note</div>
+                      <h4 style="margin:0 0 8px;font-size:14px;">Trees &amp; Graph Traversal Checklist</h4>
+                      <p style="margin:0;font-size:12.5px;color:var(--text-secondary);line-height:1.6;">
+                        &bull; AVL rotation cases (LL, RR, LR, RL)<br />
+                        &bull; Dijkstra with min-heap complexity O((V + E) log V)<br />
+                        &bull; Lab file submission: Experiments 1&ndash;10 verified
+                      </p>
+                    </div>
+                    <div class="mini-card">
+                      <div style="font-size:11px;font-weight:700;color:var(--emerald);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Semester AI · Local Engine</div>
+                      <p style="margin:0 0 8px;font-size:12.5px;color:var(--text-secondary);">
+                        <strong>Prompt:</strong> &ldquo;Which subjects need immediate classes to stay above 75%?&rdquo;
+                      </p>
+                      <p style="margin:0;font-size:12px;color:var(--text-muted);line-height:1.55;">
+                        Reads live verified SQLite rows directly. Add your own Gemini or Groq API key in Settings (encrypted via Windows DPAPI) whenever you want cloud LLM reasoning.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Downloads Matrix -->
+    <section class="section" id="downloads">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Official Distribution</span>
+          <h2>Download Semester</h2>
+          <p>Installers are built directly from source and published via GitHub Releases. Pick your platform below.</p>
+        </div>
+
+        <div class="downloads-grid">
+          <!-- Windows Card -->
+          <article class="dl-card recommended" id="card-windows">
+            <div>
+              <div class="dl-top">
+                <div class="platform-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 5.55 10.35 4.5v7.05H3V5.55Zm8.3-1.18L21 3v8.55h-9.7V4.37ZM3 12.45h7.35v7.05L3 18.45v-6Zm8.3 0H21V21l-9.7-1.37v-7.18Z"></path>
+                  </svg>
+                </div>
+                <span class="rec-badge" id="win-badge">Windows Desktop</span>
+              </div>
+              <h3>Windows (x64)</h3>
+              <p>Native Tauri v2 + Rust desktop installer. Current-user setup requiring no administrator privileges.</p>
+              <ul class="spec-list tabular">
+                <li><span>Package</span><strong class="mono" id="win-filename">Semester_1.0.0_x64-setup.exe</strong></li>
+                <li><span>Architecture</span><strong>Windows 10 / 11 (64-bit)</strong></li>
+                <li><span>Size</span><strong id="win-size">~5.8 MB</strong></li>
+                <li><span>Storage</span><strong>Local SQLite + DPAPI</strong></li>
+              </ul>
+            </div>
+            <div class="dl-actions">
+              <a id="win-download-btn" href="https://github.com/kuberbassi/semester/releases/latest" class="btn btn-primary">
+                Download Windows Installer
+              </a>
+              <a id="win-portable-link" href="https://github.com/kuberbassi/semester/releases/latest" target="_blank" rel="noopener noreferrer" class="dl-sublink">
+                Also available as standalone portable .exe
+              </a>
+            </div>
+          </article>
+
+          <!-- Android Card -->
+          <article class="dl-card" id="card-android">
+            <div>
+              <div class="dl-top">
+                <div class="platform-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
+                </div>
+                <span class="rec-badge" id="android-badge" style="background:var(--bg-subtle);border-color:var(--border);color:var(--text-secondary);">Mobile</span>
+              </div>
+              <h3>Android (APK)</h3>
+              <p>Native Kotlin application powered by the same compiled Rust core and Google Drive AppData sync schema.</p>
+              <ul class="spec-list tabular">
+                <li><span>Package</span><strong class="mono" id="android-filename">Semester-v1.0.0-android.apk</strong></li>
+                <li><span>Architecture</span><strong>ARM64-v8a / x86_64</strong></li>
+                <li><span>Size</span><strong id="android-size">~24 MB</strong></li>
+                <li><span>Minimum OS</span><strong>Android 8.0 (API 26)+</strong></li>
+              </ul>
+            </div>
+            <div class="dl-actions">
+              <a id="android-download-btn" href="https://github.com/kuberbassi/semester/releases/latest" class="btn btn-secondary">
+                Download Android APK
+              </a>
+              <a href="#install" class="dl-sublink">View Android installation steps</a>
+            </div>
+          </article>
+
+          <!-- Releases & Source Card -->
+          <article class="dl-card">
+            <div>
+              <div class="dl-top">
+                <div class="platform-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                  </svg>
+                </div>
+                <span class="rec-badge" style="background:var(--bg-subtle);border-color:var(--border);color:var(--text-secondary);">Releases</span>
+              </div>
+              <h3>Release Archive</h3>
+              <p>Browse every tagged version, inspect release notes, verify file hashes, or compile from source yourself.</p>
+              <ul class="spec-list tabular">
+                <li><span>Latest Tag</span><strong class="mono" id="release-tag">v1.0.0</strong></li>
+                <li><span>Published</span><strong id="release-date">Latest build</strong></li>
+                <li><span>License</span><strong>MIT Open Source</strong></li>
+                <li><span>Build Stack</span><strong>Rust · Tauri v2 · React</strong></li>
+              </ul>
+            </div>
+            <div class="dl-actions">
+              <button type="button" id="open-notes-btn" class="btn btn-secondary">Read Release Notes</button>
+              <a href="https://github.com/kuberbassi/semester/releases" target="_blank" rel="noopener noreferrer" class="dl-sublink">
+                Browse all releases on GitHub &rarr;
+              </a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Engineering & Architecture -->
+    <section class="section" id="architecture">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Architecture</span>
+          <h2>Built like a serious native tool</h2>
+          <p>No remote server round-trips for your daily workflow. Every attendance click, schedule lookup, and metric recalculation executes locally on your machine.</p>
+        </div>
+
+        <div class="bento-grid">
+          <div class="bento-card">
+            <div class="bento-icon" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+            </div>
+            <h3>Local SQLite Engine (&lt;1 ms)</h3>
+            <p>Runs in WAL mode with multi-core Tokio worker threads. Marking attendance or editing subjects updates dashboard rings, safe-bunk counts, and calendars instantaneously.</p>
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-icon" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+            </div>
+            <h3>Private Drive AppData Sync</h3>
+            <p>Link your own Google account to sync SHA-256 delta snapshots into your hidden <span class="mono" style="font-size:12px;">appDataFolder</span>. Zero third-party database ever sees your academic records.</p>
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-icon" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+            </div>
+            <h3>Direct IPU ExamWeb Sync</h3>
+            <p>Authenticates straight from your device to <span class="mono" style="font-size:12px;">examweb.ggsipu.ac.in</span> with manual CAPTCHA verification and client-side salted hashing, storing grades offline with PDF export.</p>
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-icon" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </div>
+            <h3>BYOK AI Assistant</h3>
+            <p>Includes an instant offline SQLite query assistant out of the box. Bring your own free Gemini or Groq API key in Settings — encrypted locally and never shared with anyone.</p>
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-icon" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <h3>Chronological Timetable Radar</h3>
+            <p>Groups consecutive lab blocks accurately, highlights active periods in real time, and lets you share or migrate schedules cleanly between devices.</p>
+          </div>
+
+          <div class="bento-card">
+            <div class="bento-icon" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+            </div>
+            <h3>Atomic Backups &amp; Migration</h3>
+            <p>Every restore or reset writes an automatic local safety snapshot first. Export clean canonical JSON anytime with full lossless round-trip verification.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security & Privacy Architecture -->
+    <section class="section" id="security">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Security Specification</span>
+          <h2>Verifiable privacy by design</h2>
+          <p>Built for students who care where their credentials and data live. Every claim below maps directly to audited code in the repository.</p>
+        </div>
+
+        <div class="security-panel">
+          <div class="security-row">
+            <div class="security-key">Hardware Secret Encryption</div>
+            <p class="security-val">OAuth tokens and user-supplied Gemini / Groq API keys are encrypted at rest with Windows DPAPI (<code>CryptProtectData</code>, CurrentUser scope) with volatile memory zeroization before freeing plaintext buffers.</p>
+          </div>
+          <div class="security-row">
+            <div class="security-key">Backup &amp; Database Hygiene</div>
+            <p class="security-val">Local SQLite runs with <code>PRAGMA secure_delete = ON</code>, <code>PRAGMA foreign_keys = ON</code>, and 100% parameterized queries. Exported JSON backups and Drive snapshots never include API keys or OAuth tokens.</p>
+          </div>
+          <div class="security-row">
+            <div class="security-key">Strict WebView Sandbox</div>
+            <p class="security-val">Enforces strict Content Security Policy (<code>script-src 'self'</code>, <code>object-src 'none'</code>, <code>frame-ancestors 'none'</code>), <code>withGlobalTauri: false</code>, and zero <code>dangerouslySetInnerHTML</code> sinks across the React UI.</p>
+          </div>
+          <div class="security-row">
+            <div class="security-key">Network &amp; OAuth Guards</div>
+            <p class="security-val">Uses PKCE S256 loopback OAuth with constant-time <code>state</code> verification, strict RFC 3986 URL validation on external links, strict Drive file-ID validation, and same-origin redirect enforcement on IPU portal sync.</p>
+          </div>
+          <div class="security-row">
+            <div class="security-key">Zero Telemetry</div>
+            <p class="security-val">No analytics scripts, no behavioral tracking, no crash upload beacons, and no backend account required to use the desktop application.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Installation & Checksum Verification -->
+    <section class="section" id="install">
+      <div class="container">
+        <div class="section-header">
+          <span class="eyebrow">Installation Guide</span>
+          <h2>Install &amp; verify in under a minute</h2>
+          <p>Independent open-source installers are not code-signed with an EV certificate yet, so Windows SmartScreen may prompt on first run. Here is how to verify and install safely.</p>
+        </div>
+
+        <div class="install-grid">
+          <div class="install-card">
+            <h3>Windows (x64 NSIS Setup)</h3>
+            <ol class="steps-list">
+              <li>
+                <span class="step-num">1</span>
+                <span>Download <strong class="mono" id="guide-win-file">Semester_1.0.0_x64-setup.exe</strong> from the official GitHub Release above.</span>
+              </li>
+              <li>
+                <span class="step-num">2</span>
+                <span>If Windows SmartScreen displays <em>&ldquo;Windows protected your PC&rdquo;</em>, click <strong>More info</strong> and choose <strong>Run anyway</strong>.</span>
+              </li>
+              <li>
+                <span class="step-num">3</span>
+                <span>Complete the per-user setup (no administrator prompt needed). Optionally link your Google account in <strong>Settings &rarr; Data</strong> for automatic Drive AppData sync.</span>
+              </li>
+            </ol>
+
+            <div class="code-box">
+              <code id="hash-cmd">Get-FileHash "$env:USERPROFILE\Downloads\Semester_1.0.0_x64-setup.exe" -Algorithm SHA256</code>
+              <button type="button" class="copy-btn" id="copy-hash-btn">Copy</button>
+            </div>
+          </div>
+
+          <div class="install-card">
+            <h3>Android (Direct APK)</h3>
+            <ol class="steps-list">
+              <li>
+                <span class="step-num">1</span>
+                <span>Download the latest <strong class="mono">Semester-v1.0.0-android.apk</strong> directly onto your Android device.</span>
+              </li>
+              <li>
+                <span class="step-num">2</span>
+                <span>Open the downloaded APK and grant your browser or file manager permission under <strong>Install unknown apps</strong> when prompted.</span>
+              </li>
+              <li>
+                <span class="step-num">3</span>
+                <span>Sign in with the same Google account you use on Desktop to pull your existing classes, timetable, and attendance history automatically.</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Release Notes Modal -->
+  <div class="modal-backdrop" id="notes-modal" role="dialog" aria-modal="true" aria-labelledby="notes-modal-title">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="notes-modal-title">Release Notes</h3>
+        <button type="button" class="icon-btn" id="close-notes-btn" aria-label="Close release notes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="notes-modal-body">Loading latest release notes from GitHub…</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="./brand-logo.svg" alt="" width="20" height="20" style="border-radius:6px;" />
+        <span>&copy; 2025&ndash;<span id="footer-year">2026</span> Semester &middot; Engineered by Kuber Bassi</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/kuberbassi/semester" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/kuberbassi/semester/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+        <a href="https://kuberbassi.com" target="_blank" rel="noopener noreferrer">kuberbassi.com</a>
+        <a href="mailto:me@kuberbassi.com">me@kuberbassi.com</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

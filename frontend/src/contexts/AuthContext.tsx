@@ -4,6 +4,10 @@ import type { User } from '@/types';
 import { authService } from '@/services/auth.service';
 import { AuthContext, type AuthContextValue } from './auth-context';
 import { isDevTestMode, DEV_TEST_USER, enableDevTestMode, disableDevTestMode } from '@/utils/devTestData';
+import { isTauriDesktop } from '@/utils/platform';
+import { desktopDb } from '@/services/desktopDb';
+
+const DESKTOP_ENTERED_KEY = 'semester_desktop_entered';
 
 const FETCH_COOLDOWN = 5 * 60 * 1000;
 
@@ -13,8 +17,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const initAuth = async () => {
+            if (isTauriDesktop()) {
+                try {
+                    if (localStorage.getItem(DESKTOP_ENTERED_KEY) === '1') {
+                        const profile = await desktopDb.getProfile();
+                        setUser(profile);
+                        authService.storeUser(profile);
+                        if (profile.current_semester && !localStorage.getItem('zenith_semester')) {
+                            localStorage.setItem('zenith_semester', String(profile.current_semester));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to load local profile', err);
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+
             if (isDevTestMode()) {
-                setUser(DEV_TEST_USER);
+                const storedDev = authService.getStoredUser();
+                const devUser = storedDev && (storedDev._id === 'dev-test-user-id' || storedDev.email === 'dev@semester.app')
+                    ? { ...DEV_TEST_USER, ...storedDev }
+                    : DEV_TEST_USER;
+                authService.storeUser(devUser);
+                setUser(devUser);
                 setLoading(false);
                 return;
             }
@@ -22,7 +49,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const storedUser = authService.getStoredUser();
             if (storedUser) {
                 if (storedUser._id === 'dev-test-user-id' || storedUser.email === 'dev@semester.app') {
-                    setUser(DEV_TEST_USER);
+                    const devUser = { ...DEV_TEST_USER, ...storedUser };
+                    setUser(devUser);
                     setLoading(false);
                     return;
                 }
@@ -124,15 +152,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const loginAsDevTestUser = () => {
         enableDevTestMode();
-        setUser(DEV_TEST_USER);
+        const stored = authService.getStoredUser();
+        const devUser = stored && (stored._id === 'dev-test-user-id' || stored.email === 'dev@semester.app')
+            ? { ...DEV_TEST_USER, ...stored }
+            : DEV_TEST_USER;
+        authService.storeUser(devUser);
+        if (!localStorage.getItem('zenith_semester') && devUser.current_semester) {
+            localStorage.setItem('zenith_semester', String(devUser.current_semester));
+        }
+        setUser(devUser);
         setLoading(false);
     };
 
+    const enterLocalWorkspace = async () => {
+        const profile = await desktopDb.getProfile();
+        localStorage.setItem(DESKTOP_ENTERED_KEY, '1');
+        authService.storeUser(profile);
+        setUser(profile);
+    };
+
+    const loginWithGoogleDesktop = async () => {
+        const res = await desktopDb.googleOAuthConnect();
+        const profile = await desktopDb.getProfile();
+        localStorage.setItem(DESKTOP_ENTERED_KEY, '1');
+        const merged = { ...profile, ...(res?.user || {}) } as User;
+        authService.storeUser(merged);
+        setUser(merged);
+    };
+
     const logout = async () => {
+        if (isTauriDesktop()) {
+            localStorage.removeItem(DESKTOP_ENTERED_KEY);
+            setUser(null);
+            window.location.replace('/');
+            return;
+        }
         if (isDevTestMode()) {
             disableDevTestMode();
             setUser(null);
-            window.location.href = '/login';
+            window.location.href = '/';
             return;
         }
         await authService.logout();
@@ -145,7 +203,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading,
         login,
         loginWithGoogle,
-        loginAsDevTestUser,
+        loginWithGoogleDesktop,
+        enterLocalWorkspace,
+        loginAsDevTestUser: isTauriDesktop() ? undefined : loginAsDevTestUser,
         logout,
         setUser,
     };

@@ -7,6 +7,11 @@ export const DEV_TEST_NOTES_KEY = 'semester_dev_test_notes';
 export const DEV_TEST_RESULTS_KEY = 'semester_dev_test_results';
 
 export const isDevTestMode = (): boolean => {
+    // Dev preview is a web-only demo; the desktop app always uses the real local SQLite workspace.
+    if (typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || window.location.hostname.endsWith('tauri.localhost'))) {
+        try { localStorage.removeItem(DEV_TEST_MODE_KEY); } catch { /* ignore */ }
+        return false;
+    }
     try {
         return localStorage.getItem(DEV_TEST_MODE_KEY) === 'true';
     } catch {
@@ -310,12 +315,30 @@ export const getDevInitialResults = () => ({
     enrollment_number: '04216403223',
     student_name: 'Alex Mercer',
     programme: 'B.Tech (CSE)',
-    institution: 'University School of Information, Communication and Technology',
+    institution: 'USICT, GGSIPU Main Campus',
+    cgpa: '8.98',
     overall_cgpa: 8.98,
+    academicStrength: 90,
+    totalSubjects: 21,
     last_updated: new Date().toISOString(),
+    student_info: {
+        name: 'Alex Mercer',
+        roll_no: '04216403223',
+        programme: 'B.Tech (Computer Science & Engineering)',
+        institution: 'USICT, GGSIPU Main Campus',
+        batch: '2023-27',
+        admission_year: '2023',
+    },
+    gradeDistribution: {
+        'O': 10,
+        'A+': 6,
+        'A': 3,
+        'B+': 2,
+    },
     semesters: [
         {
             semester: '1',
+            semester_label: 'Semester 1',
             sgpa: '8.85',
             credits: 24,
             subjects: [
@@ -329,6 +352,7 @@ export const getDevInitialResults = () => ({
         },
         {
             semester: '2',
+            semester_label: 'Semester 2',
             sgpa: '9.12',
             credits: 25,
             subjects: [
@@ -341,6 +365,7 @@ export const getDevInitialResults = () => ({
         },
         {
             semester: '3',
+            semester_label: 'Semester 3',
             sgpa: '8.65',
             credits: 24,
             subjects: [
@@ -353,6 +378,7 @@ export const getDevInitialResults = () => ({
         },
         {
             semester: '4',
+            semester_label: 'Semester 4',
             sgpa: '9.30',
             credits: 26,
             subjects: [
@@ -441,4 +467,218 @@ export const resetDevTestData = () => {
     localStorage.removeItem(DEV_TEST_NOTES_KEY);
     localStorage.removeItem(DEV_TEST_RESULTS_KEY);
     return loadDevDashboardData();
+};
+
+// ─── Extended Dev Test Mode Generators (Timetable Grid, Courses, Calendar, Logs) ───
+
+export const getDevTimetablePeriods = () => [
+    { id: 'p1', number: 1, name: 'Period 1', startTime: '09:00', endTime: '10:00', type: 'class' as const },
+    { id: 'p2', number: 2, name: 'Period 2', startTime: '10:00', endTime: '11:00', type: 'class' as const },
+    { id: 'p3', number: 3, name: 'Period 3', startTime: '11:15', endTime: '12:15', type: 'class' as const },
+    { id: 'p4', number: 4, name: 'Period 4', startTime: '12:15', endTime: '13:15', type: 'class' as const },
+    { id: 'p5', number: 5, name: 'Period 5', startTime: '14:00', endTime: '15:00', type: 'class' as const },
+];
+
+export const getDevWeeklySchedule = () => {
+    const subs = getInitialDevSubjects();
+    const mk = (id: string, day: string, period: number, start: string, end: string, subIdx: number): TimetableSlot => {
+        const s = subs[subIdx % subs.length];
+        return {
+            id: `dev-slot-${day}-${period}-${id}`,
+            day,
+            start_time: start,
+            end_time: end,
+            startTime: start,
+            endTime: end,
+            subject_id: s._id,
+            subjectId: s._id,
+            subject_name: s.name,
+            subjectName: s.name,
+            label: s.name,
+            classroom: s.classroom,
+            type: 'class' as const,
+        };
+    };
+
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayName = days[new Date().getDay()];
+    const schedule: Record<string, TimetableSlot[]> = {
+        Monday: [
+            mk('m1', 'Monday', 1, '09:00', '10:00', 0),
+            mk('m2', 'Monday', 2, '10:00', '11:00', 1),
+            mk('m3', 'Monday', 3, '11:15', '12:15', 2),
+            mk('m4', 'Monday', 5, '14:00', '15:00', 5),
+        ],
+        Tuesday: [
+            mk('t1', 'Tuesday', 1, '09:00', '10:00', 3),
+            mk('t2', 'Tuesday', 2, '10:00', '11:00', 4),
+            mk('t3', 'Tuesday', 3, '11:15', '12:15', 0),
+            mk('t4', 'Tuesday', 4, '12:15', '13:15', 6),
+        ],
+        Wednesday: [
+            mk('w1', 'Wednesday', 1, '09:00', '10:00', 1),
+            mk('w2', 'Wednesday', 2, '10:00', '11:00', 2),
+            mk('w3', 'Wednesday', 3, '11:15', '12:15', 3),
+            mk('w4', 'Wednesday', 5, '14:00', '15:00', 5),
+        ],
+        Thursday: [
+            mk('th1', 'Thursday', 1, '09:00', '10:00', 0),
+            mk('th2', 'Thursday', 2, '10:00', '11:00', 4),
+            mk('th3', 'Thursday', 3, '11:15', '12:15', 1),
+            mk('th4', 'Thursday', 4, '12:15', '13:15', 6),
+        ],
+        Friday: [
+            mk('f1', 'Friday', 1, '09:00', '10:00', 2),
+            mk('f2', 'Friday', 2, '10:00', '11:00', 3),
+            mk('f3', 'Friday', 3, '11:15', '12:15', 4),
+        ],
+        Saturday: [],
+        Sunday: [],
+    };
+    // Ensure today always has live radar slots
+    schedule[todayName] = getDevTodayTimetableSlots();
+    return schedule;
+};
+
+export const DEV_TEST_COURSES_KEY = 'semester_dev_test_manual_courses';
+
+export const getDevManualCourses = () => {
+    try {
+        const stored = localStorage.getItem(DEV_TEST_COURSES_KEY);
+        if (stored) return JSON.parse(stored);
+    } catch {
+        // ignore
+    }
+    const initial = [
+        {
+            _id: 'dev-mc-1',
+            id: 'dev-mc-1',
+            title: 'MIT 6.006 — Introduction to Algorithms',
+            instructor: 'Prof. Erik Demaine',
+            platform: 'youtube',
+            progress: 72,
+            url: 'https://ocw.mit.edu',
+            created_at: new Date(Date.now() - 18 * 86400000).toISOString(),
+        },
+        {
+            _id: 'dev-mc-2',
+            id: 'dev-mc-2',
+            title: 'Deep Learning Specialization',
+            instructor: 'Andrew Ng',
+            platform: 'coursera',
+            progress: 45,
+            url: 'https://coursera.org',
+            created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+        },
+        {
+            _id: 'dev-mc-3',
+            id: 'dev-mc-3',
+            title: 'Rust Systems & Native Bridges',
+            instructor: 'Jon Gjengset',
+            platform: 'other',
+            progress: 100,
+            url: 'https://doc.rust-lang.org/book/',
+            created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+        },
+    ];
+    try {
+        localStorage.setItem(DEV_TEST_COURSES_KEY, JSON.stringify(initial));
+    } catch {
+        // ignore
+    }
+    return initial;
+};
+
+export const saveDevManualCourses = (courses: any[]) => {
+    try {
+        localStorage.setItem(DEV_TEST_COURSES_KEY, JSON.stringify(courses));
+    } catch {
+        // ignore
+    }
+};
+
+export const getDevCalendarRecords = (year: number, month: number) => {
+    const subs = getInitialDevSubjects();
+    const records: any[] = [];
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const today = new Date();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(year, month - 1, day);
+        if (d > today) break;
+        const dow = d.getDay();
+        if (dow === 0 || dow === 6) continue;
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        // 3 classes per weekday
+        for (let i = 0; i < 3; i++) {
+            const sub = subs[(day + i) % subs.length];
+            const isAbsent = (day + i) % 7 === 0;
+            records.push({
+                _id: `dev-cal-${dateStr}-${i}`,
+                id: `dev-cal-${dateStr}-${i}`,
+                subject_id: sub._id,
+                subject_name: sub.name,
+                subject_code: sub.code,
+                date: dateStr,
+                status: isAbsent ? 'absent' : 'present',
+                type: sub.type === 'practical' ? 'Lab' : 'Lecture',
+                semester: 5,
+            });
+        }
+    }
+    return records;
+};
+
+export const getDevSystemLogs = () => [
+    {
+        id: 'dev-log-1',
+        action: 'ATTENDANCE_MARKED',
+        description: 'Marked Present for Design & Analysis of Algorithms (CST-301)',
+        details: 'Marked Present for Design & Analysis of Algorithms (CST-301)',
+        timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
+        ip_address: '127.0.0.1',
+    },
+    {
+        id: 'dev-log-2',
+        action: 'TIMETABLE_SYNCED',
+        description: 'Loaded Semester 5 live schedule (5 periods)',
+        details: 'Loaded Semester 5 live schedule (5 periods)',
+        timestamp: new Date(Date.now() - 3 * 3600000).toISOString(),
+        ip_address: '127.0.0.1',
+    },
+    {
+        id: 'dev-log-3',
+        action: 'RESULTS_ARCHIVED',
+        description: 'Synced IPU Semester 4 scorecard (SGPA 9.30)',
+        details: 'Synced IPU Semester 4 scorecard (SGPA 9.30)',
+        timestamp: new Date(Date.now() - 26 * 3600000).toISOString(),
+        ip_address: '127.0.0.1',
+    },
+];
+
+export const loadDevNotes = (): Note[] => {
+    try {
+        const stored = localStorage.getItem(DEV_TEST_NOTES_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch {
+        // ignore
+    }
+    const initial = getDevInitialNotes();
+    try {
+        localStorage.setItem(DEV_TEST_NOTES_KEY, JSON.stringify(initial));
+    } catch {
+        // ignore
+    }
+    return initial;
+};
+
+export const saveDevNotes = (notes: Note[]) => {
+    try {
+        localStorage.setItem(DEV_TEST_NOTES_KEY, JSON.stringify(notes));
+    } catch {
+        // ignore
+    }
 };

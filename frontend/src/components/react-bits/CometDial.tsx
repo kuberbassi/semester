@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { motion } from 'framer-motion';
 
 interface CometDialProps {
@@ -7,78 +7,103 @@ interface CometDialProps {
     size?: number;
     strokeWidth?: number;
     color?: string;
+    secondaryColor?: string;
     label?: string;
     sublabel?: string;
     className?: string;
+    tooltip?: string;
 }
 
+/**
+ * Theme-aware Liquid Gradient CometDial with dynamic inner typography sizing
+ * so 3-digit values like "100%" stay cleanly centered inside compact rings.
+ */
 export const CometDial: React.FC<CometDialProps> = ({
     value,
     max = 100,
-    size = 140,
-    strokeWidth = 10,
-    color = '#10b981',
+    size = 112,
+    strokeWidth = 8,
+    color = '#6366f1',
+    secondaryColor = '#06b6d4',
     label,
     sublabel,
     className = '',
+    tooltip,
 }) => {
+    const gradId = useId();
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const progress = Math.min(1, Math.max(0, value / max));
     const strokeDashoffset = circumference - progress * circumference;
 
+    const displayText = `${Math.round(value)}%`;
+    const innerDiameter = Math.max(24, size - strokeWidth * 2 - 4);
+    const fontScale = displayText.length >= 4 ? 0.27 : 0.31;
+    const valueFontPx = Math.max(11, Math.min(24, Math.round(innerDiameter * fontScale)));
+    const labelFontPx = Math.max(8, Math.min(10, Math.round(innerDiameter * 0.11)));
+
     return (
-        <div className={`relative flex flex-col items-center justify-center ${className}`} style={{ width: size, height: size }}>
+        <div
+            className={`relative flex flex-col items-center justify-center shrink-0 ${className}`}
+            style={{ width: size, height: size }}
+            data-tooltip={tooltip}
+        >
             <svg width={size} height={size} className="rotate-[-90deg]">
-                {/* Background Track */}
+                <defs>
+                    <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={color} />
+                        <stop offset="100%" stopColor={secondaryColor} />
+                    </linearGradient>
+                </defs>
+
+                {/* Theme-aware Track */}
                 <circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke="rgba(255, 255, 255, 0.08)"
+                    stroke="currentColor"
                     strokeWidth={strokeWidth}
                     fill="transparent"
+                    className="text-on-surface/[0.09]"
                 />
 
-                {/* Progress Arc */}
+                {/* Vibrant Gradient Progress Arc */}
                 <motion.circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke={color}
+                    stroke={`url(#${gradId})`}
                     strokeWidth={strokeWidth}
                     strokeDasharray={circumference}
                     initial={{ strokeDashoffset: circumference }}
                     animate={{ strokeDashoffset }}
-                    transition={{ duration: 1.2, ease: 'easeOut' }}
+                    transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
                     strokeLinecap="round"
                     fill="transparent"
                 />
             </svg>
 
-            {/* Glowing Comet Head Particle */}
-            <motion.div
-                className="pointer-events-none absolute h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_12px_#ffffff]"
-                style={{
-                    top: '50%',
-                    left: '50%',
-                    transformOrigin: `0px 0px`,
-                }}
-                animate={{
-                    rotate: progress * 360 - 90,
-                    x: radius * Math.cos(((progress * 360 - 90) * Math.PI) / 180),
-                    y: radius * Math.sin(((progress * 360 - 90) * Math.PI) / 180),
-                }}
-                transition={{ duration: 1.2, ease: 'easeOut' }}
-            />
-
-            {/* Center Content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-2xl font-black tracking-tight text-white">
-                    {Math.round(value)}%
+            {/* Center Content — dynamically scaled so 100% never touches the ring */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-1.5">
+                <span
+                    className="font-display font-extrabold tracking-tight text-on-surface tabular-nums leading-none"
+                    style={{ fontSize: `${valueFontPx}px` }}
+                >
+                    {displayText}
                 </span>
-                {label && <span className="text-[9px] font-bold uppercase tracking-wider text-white/50">{label}</span>}
-                {sublabel && <span className="text-[8px] text-white/30">{sublabel}</span>}
+                {label && (
+                    <span
+                        className="font-bold uppercase tracking-wider text-on-surface-variant mt-1 leading-none"
+                        style={{ fontSize: `${labelFontPx}px` }}
+                    >
+                        {label}
+                    </span>
+                )}
+                {sublabel && (
+                    <span className="text-[8px] font-medium text-on-surface-variant/65 mt-0.5 leading-none">
+                        {sublabel}
+                    </span>
+                )}
             </div>
         </div>
     );

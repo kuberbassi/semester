@@ -1,9 +1,9 @@
 package com.semester.app.ui.components
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -19,19 +19,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -46,39 +50,43 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.semester.app.haptics.HapticCrownEngine
+import com.semester.app.ui.theme.LocalIsDarkTheme
+import com.semester.app.ui.theme.SemesterColors
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 val CHROME_TAB_HEIGHT = 64.dp
-private val MINI_ROW = 54.dp
+private val MINI_ROW = 52.dp
 private val ORB_GAP = 10.dp
-private val DOCK_INSET = 6.dp
-private val LENS_SHAPE = RoundedCornerShape(26.dp)
+private val DOCK_INSET = 5.dp
+private val LENS_CORNER = 26.dp
 
+@Immutable
 data class SemesterChromeTab(
     val id: String,
     val label: String,
@@ -87,8 +95,8 @@ data class SemesterChromeTab(
 )
 
 /**
- * OpenTune's ChromeScrollConnection: tucks the floating dock down into a compact
- * glass orb while scrolling down and springs it back open when scrolling up.
+ * OpenTune's ChromeScrollConnection: dynamically tucks the floating dock into a sleek
+ * compact active-tab pill while scrolling down, and springs open on scroll up.
  */
 class ChromeScrollConnection(private val thresholdPx: Float) : NestedScrollConnection {
     var inline by mutableStateOf(false)
@@ -123,50 +131,44 @@ class ChromeScrollConnection(private val thresholdPx: Float) : NestedScrollConne
 val LocalChromeScroll = staticCompositionLocalOf<ChromeScrollConnection?> { null }
 
 @Composable
-fun rememberChromeScroll(threshold: Dp = 44.dp): ChromeScrollConnection {
+fun rememberChromeScroll(threshold: Dp = 52.dp): ChromeScrollConnection {
     val px = with(LocalDensity.current) { threshold.toPx() }
     return remember(px) { ChromeScrollConnection(px) }
 }
 
-private fun lerpDp(a: Dp, b: Dp, t: Float): Dp = a + (b - a) * t
-
-private fun Modifier.placed(
-    progress: () -> Float,
-    x: (Float) -> Dp,
-    bottom: (Float) -> Dp,
-    w: (Float) -> Dp,
-    h: (Float) -> Dp,
-): Modifier = this.layout { measurable, constraints ->
-    val t = progress()
-    val pw = w(t).roundToPx().coerceAtLeast(0)
-    val ph = h(t).roundToPx().coerceAtLeast(0)
-    val placeable = measurable.measure(Constraints.fixed(pw, ph))
-    layout(constraints.maxWidth, constraints.maxHeight) {
-        placeable.place(x(t).roundToPx(), constraints.maxHeight - bottom(t).roundToPx() - ph)
-    }
-}
-
 /**
- * OpenTune-inspired floating Liquid Glass bottom chrome for Semester:
- * - Stretching-lens glass pill with long-press finger scrub + haptic detents
- * - Smooth spring fold-to-orb on scroll down (iOS 26 / OpenTune Minimize motion)
- * - Companion right-hand slot for Semester's Digital Crown Radial Orb
+ * OpenTune-level Dynamic Floating Bottom Bar (Zero-Layout-Thrash 120Hz Edition):
+ * - Draw-phase GPU stretching liquid lens (ZERO per-frame re-measurement during scrub/tap)
+ * - Dynamic scroll-collapse into compact active-tab pill (shows active icon + label + expand cue)
+ * - Long-press & horizontal scrub across tabs with crisp crown haptic detents
+ * - Seamlessly pairs with the modded Bubble Hold Haptic Action Orb on the right
  */
 @Composable
 fun SemesterBottomChrome(
     inline: Boolean,
     tabs: List<SemesterChromeTab>,
     selectedIndex: Int,
+    dimForBubbleMenu: Boolean,
     haptics: HapticCrownEngine,
     onSelect: (Int) -> Unit,
     onExpand: () -> Unit,
     trailingOrb: @Composable (Modifier) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val foldProgress = animateFloatAsState(
-        targetValue = if (inline) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.9f, stiffness = 300f, visibilityThreshold = 0.001f),
-        label = "dockFold",
+    val rowHeight by animateDpAsState(
+        targetValue = if (inline) MINI_ROW else CHROME_TAB_HEIGHT,
+        animationSpec = spring(dampingRatio = 0.86f, stiffness = 480f),
+        label = "dockHeight",
+    )
+    val dockDimAlpha by animateFloatAsState(
+        targetValue = if (dimForBubbleMenu) 0.28f else 1f,
+        animationSpec = tween(160),
+        label = "dockDimAlpha",
+    )
+    val dockDimScale by animateFloatAsState(
+        targetValue = if (dimForBubbleMenu) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+        label = "dockDimScale",
     )
 
     BoxWithConstraints(
@@ -174,46 +176,46 @@ fun SemesterBottomChrome(
             .fillMaxWidth()
             .padding(horizontal = 14.dp),
     ) {
-        val width = maxWidth
-        val fullDock = width - CHROME_TAB_HEIGHT - ORB_GAP
-        val rowHeight = { t: Float -> lerpDp(CHROME_TAB_HEIGHT, MINI_ROW, t) }
+        val totalWidth = maxWidth
+        val fullDockWidth = totalWidth - CHROME_TAB_HEIGHT - ORB_GAP
+        val compactPillWidth = 148.dp.coerceAtMost(fullDockWidth)
+
+        val dockWidth by animateDpAsState(
+            targetValue = if (inline) compactPillWidth else fullDockWidth,
+            animationSpec = spring(dampingRatio = 0.84f, stiffness = 460f),
+            label = "dockWidth",
+        )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .layout { measurable, constraints ->
-                    val h = rowHeight(foldProgress.value).roundToPx().coerceAtLeast(0)
-                    val placeable = measurable.measure(constraints.copy(minHeight = h, maxHeight = h))
-                    layout(placeable.width, h) { placeable.place(0, 0) }
-                },
+                .height(CHROME_TAB_HEIGHT),
         ) {
+            // Left: Dynamic OpenTune Liquid Dock (full 5-tab bar <-> compact active pill)
             SemesterDockPill(
                 tabs = tabs,
                 selectedIndex = selectedIndex,
-                fullWidth = fullDock,
+                fullWidth = fullDockWidth,
                 folded = inline,
-                fold = { foldProgress.value },
-                anchor = MINI_ROW / 2,
                 haptics = haptics,
                 onSelect = onSelect,
                 onExpand = onExpand,
-                modifier = Modifier.placed(
-                    progress = { foldProgress.value },
-                    x = { 0.dp },
-                    bottom = { 0.dp },
-                    w = { t -> lerpDp(fullDock, MINI_ROW, t) },
-                    h = rowHeight,
-                ),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .width(dockWidth)
+                    .height(rowHeight)
+                    .graphicsLayer {
+                        alpha = dockDimAlpha
+                        scaleX = dockDimScale
+                        scaleY = dockDimScale
+                    },
             )
 
+            // Right: Context-Aware Bubble Hold Haptic Action Orb
             trailingOrb(
-                Modifier.placed(
-                    progress = { foldProgress.value },
-                    x = { t -> width - rowHeight(t) },
-                    bottom = { 0.dp },
-                    w = rowHeight,
-                    h = rowHeight,
-                ),
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(rowHeight),
             )
         }
     }
@@ -225,16 +227,33 @@ private fun SemesterDockPill(
     selectedIndex: Int,
     fullWidth: Dp,
     folded: Boolean,
-    fold: () -> Float,
-    anchor: Dp,
     haptics: HapticCrownEngine,
     onSelect: (Int) -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val pill = CircleShape
     val slot = (fullWidth - DOCK_INSET * 2) / tabs.size.coerceAtLeast(1)
-    val accent = MaterialTheme.colorScheme.primary
+    val isDark = LocalIsDarkTheme.current
+    val pillBg = if (isDark) Color(0xEE131621) else Color(0xF5FFFFFF)
+    val pillBorder = remember(isDark) {
+        if (isDark) {
+            Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.22f),
+                    Color.White.copy(alpha = 0.07f),
+                    SemesterColors.BrandCyanSoft.copy(alpha = 0.22f),
+                ),
+            )
+        } else {
+            Brush.linearGradient(
+                listOf(
+                    SemesterColors.BrandIndigo.copy(alpha = 0.20f),
+                    SemesterColors.LightOutline,
+                    SemesterColors.BrandCyan.copy(alpha = 0.22f),
+                ),
+            )
+        }
+    }
 
     var resting by remember { mutableIntStateOf(selectedIndex.coerceIn(0, (tabs.size - 1).coerceAtLeast(0))) }
     if (selectedIndex in tabs.indices) resting = selectedIndex
@@ -247,21 +266,52 @@ private fun SemesterDockPill(
     val currentSelected by rememberUpdatedState(selectedIndex)
     val currentOnSelect by rememberUpdatedState(onSelect)
 
+    val (leftDp, rightDp) = rememberStretchingLens(
+        index = dragTarget ?: resting,
+        slot = slot,
+        dragCentre = dragCentre,
+    )
+
+    val lensBoost by animateFloatAsState(
+        targetValue = if (fingerDown) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 460f),
+        label = "lensBoost",
+    )
+
+    val lensFillBrush = remember(isDark) {
+        Brush.horizontalGradient(
+            listOf(
+                SemesterColors.BrandIndigo.copy(alpha = if (isDark) 0.36f else 0.22f),
+                SemesterColors.BrandCobalt.copy(alpha = if (isDark) 0.30f else 0.18f),
+                SemesterColors.BrandCyan.copy(alpha = if (isDark) 0.26f else 0.16f),
+            ),
+        )
+    }
+    val lensRimBrush = remember(isDark) {
+        Brush.horizontalGradient(
+            listOf(
+                SemesterColors.BrandCobaltSoft.copy(alpha = if (isDark) 0.65f else 0.48f),
+                SemesterColors.BrandCyanSoft.copy(alpha = if (isDark) 0.55f else 0.42f),
+            ),
+        )
+    }
+
     Box(
         modifier = modifier
-            .liquidGlass(
-                shape = pill,
-                tint = Color(0xFF121216).copy(alpha = 0.82f),
-                accentTint = accent,
-                elevation = 20.dp,
-                touchResponse = !folded,
-                swell = false,
+            .shadow(
+                elevation = if (isDark) 14.dp else 10.dp,
+                shape = CircleShape,
+                ambientColor = if (isDark) Color.Black.copy(alpha = 0.72f) else SemesterColors.BrandIndigo.copy(alpha = 0.16f),
+                spotColor = if (isDark) SemesterColors.BrandIndigo.copy(alpha = 0.25f) else SemesterColors.BrandIndigo.copy(alpha = 0.20f),
             )
+            .clip(CircleShape)
+            .background(pillBg)
+            .border(1.dp, pillBorder, CircleShape)
             .pointerInput(tabs.size, folded, slot) {
                 if (!folded && tabs.isNotEmpty()) {
                     val slotPx = slot.toPx()
                     val insetPx = DOCK_INSET.toPx()
-                    val strayPx = 48.dp.toPx()
+                    val strayPx = 52.dp.toPx()
 
                     fun slotAt(x: Float): Int =
                         ((x - insetPx) / slotPx).toInt().coerceIn(0, tabs.size - 1)
@@ -279,7 +329,7 @@ private fun SemesterDockPill(
                         suppressTap = false
                         try {
                             var lastX = down.position.x
-                            val engaged = withTimeoutOrNull(160L) {
+                            val engaged = withTimeoutOrNull(145L) {
                                 var alive = true
                                 while (alive) {
                                     val e = awaitPointerEvent(PointerEventPass.Initial)
@@ -288,6 +338,9 @@ private fun SemesterDockPill(
                                         alive = false
                                     } else {
                                         lastX = ch.position.x
+                                        if (abs(lastX - down.position.x) > 16.dp.toPx()) {
+                                            return@withTimeoutOrNull true
+                                        }
                                     }
                                 }
                                 false
@@ -329,79 +382,93 @@ private fun SemesterDockPill(
                     }
                 }
             },
+        contentAlignment = Alignment.Center,
     ) {
-        val (left, right) = rememberStretchingLens(
-            index = dragTarget ?: resting,
-            slot = slot,
-            dragCentre = dragCentre,
-        )
-
-        val lensScale by animateFloatAsState(
-            targetValue = if (fingerDown) 1.10f else 1f,
-            animationSpec = spring(dampingRatio = 0.45f, stiffness = 400f),
-            label = "lensScale",
-        )
-
-        Box(
-            modifier = Modifier.layout { measurable, constraints ->
-                val inset = DOCK_INSET.roundToPx()
-                val w = (fullWidth - DOCK_INSET * 2).roundToPx().coerceAtLeast(0)
-                val h = (constraints.maxHeight - inset * 2).coerceAtLeast(0)
-                val placeable = measurable.measure(Constraints.fixed(w, h))
-                val slide = (anchor - DOCK_INSET - slot * (resting + 0.5f)).toPx() * fold()
-                layout(constraints.maxWidth, constraints.maxHeight) {
-                    placeable.place(inset + slide.roundToInt(), inset)
-                }
-            },
-        ) {
-            // Physics-integrated stretching liquid lens behind the active tab
-            Box(
+        if (folded) {
+            // Compact OpenTune Dynamic Pill: Active Tab Icon + Label + Expand Cue
+            val activeTab = tabs.getOrNull(resting) ?: tabs.first()
+            Row(
                 modifier = Modifier
-                    .offset { IntOffset(left().roundToPx(), 0) }
-                    .layout { measurable, constraints ->
-                        val w = (right() - left()).roundToPx().coerceAtLeast(0)
-                        val placeable = measurable.measure(constraints.copy(minWidth = w, maxWidth = w))
-                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                    .fillMaxSize()
+                    .clickable(onClickLabel = "Expand navigation") {
+                        haptics.crownTick()
+                        onExpand()
                     }
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                        alpha = (1f - fold()).coerceIn(0f, 1f)
-                        scaleX = lensScale
-                        scaleY = lensScale
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(SemesterColors.BrandCobalt.copy(alpha = if (isDark) 0.24f else 0.14f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = activeTab.selectedIcon,
+                            contentDescription = activeTab.label,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
-                    .clip(LENS_SHAPE)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                accent.copy(alpha = 0.28f),
-                                accent.copy(alpha = 0.14f),
-                            ),
-                        ),
+                    Text(
+                        text = activeTab.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
                     )
-                    .border(
-                        width = 1.dp,
-                        brush = Brush.verticalGradient(
-                            listOf(
-                                accent.copy(alpha = 0.52f),
-                                accent.copy(alpha = 0.08f),
-                            ),
-                        ),
-                        shape = LENS_SHAPE,
-                    ),
-            )
-
-            Row(modifier = Modifier.fillMaxSize()) {
+                }
+                Icon(
+                    imageVector = Icons.Rounded.UnfoldMore,
+                    contentDescription = "Expand",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        } else {
+            // Full 5-Tab Bar with 100% Draw-Phase Stretching Liquid Lens (ZERO layout re-measures!)
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(DOCK_INSET)
+                    .drawBehind {
+                        val lPx = leftDp().toPx()
+                        val rPx = rightDp().toPx()
+                        val wPx = (rPx - lPx).coerceAtLeast(0f)
+                        val padY = if (lensBoost > 0.01f) -1.5.dp.toPx() * lensBoost else 0f
+                        val hPx = (size.height - padY * 2f).coerceAtLeast(0f)
+                        val cr = CornerRadius(LENS_CORNER.toPx(), LENS_CORNER.toPx())
+                        if (wPx > 1f && hPx > 1f) {
+                            drawRoundRect(
+                                brush = lensFillBrush,
+                                topLeft = Offset(lPx, padY),
+                                size = Size(wPx, hPx),
+                                cornerRadius = cr,
+                            )
+                            drawRoundRect(
+                                brush = lensRimBrush,
+                                topLeft = Offset(lPx, padY),
+                                size = Size(wPx, hPx),
+                                cornerRadius = cr,
+                                style = Stroke(width = 1.dp.toPx()),
+                            )
+                        }
+                    },
+            ) {
                 tabs.forEachIndexed { i, tab ->
+                    val highlighted = (dragTarget ?: selectedIndex) == i
                     SemesterDockItem(
                         tab = tab,
-                        selected = i == selectedIndex,
-                        collapse = fold,
+                        selected = highlighted,
                         modifier = Modifier
-                            .width(slot)
-                            .fillMaxHeight()
-                            .graphicsLayer {
-                                if (i != resting) alpha = (1f - fold() * 1.6f).coerceIn(0f, 1f)
-                            },
+                            .weight(1f)
+                            .fillMaxHeight(),
                     ) {
                         if (suppressTap) {
                             suppressTap = false
@@ -413,18 +480,6 @@ private fun SemesterDockPill(
                 }
             }
         }
-
-        if (folded) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable(onClickLabel = "Expand navigation") {
-                        haptics.crownTick()
-                        onExpand()
-                    }
-                    .semantics { role = Role.Button },
-            )
-        }
     }
 }
 
@@ -432,7 +487,6 @@ private fun SemesterDockPill(
 private fun SemesterDockItem(
     tab: SemesterChromeTab,
     selected: Boolean,
-    collapse: () -> Float,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
@@ -441,22 +495,23 @@ private fun SemesterDockItem(
     val scale by animateFloatAsState(
         targetValue = when {
             pressed -> 0.90f
-            selected -> 1.06f
+            selected -> 1.05f
             else -> 1f
         },
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 320f),
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 560f),
         label = "dockItemScale",
     )
     val accent = MaterialTheme.colorScheme.primary
+    val inactiveFg = MaterialTheme.colorScheme.onSurfaceVariant
     val fg by animateColorAsState(
-        targetValue = if (selected) accent else Color.White.copy(alpha = 0.72f),
-        animationSpec = tween(280, easing = FastOutSlowInEasing),
+        targetValue = if (selected) accent else inactiveFg,
+        animationSpec = tween(160, easing = FastOutSlowInEasing),
         label = "dockItemFg",
     )
 
     Column(
         modifier = modifier
-            .clip(LENS_SHAPE)
+            .clip(RoundedCornerShape(LENS_CORNER))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -469,48 +524,31 @@ private fun SemesterDockItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Crossfade(
-            targetState = selected,
-            animationSpec = tween(240, easing = FastOutSlowInEasing),
-            label = "dockIconCrossfade",
-        ) { isSelected ->
-            Icon(
-                imageVector = if (isSelected) tab.selectedIcon else tab.icon,
-                contentDescription = tab.label,
-                tint = fg,
-                modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer {
-                        val c = collapse()
-                        val s = scale * (1f + 0.06f * c)
-                        scaleX = s
-                        scaleY = s
-                        translationY = 8.dp.toPx() * c
-                    },
-            )
-        }
+        Icon(
+            imageVector = if (selected) tab.selectedIcon else tab.icon,
+            contentDescription = tab.label,
+            tint = fg,
+            modifier = Modifier
+                .size(22.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
+        )
+        Spacer(Modifier.height(2.dp))
         Text(
             text = tab.label,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = fg,
             maxLines = 1,
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .graphicsLayer {
-                    val c = collapse()
-                    alpha = (1f - c * 2.5f).coerceIn(0f, 1f)
-                    translationY = 5.dp.toPx() * c
-                },
         )
     }
 }
 
 /**
- * Ported directly from OpenTune's `rememberStretchingLens`:
- * Integrates the leading & trailing edges of the lens on a frame-clock physics loop
- * with substeps. The leading edge shoots ahead while the trailing edge follows,
- * creating a fluid liquid stretch when tapping or scrubbing across tabs.
+ * Draw-Phase Physics Stretching Lens (inspired by OpenTune):
+ * Sleeps completely at zero CPU when stationary; integrates substeps at 120Hz ONLY while sliding.
  */
 @Composable
 private fun rememberStretchingLens(
@@ -531,18 +569,22 @@ private fun rememberStretchingLens(
     var stretchValue by remember { mutableFloatStateOf(1f) }
     var stretchVel by remember { mutableFloatStateOf(0f) }
 
-    val trackSpring = spring<Float>(dampingRatio = 1f, stiffness = 2800f)
-    val rubberLead = spring<Float>(dampingRatio = 0.55f, stiffness = 380f)
-    val rubberTrail = spring<Float>(dampingRatio = 0.45f, stiffness = 240f)
-    val stretchTrack = spring<Float>(dampingRatio = 0.5f, stiffness = 520f)
-    val stretchReturn = spring<Float>(dampingRatio = 0.4f, stiffness = 300f)
-    val tapLead = spring<Float>(dampingRatio = 0.82f, stiffness = 520f)
-    val tapTrail = spring<Float>(dampingRatio = 0.88f, stiffness = 190f)
+    val trackSpring = remember { spring<Float>(dampingRatio = 1f, stiffness = 2800f) }
+    val rubberLead = remember { spring<Float>(dampingRatio = 0.62f, stiffness = 520f) }
+    val rubberTrail = remember { spring<Float>(dampingRatio = 0.56f, stiffness = 320f) }
+    val stretchTrack = remember { spring<Float>(dampingRatio = 0.55f, stiffness = 540f) }
+    val stretchReturn = remember { spring<Float>(dampingRatio = 0.55f, stiffness = 420f) }
+    val tapLead = remember { spring<Float>(dampingRatio = 0.84f, stiffness = 680f) }
+    val tapTrail = remember { spring<Float>(dampingRatio = 0.88f, stiffness = 280f) }
 
     LaunchedEffect(Unit) {
         var lastFrame = 0L
         var prevCentreFrame: Float? = null
-        var asleep = false
+        var asleep = true
+
+        // Snap cleanly to initial slot on first layout
+        leftPos = currentSlot.value * currentIndex
+        rightPos = currentSlot.value * (currentIndex + 1)
 
         while (true) {
             if (asleep) {
@@ -552,7 +594,7 @@ private fun rememberStretchingLens(
                 lastFrame = 0L
             }
             withFrameNanos { frame ->
-                val dt = if (lastFrame == 0L) 0.016f else ((frame - lastFrame) / 1e9f).coerceIn(0f, 0.032f)
+                val dt = if (lastFrame == 0L) 0.008f else ((frame - lastFrame) / 1e9f).coerceIn(0f, 0.032f)
                 lastFrame = frame
 
                 val slotV = currentSlot.value
@@ -564,7 +606,7 @@ private fun rememberStretchingLens(
                     dragged = true
                     val speed = abs(centre.value - (prevCentreFrame ?: centre.value))
                     prevCentreFrame = centre.value
-                    stretchTarget = (1f + speed / slotV.coerceAtLeast(1f) * 0.9f).coerceAtMost(1.45f)
+                    stretchTarget = (1f + speed / slotV.coerceAtLeast(1f) * 0.85f).coerceAtMost(1.38f)
                     stretchSpring = stretchTrack
                 } else {
                     prevCentreFrame = null
@@ -593,7 +635,7 @@ private fun rememberStretchingLens(
                 val lSpec = if (movingRight) follow else lead
                 val rSpec = if (movingRight) lead else follow
 
-                val steps = (dt / 0.0075f).toInt().coerceIn(1, 6)
+                val steps = (dt / 0.0075f).toInt().coerceIn(1, 5)
                 val h = dt / steps
                 repeat(steps) {
                     val sAccel = stretchSpring.stiffness * (stretchTarget - stretchValue) -
@@ -620,17 +662,17 @@ private fun rememberStretchingLens(
                 }
 
                 if (centre == null &&
-                    abs(toLeft - leftPos) < 0.01f &&
-                    abs(toRight - rightPos) < 0.01f &&
-                    abs(leftVel) < 0.05f &&
-                    abs(rightVel) < 0.05f
+                    abs(toLeft - leftPos) < 0.05f &&
+                    abs(toRight - rightPos) < 0.05f &&
+                    abs(leftVel) < 0.2f &&
+                    abs(rightVel) < 0.2f
                 ) {
                     leftPos = toLeft
                     rightPos = toRight
                     leftVel = 0f
                     rightVel = 0f
                     dragged = false
-                    if (abs(stretchValue - 1f) < 0.001f && abs(stretchVel) < 0.01f) {
+                    if (abs(stretchValue - 1f) < 0.005f && abs(stretchVel) < 0.05f) {
                         stretchValue = 1f
                         stretchVel = 0f
                         asleep = true
